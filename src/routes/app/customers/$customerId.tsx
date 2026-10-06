@@ -6,7 +6,7 @@ import { Field, Panel, selectClass } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { friendlyDbError } from "@/lib/shop";
+import { friendlyDbError, roleAtLeast } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import { fetchContacts, fetchStatuses, type Customer, type Status } from "@/lib/tickets";
 
@@ -37,6 +37,24 @@ function CustomerDetail() {
   const [tickets, setTickets] = useState<Row[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [message, setMessage] = useState<{ tone: "error" | "info"; text: string } | null>(null);
+
+  const isAdmin = roleAtLeast(membership.role, "admin");
+
+  async function setOptOut(channel: "sms" | "email", optedOut: boolean) {
+    const { error } = await getSupabase().rpc("set_customer_opt_out", {
+      p_customer_id: customerId,
+      p_channel: channel,
+      p_opted_out: optedOut,
+    });
+    if (error) return setMessage({ tone: "error", text: friendlyDbError(error) });
+    setMessage({
+      tone: "info",
+      text: optedOut
+        ? `${channel === "sms" ? "Texts" : "Emails"} stopped. Anything waiting to send was canceled.`
+        : `${channel === "sms" ? "Texts" : "Emails"} allowed again.`,
+    });
+    await load();
+  }
 
   const load = useCallback(async () => {
     const sb = getSupabase();
@@ -140,10 +158,6 @@ function CustomerDetail() {
                 <option value="email">Email</option>
               </select>
             </Field>
-            <div className="flex flex-col justify-end gap-1 text-sm">
-              <span>Texts: {c.sms_opted_out ? "opted out (replied STOP)" : "allowed"}</span>
-              <span>Emails: {c.email_opted_out ? "opted out" : "allowed"}</span>
-            </div>
             <div className="sm:col-span-2">
               <Field id="c-notes" label="Notes">
                 <Textarea
@@ -162,6 +176,45 @@ function CustomerDetail() {
           </Button>
         </Panel>
       </form>
+      <Panel
+        title="Messages"
+        description="Customers who reply STOP to a text are opted out automatically."
+      >
+        <ul className="flex flex-col gap-3">
+          {(["sms", "email"] as const).map((ch) => {
+            const out = ch === "sms" ? c.sms_opted_out : c.email_opted_out;
+            const label = ch === "sms" ? "Texts" : "Emails";
+            return (
+              <li key={ch} className="flex flex-wrap items-center gap-3">
+                <span className="w-20 font-medium">{label}</span>
+                <span className={out ? "text-danger" : "text-muted-foreground"}>
+                  {out ? "Opted out" : "Allowed"}
+                </span>
+                {!out ? (
+                  <Button variant="outline" size="sm" onClick={() => void setOptOut(ch, true)}>
+                    Stop {label.toLowerCase()}
+                  </Button>
+                ) : isAdmin ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Only turn ${label.toLowerCase()} back on if ${c.name} asked for it. This is recorded in the audit log.`,
+                        )
+                      )
+                        void setOptOut(ch, false);
+                    }}
+                  >
+                    Allow again
+                  </Button>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      </Panel>
       <Panel title="Tickets">
         <ul className="divide-y divide-border">
           {tickets.map((t) => (

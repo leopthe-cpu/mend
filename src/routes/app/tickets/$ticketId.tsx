@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Field, Panel, selectClass } from "@/components/app/Field";
 import { CustomFieldInput } from "@/components/tickets/CustomFieldInput";
+import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
+import { TicketMessages } from "@/components/messages/TicketMessages";
 import { MoneySection } from "@/components/tickets/MoneySection";
 import { StatusMenu } from "@/components/tickets/StatusMenu";
 import { Button } from "@/components/ui/button";
@@ -71,12 +73,30 @@ function eventText(e: Event, currency: string): string {
       return "Passcode deleted";
     case "deleted":
       return "Ticket deleted";
+    case "message":
+      return messageEventText(d);
     case "estimate":
       return estimateEventText(d, currency);
     case "payment":
       return paymentEventText(d, currency);
     default:
       return e.type;
+  }
+}
+
+function messageEventText(d: Record<string, unknown>): string {
+  const ch = d["channel"] === "email" ? "Email" : "Text";
+  switch (d["action"]) {
+    case "queued":
+      return d["kind"] === "reminder" ? `${ch} reminder confirmed` : `${ch} confirmed`;
+    case "sent":
+      return `${ch} sent`;
+    case "failed":
+      return `${ch} failed${d["error"] ? `: ${String(d["error"])}` : ""}`;
+    case "canceled":
+      return `${ch} canceled`;
+    default:
+      return `${ch} updated`;
   }
 }
 
@@ -142,6 +162,8 @@ function TicketDetail() {
       : null,
   );
   const [notFound, setNotFound] = useState(false);
+  const [notify, setNotify] = useState<NotifyRequest | null>(null);
+  const [messagesKey, setMessagesKey] = useState(0);
 
   // Money actions add timeline entries; refresh just the timeline.
   const reloadEvents = useCallback(() => {
@@ -230,11 +252,15 @@ function TicketDetail() {
       !window.confirm("Mark as picked up? The saved device passcode will be deleted.")
     )
       return;
-    await rpc(
+    const ok = await rpc(
       "set_ticket_status",
       { p_ticket_id: ticket!.id, p_status_id: statusId },
       `Moved to ${target?.name}.`,
     );
+    // Statuses that notify by default ask first; nothing is sent automatically.
+    if (ok && target?.notify_by_default) {
+      setNotify({ ticketId: ticket!.id, kind: "status", statusId });
+    }
   }
 
   async function saveDetails(e: React.FormEvent) {
@@ -567,6 +593,26 @@ function TicketDetail() {
               </p>
             </Panel>
           ) : null}
+
+          <TicketMessages
+            ticketId={ticket.id}
+            timeZone={shop.time_zone}
+            refreshKey={messagesKey}
+            onCompose={() => setNotify({ ticketId: ticket.id, kind: "manual" })}
+            onChanged={reloadEvents}
+          />
+          <NotifyDialog
+            request={notify}
+            membership={membership}
+            onClose={(result) => {
+              setNotify(null);
+              if (result) {
+                setMessage({ tone: "info", text: result });
+                setMessagesKey((k) => k + 1);
+                reloadEvents();
+              }
+            }}
+          />
 
           <Panel title="Timeline">
             <form

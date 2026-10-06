@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { PageHeader } from "@/components/app/EmptyState";
+import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
 import { StatusMenu } from "@/components/tickets/StatusMenu";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
@@ -38,6 +39,8 @@ function Board() {
   const [thumbs, setThumbs] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [notify, setNotify] = useState<NotifyRequest | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -95,6 +98,11 @@ function Board() {
     if (error) {
       setTickets(prev);
       setError(friendlyDbError(error));
+      return;
+    }
+    // Statuses that notify by default ask first; nothing is sent automatically.
+    if (statuses.find((s) => s.id === statusId)?.notify_by_default) {
+      setNotify({ ticketId, kind: "status", statusId });
     }
   }
 
@@ -112,6 +120,19 @@ function Board() {
           <FormAlert tone="error">{error}</FormAlert>
         </div>
       ) : null}
+      {notice ? (
+        <div className="mb-4">
+          <FormAlert tone="info">{notice}</FormAlert>
+        </div>
+      ) : null}
+      <NotifyDialog
+        request={notify}
+        membership={membership}
+        onClose={(result) => {
+          setNotify(null);
+          if (result) setNotice(result);
+        }}
+      />
       {loaded && !tickets.length ? (
         <p className="mb-4 text-muted-foreground">
           No tickets yet. Press{" "}
@@ -209,9 +230,14 @@ function Board() {
                           </span>
                         ) : null}
                         {unclaimed ? (
-                          <span className="inline-flex items-center gap-1 rounded border border-status-waiting px-1.5 font-medium text-warning">
-                            <Bell className="size-3.5" aria-hidden /> Unclaimed
-                          </span>
+                          <button
+                            type="button"
+                            className="inline-flex min-h-8 items-center gap-1 rounded border border-status-waiting px-1.5 font-medium text-warning hover:bg-status-waiting/10"
+                            onClick={() => setNotify({ ticketId: t.id, kind: "reminder" })}
+                            aria-label={`Unclaimed: send #${t.ticket_number} a pickup reminder`}
+                          >
+                            <Bell className="size-3.5" aria-hidden /> Unclaimed · Send reminder
+                          </button>
                         ) : null}
                       </div>
                       <StatusMenu

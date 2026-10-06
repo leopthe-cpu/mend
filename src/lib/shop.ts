@@ -23,6 +23,7 @@ export type Shop = {
   unclaimed_reminder_days: number;
   quiet_hours_start: string;
   quiet_hours_end: string;
+  sms_monthly_cap: number;
 };
 
 export type Membership = { role: Role; shop: Shop };

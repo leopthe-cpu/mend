@@ -55,6 +55,21 @@ All checks dated **2026-10-05**.
 | T1 | Toll-free verification is required before a toll-free number can send to US and Canadian numbers. Review takes about 3–5 business days. From 17 Feb 2026, a business registration number is required for everyone except sole proprietors; for Canada that's a CBN, a provincial number or a Québec NEQ. From 15 Sep 2026, submissions need **separate Privacy Policy and Terms URLs**. | Search-result snippets from twilio.com and help.twilio.com. Pages blocked, **not opened** | **Not verified** |
 | T2 | Whether one shared Mend number may send on behalf of many shops (the ISV case), what sample messages must look like, and how STOP is handled | Not opened | Not verified |
 
+## Phase 4: provider details checked against official SDK source (2026-10-06)
+
+The vendors' doc sites are still blocked here (twilio.com, resend.com: `EGRESS_BLOCKED`), but the npm registry and GitHub are not. So each provider detail Mend relies on was read from the provider's **official SDK package**, in a scratch folder, not executed. Each finding below says which file it comes from.
+
+| # | Finding | Source | Confidence |
+|---|---|---|---|
+| T3 | Send SMS: `POST https://api.twilio.com/2010-04-01/Accounts/{AccountSid}/Messages.json`, form-encoded `To`, `From` or `MessagingServiceSid`, `Body`, `StatusCallback`; HTTP Basic auth. Fetch: `GET …/Messages/{Sid}.json` → `status`, `error_code`, `error_message`. Status values: queued, sending, sent, failed, delivered, undelivered, receiving, received, accepted, scheduled, read, partially_delivered, canceled. | `twilio@6.1.2` `lib/rest/api/v2010/account/message.js` and `.d.ts`, `lib/rest/ApiBase.js`, `lib/base/RequestClient.js` | Verified (SDK source) |
+| T4 | Webhook signature: header `X-Twilio-Signature` = base64(HMAC-SHA1(auth token, full URL + each param name and value, sorted by name)); the SDK accepts the URL with or without `:443`. | `twilio@6.1.2` `lib/webhooks/webhooks.js` | Verified (SDK source), matched by unit tests |
+| T5 | Field names Twilio **sends** to our webhooks (inbound `From`, `Body`; status-callback fields) are not in the SDK. Status callbacks don't depend on them (our message id is in the signed URL, then we fetch the status by SID, T3). Inbound STOP reads `From` and `Body`: **test with a real STOP** after setup. | Not available | **Not verified** |
+| R1 | Send email: `POST https://api.resend.com/emails`, `Authorization: Bearer <key>`, JSON `from`, `to`, `subject`, `text`, `reply_to`; optional `Idempotency-Key` header; response `{ id }`. | `resend@6.32.0` `dist/index.mjs`, `index.d.mts` | Verified (SDK source) |
+| R2 | Webhooks use Standard Webhooks: signature `v1,` + base64(HMAC-SHA256(base64-decoded secret after `whsec_`, `id.timestamp.body`)), several signatures space-separated, timestamp within 5 minutes. Event types include `email.sent`, `email.delivered`, `email.bounced`, `email.complained`, `email.failed`, `email.suppressed`; the email id is `data.email_id`. | `resend@6.32.0` (`webhooks.verify`, event types) → `standardwebhooks@1.1.1` `dist/index.js` | Verified (SDK source), matched by unit tests |
+| R3 | The HTTP **header names** Resend sends (`svix-*` or `webhook-*`): the SDK maps them for the caller, so the source doesn't show them. Mend accepts both spellings; the check is the same. | Not available | **Not verified**, handled both ways |
+| S11 | Edge Functions: default env `SUPABASE_URL`, `SUPABASE_SECRET_KEYS` (JSON; `default` key), legacy `SUPABASE_SERVICE_ROLE_KEY`; `[functions.<name>] verify_jwt = false` in config.toml for webhooks; secrets via dashboard or `supabase secrets set`. Scheduling: `pg_cron` + `pg_net` with URL and key in Vault. | Supabase docs: functions/secrets, functions/function-configuration, functions/schedule-functions, cron/install, extensions/pg_net | Verified |
+| S12 | `create extension pg_net` without a schema lands in `public` and trips advisor lint 0014; re-creating it `with schema extensions` keeps `net.http_post` working. | Tested locally, then advisor in production | Verified |
+
 ## Email provider
 
 | # | Finding | Source | Confidence |

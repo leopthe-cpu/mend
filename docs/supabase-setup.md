@@ -17,6 +17,31 @@
 ## Two-step sign-in (Phase 1B)
 Authentication → Multi-Factor (or "MFA"): make sure **TOTP / authenticator app** is enabled for enrolment and verification. I believe it's on by default for hosted projects but haven't verified it. If Settings → Security in the app shows an error when you click "Set up authenticator app", this is the switch.
 
+## Customer messages (Phase 4)
+Vault entries for the per-minute sender (set 2026-10-06 by Claude through the Supabase connector, decision 48; both values are public and also in `src/lib/supabase-public-config.ts`):
+
+| Vault name | Value |
+|---|---|
+| `mend_project_url` | `https://zasagjabtifpuhayttki.supabase.co` |
+| `mend_publishable_key` | the publishable key |
+
+Edge Function secrets (Dashboard → Edge Functions → Secrets). **Oz sets these; never paste them in chat or code.** Until they exist, messages fail with "Text messages aren't set up yet" / "Email isn't set up yet".
+
+| Secret | What |
+|---|---|
+| `TWILIO_ACCOUNT_SID` | Twilio account SID (starts with AC) |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token (also used to check webhook signatures) |
+| `TWILIO_SENDER` | The verified toll-free number in +1… format, or a Messaging Service SID (starts with MG) |
+| `RESEND_API_KEY` | Resend API key with sending access |
+| `MAIL_FROM_ADDRESS` | e.g. `notifications@mail.yourdomain.com` on the verified Resend domain |
+| `RESEND_WEBHOOK_SECRET` | The signing secret Resend shows for the webhook (starts with `whsec_`) |
+
+Provider webhook URLs:
+- Twilio, incoming messages on the number: `https://zasagjabtifpuhayttki.supabase.co/functions/v1/twilio-webhook` (HTTP POST). Status callbacks are set per message automatically.
+- Resend webhook: `https://zasagjabtifpuhayttki.supabase.co/functions/v1/resend-webhook`, events sent, delivered, bounced, complained, failed, suppressed.
+
+The functions deploy from `main` through the GitHub integration (observed 2026-10-06: all three appeared after the push, with JWT checks off as configured).
+
 ## Before launch
 - **Custom SMTP** (Authentication → Emails → SMTP). The built-in sender is heavily rate limited and meant for development only (verification S8).
 - **Pro plan:** leaked-password protection, daily backups, no pausing (decision 7).

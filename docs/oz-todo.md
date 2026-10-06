@@ -22,6 +22,25 @@ own email provider does (Supabase docs: "Send emails with custom SMTP").
 7. Test: sign up with a brand-new address that isn't on your Supabase team, then confirm the email arrives and the link logs you in.
 8. Tell Claude when done. Phase 4 will reuse the same Resend account for customer emails.
 
+## To turn on texts (Twilio) — start early, verification takes days
+
+1. Create a Twilio account and buy **one toll-free number** (US/Canada).
+2. Submit **toll-free verification** for it. You'll need your business details (from Feb 2026, a business registration number unless you're a sole proprietor), sample messages (use the Ready text from Settings → Messages), and live **privacy policy and terms URLs** (separate pages). I couldn't open Twilio's pages from here, so follow what Twilio's form asks (docs/verification.md T1, T2).
+3. On the number's messaging settings, set **"A message comes in"** to webhook `https://zasagjabtifpuhayttki.supabase.co/functions/v1/twilio-webhook` (HTTP POST).
+4. In Supabase → Edge Functions → Secrets, add `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_SENDER` (the number as +1…). Values from your Twilio console; don't paste them in chat.
+5. Test: text a ticket to your own phone, reply STOP, then check the customer page shows "Opted out". Tell Claude the result (the STOP field names couldn't be verified here).
+
+## To turn on customer emails (Resend) — after the Resend steps above
+
+1. In Supabase → Edge Functions → Secrets, add `RESEND_API_KEY` and `MAIL_FROM_ADDRESS` (an address on your verified domain).
+2. In Resend → Webhooks, add `https://zasagjabtifpuhayttki.supabase.co/functions/v1/resend-webhook` with the email events (sent, delivered, bounced, complained, failed, suppressed), then add its signing secret as `RESEND_WEBHOOK_SECRET` in Supabase.
+3. Test: email a ticket to yourself; the ticket should show "Delivered" within a minute.
+
+## Decide
+
+- Message limits (decision 44): 500 texts per shop per month, 30 messages per 10 minutes, 5 per ticket per hour. Change any of these?
+- Decision 48: I set two public values in Supabase Vault directly (not via a migration) so the scheduled sender works. OK?
+
 ## Before real shops use Mend
 
 - Decide on Supabase Pro: no pausing after 7 inactive days, downloadable backups, support, test branches, leaked-password checking. Check the current price at supabase.com/pricing.

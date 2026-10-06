@@ -1,24 +1,34 @@
-# Healing Hands
+# Mend
 
-Mend
+Job tracking and "your item is ready" texts and emails for independent repair
+shops (Canada and US).
 
-This project was built with [Lovable](https://lovable.dev).
+- **Spec:** `docs/spec.md` · **Decisions:** `docs/decisions.md` · **Security:**
+  `docs/security-review.md` · **Supabase settings:** `docs/supabase-setup.md`
+- **Stack:** TanStack Start (React 19, TypeScript, Vite, Tailwind v4,
+  shadcn/ui) on Supabase (Postgres with RLS, Auth, Storage, Edge Functions).
 
-## Build with Lovable
+## Where it runs
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/cf324f45-687b-4a06-acd2-d49d4e407ef2).
+| Part | Where | Deploys from |
+|---|---|---|
+| Website and app | Railway (`npm run build`, then `npm start`) | push to `main` |
+| Database migrations, Edge Functions | Supabase project `mend` | push to `main` (Supabase GitHub integration) |
+| Texts / email | Twilio / Resend, keys only in Supabase function secrets | n/a |
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+## Local development
 
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Needs [bun](https://bun.sh), Node.js 22+ and Docker.
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+bun install
+bunx supabase start          # local database, auth, storage, mail (Mailpit)
+cp .env.example .env.local   # point VITE_SUPABASE_* at the local stack
+bun run dev                  # http://localhost:8080
 ```
+
+Checks before pushing: `bun run lint`, `bun run typecheck`, `bun run test`,
+`bun run build`, and `bunx supabase test db` when the database changed.
+
+A production build is a plain Node server: `bun run build && PORT=8080 npm start`.
+Set `NITRO_PRESET` (e.g. `cloudflare-module`) only to build for another host.

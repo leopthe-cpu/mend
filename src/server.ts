@@ -45,8 +45,8 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
-// Production only: in development the app runs inside editor previews (e.g.
-// Lovable's), which frame the page and would be blocked by frame-ancestors.
+// Production builds only, so local development tools that open the app in a
+// frame (previews, test runners) keep working.
 const secure = (response: Response) =>
   import.meta.env.PROD ? withSecurityHeaders(response) : response;
 

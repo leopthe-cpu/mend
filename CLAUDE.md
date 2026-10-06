@@ -10,12 +10,12 @@ Priorities, in order: **security, correctness, a clean editorial UI.**
 - Work in phases (spec §9 + addendum). At the end of each phase: stop, summarize, list what's unverified or decided on Oz's behalf, wait for a go-ahead.
 - Ask before deviating from the spec. Don't fill gaps with assumptions; ask one clear question.
 - Record every decision made on Oz's behalf in `docs/decisions.md` (date, decision, reason, alternatives).
-- Small, descriptive commits. `git pull` before starting; push when a step is done. `main` syncs to Lovable: keep it building, and never force-push or rewrite pushed history.
-- **Lovable-editor guard:** if a pull brings changes to `supabase/`, RLS, RPC calls, auth or secrets handling, stop and show Oz the diff.
+- Small, descriptive commits. `git pull` before starting; push when a step is done. `main` deploys to Railway (site) and Supabase (migrations, functions): keep it building, and never force-push or rewrite pushed history.
+- **Outside-change guard:** if a pull brings changes from someone else to `supabase/`, RLS, RPC calls, auth or secrets handling, stop and show Oz the diff.
 - Before pushing: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run build`, and `supabase test db` when the database changed.
 
 ## Stack
-Lovable TanStack Start template (React 19, TS strict, Vite, Tailwind v4, shadcn/ui), built for Cloudflare Workers. Supabase project `mend` (ca-central-1) owned by Oz, not Lovable Cloud. Package manager: bun.
+TanStack Start (React 19, TS strict, Vite, Tailwind v4, shadcn/ui), built by Nitro as a Node server and hosted on **Railway** (`npm start`, decisions 61–62). Started from a Lovable template; Lovable is no longer used. Supabase project `mend` (ca-central-1) owned by Oz. Package manager: bun.
 
 ## Database and secrets rules
 - Schema changes **only** as SQL files in `supabase/migrations/`. Never edit the dashboard schema by hand.

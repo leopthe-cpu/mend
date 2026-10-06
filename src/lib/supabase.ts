@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { SUPABASE_PUBLIC_DEFAULTS } from "./supabase-public-config";
+
 // Browser-only Supabase client. Only the URL and the PUBLISHABLE key are ever
 // shipped to the browser (spec §3); every rule that matters is enforced by
 // RLS/RPCs in the database. Secret/service keys never appear in this repo.
@@ -17,8 +19,11 @@ export function getSupabase(): SupabaseClient {
     throw new Error("getSupabase() is browser-only; call it from event handlers or client routes.");
   }
   if (!client) {
-    const url = import.meta.env["VITE_SUPABASE_URL"] as string | undefined;
-    const key = import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] as string | undefined;
+    const url =
+      (import.meta.env["VITE_SUPABASE_URL"] as string | undefined) || SUPABASE_PUBLIC_DEFAULTS.url;
+    const key =
+      (import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] as string | undefined) ||
+      SUPABASE_PUBLIC_DEFAULTS.publishableKey;
     if (!url || !key) {
       throw new SupabaseConfigError(
         "Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY (see .env.example).",

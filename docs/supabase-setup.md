@@ -20,4 +20,4 @@
 - Run the **Security** and **Performance Advisors** and fix every warning (I can do this once the connector sees the project).
 
 ## Lovable
-For Lovable's preview to log in, it needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, the **publishable** key only, never the secret key. Until they're set, the auth forms show "Mend isn't connected to its database in this environment yet."
+Nothing to do. The app falls back to the production URL and publishable key in `src/lib/supabase-public-config.ts` (decision 20). To point a local copy at the local stack, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env.local`.

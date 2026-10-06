@@ -28,8 +28,6 @@ export const Route = createFileRoute("/signup")({
 });
 
 const schema = z.object({
-  shopName: z.string().trim().min(1, "Enter your shop's name.").max(120),
-  fullName: z.string().trim().min(1, "Enter your name.").max(120),
   email: emailSchema,
   password: passwordSchema,
 });
@@ -40,22 +38,18 @@ function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { shopName: "", fullName: "", email: "", password: "" },
+    defaultValues: { email: "", password: "" },
   });
 
   async function onSubmit(raw: Values) {
     setError(null);
     const values = schema.parse(raw);
-    // The shop itself is created by one server-side function at the end of
-    // onboarding (decision P5). These names are only kept to pre-fill it and
-    // are never used for authorization.
+    // Just email and password here. Shop name and your name are asked during
+    // onboarding, and both can be skipped (decision 17).
     const { error } = await getSupabase().auth.signUp({
       email: values.email,
       password: values.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm`,
-        data: { full_name: values.fullName, shop_name: values.shopName },
-      },
+      options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
     });
     if (error) {
       setError(friendlyAuthError(error));
@@ -99,7 +93,7 @@ function SignupPage() {
   return (
     <AuthLayout
       title="Create your shop"
-      subtitle="Free to try. It takes about a minute."
+      subtitle="Just an email and a password to start."
       footer={
         <>
           Already have an account?{" "}
@@ -117,32 +111,6 @@ function SignupPage() {
           className="flex flex-col gap-5"
         >
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
-          <FormField
-            control={form.control}
-            name="shopName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Shop name</FormLabel>
-                <FormControl>
-                  <Input autoComplete="organization" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="fullName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Your name</FormLabel>
-                <FormControl>
-                  <Input autoComplete="name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
           <FormField
             control={form.control}
             name="email"

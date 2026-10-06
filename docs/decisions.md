@@ -45,3 +45,11 @@ Every decision made on Oz's behalf (addendum §4). **Status:** `decided` (made a
 | 14 | 2026-10-06 | New token `--mend-input-border` `#6A6AA0` for form controls; status colors used for icons/dots, labels in `--mend-text`. | `#2C2C5A` borders are about 1.3:1 (form controls need 3:1); `#64748B` closed-grey fails as text. Your palette is otherwise unchanged. | Lighten `--border` everywhere (heavier look); change the closed grey. | decided |
 | 15 | 2026-10-06 | Nav collapses to icons below 1280 px, drawer below 768 px. | Tablets at the counter get more room; phones get the standard drawer. | Always expanded on tablets. | decided |
 | 16 | 2026-10-06 | Interim landing page at `/` (hero photo, tagline, Get started/Log in) and draft privacy/terms pages. | Needed as entry points now, and Twilio needs live legal URLs (T1). The full landing page is still Phase 5. | Blank page until Phase 5. | decided |
+
+## Oz's feedback (2026-10-06)
+
+| # | Date | Decision | Status |
+|---|---|---|---|
+| 17 | 2026-10-06 | **Signup asks only for email and password.** Shop name and the person's name are asked later, in onboarding (Phase 1B), and **both can be skipped**. A skipped shop name gets an auto-generated, friendly positive name (e.g. "Happy Shop", "Sunny Workshop") that can be renamed any time in Settings → Shop. This replaces the signup fields in spec §5 step 1 and the "pre-fill from signup metadata" part of P5. The shop is still created by one RPC at the end of onboarding. | approved (Oz) |
+| 18 | 2026-10-06 | Home page uses the tailor-shop photo; login/signup use the phone-repair photo. | approved (Oz) |
+| 19 | 2026-10-06 | **Proposed:** if the person skips their name, the app shows their email until they add one in Settings (no generated person name). | proposed: needs Oz's OK |

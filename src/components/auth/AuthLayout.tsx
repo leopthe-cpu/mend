@@ -20,7 +20,7 @@ export function AuthLayout({
     <div className="grid min-h-svh bg-background lg:grid-cols-2">
       <main className="flex flex-col px-6 py-8 md:px-12">
         <Link to="/" aria-label="Mend home" className="self-start rounded-md">
-          <Logo height={30} className="-ml-1" />
+          <Logo height={44} />
         </Link>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">
           <h1 className="text-[1.75rem] font-semibold leading-tight">{title}</h1>

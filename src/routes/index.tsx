@@ -37,7 +37,7 @@ function Header() {
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 md:px-8">
         <Link to="/" aria-label="Mend home" className="rounded-md">
-          <Logo height={26} />
+          <Logo height={36} />
         </Link>
         <nav aria-label="Sections" className="hidden flex-1 items-center gap-6 md:flex">
           {NAV.map((n) => (

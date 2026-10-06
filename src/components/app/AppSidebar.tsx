@@ -34,14 +34,14 @@ export function AppSidebar({
     <Sidebar collapsible="icon" className="surface-dark">
       <SidebarHeader className="px-2 pt-4 pb-2 group-data-[collapsible=icon]:items-center">
         <Link to="/app/board" aria-label="Mend home" className="rounded-md">
-          <span className="block pt-1 pl-2 group-data-[collapsible=icon]:hidden">
-            <Logo height={30} />
+          <span className="block group-data-[collapsible=icon]:hidden">
+            <Logo height={30} onDark />
           </span>
           <span
             aria-hidden
             className="hidden font-mono text-xl font-bold text-foreground group-data-[collapsible=icon]:inline"
           >
-            M
+            m<span className="text-brand-text">.</span>
           </span>
         </Link>
       </SidebarHeader>

@@ -16,7 +16,7 @@ function Page() {
     <div className="flex min-h-svh flex-col bg-background">
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
         <Link to="/" aria-label="Mend home">
-          <Logo height={32} className="-ml-1" />
+          <Logo height={44} />
         </Link>
         <h1 className="mt-8 text-3xl font-semibold">Terms of service</h1>
         <p className="mt-2 font-mono text-sm text-muted-foreground">Draft. Not yet in effect.</p>

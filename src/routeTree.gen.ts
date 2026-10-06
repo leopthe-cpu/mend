@@ -21,18 +21,22 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppBoardRouteImport } from './routes/app/board'
 import { Route as AppCatalogRouteImport } from './routes/app/catalog'
-import { Route as AppCustomersRouteImport } from './routes/app/customers'
 import { Route as AppMessagesRouteImport } from './routes/app/messages'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
-import { Route as AppTicketsRouteImport } from './routes/app/tickets'
 import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
 import { Route as InviteTokenRouteImport } from './routes/invite/$token'
 import { Route as TTokenRouteImport } from './routes/t/$token'
+import { Route as TagTicketIdRouteImport } from './routes/tag.$ticketId'
+import { Route as AppCustomersIndexRouteImport } from './routes/app/customers/index'
+import { Route as AppCustomersCustomerIdRouteImport } from './routes/app/customers/$customerId'
 import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/index'
 import { Route as AppSettingsAuditRouteImport } from './routes/app/settings/audit'
+import { Route as AppSettingsBoardRouteImport } from './routes/app/settings/board'
 import { Route as AppSettingsSecurityRouteImport } from './routes/app/settings/security'
 import { Route as AppSettingsShopRouteImport } from './routes/app/settings/shop'
 import { Route as AppSettingsTeamRouteImport } from './routes/app/settings/team'
+import { Route as AppTicketsIndexRouteImport } from './routes/app/tickets/index'
+import { Route as AppTicketsTicketIdRouteImport } from './routes/app/tickets/$ticketId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -94,11 +98,6 @@ const AppCatalogRoute = AppCatalogRouteImport.update({
   path: '/catalog',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCustomersRoute = AppCustomersRouteImport.update({
-  id: '/customers',
-  path: '/customers',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppMessagesRoute = AppMessagesRouteImport.update({
   id: '/messages',
   path: '/messages',
@@ -107,11 +106,6 @@ const AppMessagesRoute = AppMessagesRouteImport.update({
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppTicketsRoute = AppTicketsRouteImport.update({
-  id: '/tickets',
-  path: '/tickets',
   getParentRoute: () => AppRoute,
 } as any)
 const AuthConfirmRoute = AuthConfirmRouteImport.update({
@@ -129,6 +123,21 @@ const TTokenRoute = TTokenRouteImport.update({
   path: '/t/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TagTicketIdRoute = TagTicketIdRouteImport.update({
+  id: '/tag/$ticketId',
+  path: '/tag/$ticketId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppCustomersIndexRoute = AppCustomersIndexRouteImport.update({
+  id: '/customers/',
+  path: '/customers/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCustomersCustomerIdRoute = AppCustomersCustomerIdRouteImport.update({
+  id: '/customers/$customerId',
+  path: '/customers/$customerId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -137,6 +146,11 @@ const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
 const AppSettingsAuditRoute = AppSettingsAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsBoardRoute = AppSettingsBoardRouteImport.update({
+  id: '/board',
+  path: '/board',
   getParentRoute: () => AppSettingsRoute,
 } as any)
 const AppSettingsSecurityRoute = AppSettingsSecurityRouteImport.update({
@@ -154,6 +168,16 @@ const AppSettingsTeamRoute = AppSettingsTeamRouteImport.update({
   path: '/team',
   getParentRoute: () => AppSettingsRoute,
 } as any)
+const AppTicketsIndexRoute = AppTicketsIndexRouteImport.update({
+  id: '/tickets/',
+  path: '/tickets/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTicketsTicketIdRoute = AppTicketsTicketIdRouteImport.update({
+  id: '/tickets/$ticketId',
+  path: '/tickets/$ticketId',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -167,19 +191,23 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/app/board': typeof AppBoardRoute
   '/app/catalog': typeof AppCatalogRoute
-  '/app/customers': typeof AppCustomersRoute
   '/app/messages': typeof AppMessagesRoute
   '/app/settings': typeof AppSettingsRouteWithChildren
-  '/app/tickets': typeof AppTicketsRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/invite/$token': typeof InviteTokenRoute
   '/t/$token': typeof TTokenRoute
+  '/tag/$ticketId': typeof TagTicketIdRoute
   '/app/': typeof AppIndexRoute
+  '/app/customers/$customerId': typeof AppCustomersCustomerIdRoute
   '/app/settings/audit': typeof AppSettingsAuditRoute
+  '/app/settings/board': typeof AppSettingsBoardRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/shop': typeof AppSettingsShopRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/tickets/$ticketId': typeof AppTicketsTicketIdRoute
+  '/app/customers/': typeof AppCustomersIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
+  '/app/tickets/': typeof AppTicketsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -192,18 +220,22 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/app/board': typeof AppBoardRoute
   '/app/catalog': typeof AppCatalogRoute
-  '/app/customers': typeof AppCustomersRoute
   '/app/messages': typeof AppMessagesRoute
-  '/app/tickets': typeof AppTicketsRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/invite/$token': typeof InviteTokenRoute
   '/t/$token': typeof TTokenRoute
+  '/tag/$ticketId': typeof TagTicketIdRoute
   '/app': typeof AppIndexRoute
+  '/app/customers/$customerId': typeof AppCustomersCustomerIdRoute
   '/app/settings/audit': typeof AppSettingsAuditRoute
+  '/app/settings/board': typeof AppSettingsBoardRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/shop': typeof AppSettingsShopRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/tickets/$ticketId': typeof AppTicketsTicketIdRoute
+  '/app/customers': typeof AppCustomersIndexRoute
   '/app/settings': typeof AppSettingsIndexRoute
+  '/app/tickets': typeof AppTicketsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -218,19 +250,23 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/app/board': typeof AppBoardRoute
   '/app/catalog': typeof AppCatalogRoute
-  '/app/customers': typeof AppCustomersRoute
   '/app/messages': typeof AppMessagesRoute
   '/app/settings': typeof AppSettingsRouteWithChildren
-  '/app/tickets': typeof AppTicketsRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/invite/$token': typeof InviteTokenRoute
   '/t/$token': typeof TTokenRoute
+  '/tag/$ticketId': typeof TagTicketIdRoute
   '/app/': typeof AppIndexRoute
+  '/app/customers/$customerId': typeof AppCustomersCustomerIdRoute
   '/app/settings/audit': typeof AppSettingsAuditRoute
+  '/app/settings/board': typeof AppSettingsBoardRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/shop': typeof AppSettingsShopRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/tickets/$ticketId': typeof AppTicketsTicketIdRoute
+  '/app/customers/': typeof AppCustomersIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
+  '/app/tickets/': typeof AppTicketsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -246,19 +282,23 @@ export interface FileRouteTypes {
     | '/terms'
     | '/app/board'
     | '/app/catalog'
-    | '/app/customers'
     | '/app/messages'
     | '/app/settings'
-    | '/app/tickets'
     | '/auth/confirm'
     | '/invite/$token'
     | '/t/$token'
+    | '/tag/$ticketId'
     | '/app/'
+    | '/app/customers/$customerId'
     | '/app/settings/audit'
+    | '/app/settings/board'
     | '/app/settings/security'
     | '/app/settings/shop'
     | '/app/settings/team'
+    | '/app/tickets/$ticketId'
+    | '/app/customers/'
     | '/app/settings/'
+    | '/app/tickets/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -271,18 +311,22 @@ export interface FileRouteTypes {
     | '/terms'
     | '/app/board'
     | '/app/catalog'
-    | '/app/customers'
     | '/app/messages'
-    | '/app/tickets'
     | '/auth/confirm'
     | '/invite/$token'
     | '/t/$token'
+    | '/tag/$ticketId'
     | '/app'
+    | '/app/customers/$customerId'
     | '/app/settings/audit'
+    | '/app/settings/board'
     | '/app/settings/security'
     | '/app/settings/shop'
     | '/app/settings/team'
+    | '/app/tickets/$ticketId'
+    | '/app/customers'
     | '/app/settings'
+    | '/app/tickets'
   id:
     | '__root__'
     | '/'
@@ -296,19 +340,23 @@ export interface FileRouteTypes {
     | '/terms'
     | '/app/board'
     | '/app/catalog'
-    | '/app/customers'
     | '/app/messages'
     | '/app/settings'
-    | '/app/tickets'
     | '/auth/confirm'
     | '/invite/$token'
     | '/t/$token'
+    | '/tag/$ticketId'
     | '/app/'
+    | '/app/customers/$customerId'
     | '/app/settings/audit'
+    | '/app/settings/board'
     | '/app/settings/security'
     | '/app/settings/shop'
     | '/app/settings/team'
+    | '/app/tickets/$ticketId'
+    | '/app/customers/'
     | '/app/settings/'
+    | '/app/tickets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -324,6 +372,7 @@ export interface RootRouteChildren {
   AuthConfirmRoute: typeof AuthConfirmRoute
   InviteTokenRoute: typeof InviteTokenRoute
   TTokenRoute: typeof TTokenRoute
+  TagTicketIdRoute: typeof TagTicketIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -412,13 +461,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCatalogRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/customers': {
-      id: '/app/customers'
-      path: '/customers'
-      fullPath: '/app/customers'
-      preLoaderRoute: typeof AppCustomersRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/app/messages': {
       id: '/app/messages'
       path: '/messages'
@@ -431,13 +473,6 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/app/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tickets': {
-      id: '/app/tickets'
-      path: '/tickets'
-      fullPath: '/app/tickets'
-      preLoaderRoute: typeof AppTicketsRouteImport
       parentRoute: typeof AppRoute
     }
     '/auth/confirm': {
@@ -461,6 +496,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tag/$ticketId': {
+      id: '/tag/$ticketId'
+      path: '/tag/$ticketId'
+      fullPath: '/tag/$ticketId'
+      preLoaderRoute: typeof TagTicketIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/customers/': {
+      id: '/app/customers/'
+      path: '/customers'
+      fullPath: '/app/customers/'
+      preLoaderRoute: typeof AppCustomersIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/customers/$customerId': {
+      id: '/app/customers/$customerId'
+      path: '/customers/$customerId'
+      fullPath: '/app/customers/$customerId'
+      preLoaderRoute: typeof AppCustomersCustomerIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/settings/': {
       id: '/app/settings/'
       path: '/'
@@ -473,6 +529,13 @@ declare module '@tanstack/react-router' {
       path: '/audit'
       fullPath: '/app/settings/audit'
       preLoaderRoute: typeof AppSettingsAuditRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/app/settings/board': {
+      id: '/app/settings/board'
+      path: '/board'
+      fullPath: '/app/settings/board'
+      preLoaderRoute: typeof AppSettingsBoardRouteImport
       parentRoute: typeof AppSettingsRoute
     }
     '/app/settings/security': {
@@ -496,11 +559,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsTeamRouteImport
       parentRoute: typeof AppSettingsRoute
     }
+    '/app/tickets/': {
+      id: '/app/tickets/'
+      path: '/tickets'
+      fullPath: '/app/tickets/'
+      preLoaderRoute: typeof AppTicketsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tickets/$ticketId': {
+      id: '/app/tickets/$ticketId'
+      path: '/tickets/$ticketId'
+      fullPath: '/app/tickets/$ticketId'
+      preLoaderRoute: typeof AppTicketsTicketIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppSettingsRouteChildren {
   AppSettingsAuditRoute: typeof AppSettingsAuditRoute
+  AppSettingsBoardRoute: typeof AppSettingsBoardRoute
   AppSettingsSecurityRoute: typeof AppSettingsSecurityRoute
   AppSettingsShopRoute: typeof AppSettingsShopRoute
   AppSettingsTeamRoute: typeof AppSettingsTeamRoute
@@ -509,6 +587,7 @@ interface AppSettingsRouteChildren {
 
 const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsAuditRoute: AppSettingsAuditRoute,
+  AppSettingsBoardRoute: AppSettingsBoardRoute,
   AppSettingsSecurityRoute: AppSettingsSecurityRoute,
   AppSettingsShopRoute: AppSettingsShopRoute,
   AppSettingsTeamRoute: AppSettingsTeamRoute,
@@ -522,21 +601,25 @@ const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
 interface AppRouteChildren {
   AppBoardRoute: typeof AppBoardRoute
   AppCatalogRoute: typeof AppCatalogRoute
-  AppCustomersRoute: typeof AppCustomersRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppSettingsRoute: typeof AppSettingsRouteWithChildren
-  AppTicketsRoute: typeof AppTicketsRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppCustomersCustomerIdRoute: typeof AppCustomersCustomerIdRoute
+  AppTicketsTicketIdRoute: typeof AppTicketsTicketIdRoute
+  AppCustomersIndexRoute: typeof AppCustomersIndexRoute
+  AppTicketsIndexRoute: typeof AppTicketsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppBoardRoute: AppBoardRoute,
   AppCatalogRoute: AppCatalogRoute,
-  AppCustomersRoute: AppCustomersRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppSettingsRoute: AppSettingsRouteWithChildren,
-  AppTicketsRoute: AppTicketsRoute,
   AppIndexRoute: AppIndexRoute,
+  AppCustomersCustomerIdRoute: AppCustomersCustomerIdRoute,
+  AppTicketsTicketIdRoute: AppTicketsTicketIdRoute,
+  AppCustomersIndexRoute: AppCustomersIndexRoute,
+  AppTicketsIndexRoute: AppTicketsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -554,6 +637,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthConfirmRoute: AuthConfirmRoute,
   InviteTokenRoute: InviteTokenRoute,
   TTokenRoute: TTokenRoute,
+  TagTicketIdRoute: TagTicketIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

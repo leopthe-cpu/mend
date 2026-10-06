@@ -44,11 +44,11 @@ select results_eq($$ select count(*)::int from public.search_shop((select v::uui
   $$ values (1) $$, 'name search works');
 reset role;
 
-select ok((select position('4165550100' in encode(phone_encrypted, 'escape')) = 0 from public.customers where name = 'Maria Rossi'),
+select ok((select position('4165550100' in encode(phone_encrypted, 'escape')) = 0 from public.customers where id = (select v::uuid from t where k = 'cust')),
   'raw phone is not stored in the table');
-select ok((select position('maria' in encode(email_encrypted, 'escape')) = 0 from public.customers where name = 'Maria Rossi'),
+select ok((select position('maria' in encode(email_encrypted, 'escape')) = 0 from public.customers where id = (select v::uuid from t where k = 'cust')),
   'raw email is not stored in the table');
-select ok((select phone_hash is not null and length(phone_hash) = 64 from public.customers where name = 'Maria Rossi'), 'blind index stored');
+select ok((select phone_hash is not null and length(phone_hash) = 64 from public.customers where id = (select v::uuid from t where k = 'cust')), 'blind index stored');
 
 -- ===== Tickets ========================================================
 select set_config('request.jwt.claims', '{"sub":"a1000000-0000-0000-0000-000000000002","role":"authenticated"}', true);

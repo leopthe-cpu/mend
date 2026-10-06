@@ -135,7 +135,7 @@ reset role;
 select ok((select count(*) >= 4 from claimed), 'due messages are claimed');
 select ok(not exists (select 1 from claimed where message_id = pg_temp.v('mq')), 'the quiet-hours message is not due yet');
 select is((select recipient from claimed where message_id = pg_temp.v('m_pat')), '+14165550199', 'the SMS recipient is decrypted for sending');
-select is((select reply_to is null and shop_name = 'F Repairs' from claimed limit 1), true, 'shop name and reply-to come along');
+select is((select reply_to is null and shop_name = 'F Repairs' from claimed where message_id = pg_temp.v('m_pat')), true, 'shop name and reply-to come along');
 select is((select count(*)::int from claimed_again), 0, 'claimed messages are not handed out twice');
 insert into t select 'm_email', message_id::text from claimed where channel = 'email' limit 1;
 
@@ -177,6 +177,9 @@ select ok(exists (select 1 from cron.job where jobname = 'mend-send-due-messages
 select ok(not has_function_privilege('authenticated', 'public.provider_message_id_for(uuid)', 'execute')
       and not has_function_privilege('authenticated', 'public.record_email_complaint(text)', 'execute'),
   'webhook helpers are not callable by users');
+
+select is((select n.nspname::text from pg_extension e join pg_namespace n on n.oid = e.extnamespace where e.extname = 'pg_net'),
+  'extensions', 'pg_net lives in the extensions schema, not public (advisor lint 0014)');
 
 select * from finish();
 rollback;

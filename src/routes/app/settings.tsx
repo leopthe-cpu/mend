@@ -15,6 +15,7 @@ function SettingsLayout() {
   const isAdmin = roleAtLeast(membership.role, "admin");
   const tabs = [
     { to: "/app/settings/shop", label: "Shop" },
+    { to: "/app/settings/board", label: "Board & fields" },
     { to: "/app/settings/team", label: "Team" },
     { to: "/app/settings/security", label: "Security" },
     ...(isAdmin ? [{ to: "/app/settings/audit", label: "Audit log" }] : []),

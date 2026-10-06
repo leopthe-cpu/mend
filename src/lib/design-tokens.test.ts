@@ -23,8 +23,11 @@ describe("design tokens in styles.css", () => {
     expect(tokens.get("--mend-accent")?.hex).toBe("#1AFFF4");
   });
 
+  // Compare numbers, not text: Prettier rewrites `0.0760` as `0.076` and may
+  // wrap long declarations, which doesn't change the colour.
+  const nums = (s: string) => (s.match(/[\d.]+/g) ?? []).map(Number);
   it.each([...tokens.entries()])("%s oklch matches its source hex", (_name, { hex, oklch }) => {
-    expect(oklch).toBe(formatOklch(hex));
+    expect(nums(oklch)).toEqual(nums(formatOklch(hex)));
   });
 
   it.each(contrastPairs)("$use: $fg on $bg meets $min:1", ({ fg, bg, min }) => {

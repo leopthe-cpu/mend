@@ -21,6 +21,13 @@ feature/* ──PR──▶ develop ──PR (Oz approves)──▶ main
 | Who changes it | anyone, freely | merge a PR into `develop` (tests must pass) | merge a PR into `main` (**Oz approves**) |
 | AI agents (Claude, LibreChat) | full access | full access, including the staging database | **no direct access**; may open PRs only |
 
+## Addresses
+
+| | Staging | Production |
+|---|---|---|
+| Website | https://mend-staging.up.railway.app | https://mend-production-2e99.up.railway.app |
+| Supabase project | `mend-staging` (`guqmpdlervjwhclsndyn`) | `mend` (`zasagjabtifpuhayttki`) |
+
 ## Everyday flow
 
 1. Create a branch from `develop`: `feature/short-name`.

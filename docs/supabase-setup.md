@@ -9,8 +9,8 @@
 | same | Secure password change | **On** |
 | same | Minimum password length | **6** (Oz, decision 10b) |
 | same | Password requirements | **Lowercase, uppercase letters and digits** |
-| Authentication → URL Configuration (`/dashboard/project/zasagjabtifpuhayttki/auth/url-configuration`) | Site URL | `https://id-preview--cf324f45-687b-4a06-acd2-d49d4e407ef2.lovable.app` until launch, then the real domain. It **defaults to `http://localhost:3000`**, which is where email links go when the app's address isn't allowed. |
-| same | Redirect URLs | `https://id-preview--cf324f45-687b-4a06-acd2-d49d4e407ef2.lovable.app/**` and `https://soul-mender-spark.lovable.app/**` (`**` = any path; Supabase docs, "Redirect URLs"). Add the real domain at launch. |
+| Authentication → URL Configuration (`/dashboard/project/zasagjabtifpuhayttki/auth/url-configuration`) | Site URL | `https://mend-production-2e99.up.railway.app` (Railway, decision 61) until the real domain is connected. It **defaults to `http://localhost:3000`**, which is where email links go when the app's address isn't allowed. |
+| same | Redirect URLs | `https://mend-production-2e99.up.railway.app/**` (`**` = any path; Supabase docs, "Redirect URLs"). The old Lovable entries can go once Lovable is retired. Add the real domain at launch. If an email link's page isn't allowed here, Supabase sends people to the Site URL instead; the home page then forwards the link to `/auth/confirm` as a safety net. |
 | Database → Settings | SSL enforcement | On (Supabase production checklist) |
 | Integrations → GitHub | Connect `leopthe-cpu/mend`, Supabase directory `supabase`, **Deploy to production** from `main` | decision 5 |
 

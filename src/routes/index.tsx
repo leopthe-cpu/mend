@@ -6,6 +6,7 @@ import { Logo } from "@/components/brand/Logo";
 import { ReadyArt, TextArt, TicketArt } from "@/components/site/HowItWorksArt";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { Button } from "@/components/ui/button";
+import { readAuthRedirectError } from "@/lib/auth";
 
 // Marketing site (brand doc "Website Copy and Brand Guidelines - Mend",
 // decision 51). The copy follows the doc's structure and tone but only
@@ -394,7 +395,22 @@ function Pricing() {
   );
 }
 
+// Safety net for email links. When the address a link asks for (e.g.
+// /auth/confirm) isn't in Supabase's allowed redirect URLs, Supabase sends
+// the person to the Site URL, the home page, with the one-time code or an
+// error attached. Pass those on to the confirmation page so the link still
+// works. The real fix is the redirect allow-list (docs/supabase-setup.md).
+function useForwardAuthLink() {
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("code") || readAuthRedirectError(url.href)) {
+      window.location.replace(`/auth/confirm${url.search}${url.hash}`);
+    }
+  }, []);
+}
+
 function Home() {
+  useForwardAuthLink();
   return (
     <div className="min-h-svh bg-background text-foreground">
       <a

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Field, Panel, selectClass } from "@/components/app/Field";
+import { ReauthDialog } from "@/components/app/ReauthDialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -323,96 +324,23 @@ function TransferDialog({
   onClose: () => void;
   onDone: () => Promise<void>;
 }) {
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
-  const [needsCode, setNeedsCode] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function confirm(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    const sb = getSupabase();
-    try {
-      if (!needsCode) {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) throw new Error("That password isn't right.");
-        const { data: factors } = await sb.auth.mfa.listFactors();
-        if (factors?.totp.some((f) => f.status === "verified")) {
-          setNeedsCode(true);
-          return;
-        }
-      } else {
-        const { data: factors } = await sb.auth.mfa.listFactors();
-        const factor = factors?.totp.find((f) => f.status === "verified");
-        if (factor) {
-          const { error } = await sb.auth.mfa.challengeAndVerify({
-            factorId: factor.id,
-            code: code.trim(),
-          });
-          if (error) throw new Error("That code didn't work.");
-        }
-      }
-      const { error } = await sb.rpc("transfer_ownership", {
-        p_shop_id: shopId,
-        p_new_owner_id: member.user_id,
-      });
-      if (error) throw new Error(friendlyDbError(error));
-      await onDone();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <Dialog open onOpenChange={(open) => (!open ? onClose() : undefined)}>
-      <DialogContent className="bg-background text-foreground">
-        <DialogHeader>
-          <DialogTitle>Make {member.name || member.email} the owner?</DialogTitle>
-          <DialogDescription>
-            They get full control, including billing and deleting the shop. You become an Admin.
-            Only the new owner can undo this.
-          </DialogDescription>
-        </DialogHeader>
-        <form method="post" onSubmit={confirm} className="flex flex-col gap-4">
-          {error ? <FormAlert tone="error">{error}</FormAlert> : null}
-          {!needsCode ? (
-            <Field id="confirm-password" label="Your password">
-              <Input
-                id="confirm-password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </Field>
-          ) : (
-            <Field id="confirm-code" label="Code from your authenticator app">
-              <Input
-                id="confirm-code"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                required
-              />
-            </Field>
-          )}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="destructive" disabled={busy}>
-              {busy ? "Transferring…" : "Transfer ownership"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <ReauthDialog
+      title={`Make ${member.name || member.email} the owner?`}
+      description="They get full control, including billing and deleting the shop. You become an Admin. Only the new owner can undo this."
+      email={email}
+      confirmLabel="Transfer ownership"
+      busyLabel="Transferring…"
+      destructive
+      onClose={onClose}
+      action={async () => {
+        const { error } = await getSupabase().rpc("transfer_ownership", {
+          p_shop_id: shopId,
+          p_new_owner_id: member.user_id,
+        });
+        if (error) throw new Error(friendlyDbError(error));
+        await onDone();
+      }}
+    />
   );
 }

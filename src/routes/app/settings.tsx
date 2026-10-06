@@ -21,6 +21,7 @@ function SettingsLayout() {
     { to: "/app/settings/team", label: "Team" },
     { to: "/app/settings/security", label: "Security" },
     ...(isAdmin ? [{ to: "/app/settings/audit", label: "Audit log" }] : []),
+    ...(membership.role === "owner" ? [{ to: "/app/settings/data", label: "Your data" }] : []),
   ] as const;
 
   return (

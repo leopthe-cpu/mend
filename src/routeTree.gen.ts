@@ -33,6 +33,7 @@ import { Route as AppCustomersCustomerIdRouteImport } from './routes/app/custome
 import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/index'
 import { Route as AppSettingsAuditRouteImport } from './routes/app/settings/audit'
 import { Route as AppSettingsBoardRouteImport } from './routes/app/settings/board'
+import { Route as AppSettingsDataRouteImport } from './routes/app/settings/data'
 import { Route as AppSettingsMessagesRouteImport } from './routes/app/settings/messages'
 import { Route as AppSettingsSecurityRouteImport } from './routes/app/settings/security'
 import { Route as AppSettingsShopRouteImport } from './routes/app/settings/shop'
@@ -161,6 +162,11 @@ const AppSettingsBoardRoute = AppSettingsBoardRouteImport.update({
   path: '/board',
   getParentRoute: () => AppSettingsRoute,
 } as any)
+const AppSettingsDataRoute = AppSettingsDataRouteImport.update({
+  id: '/data',
+  path: '/data',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
 const AppSettingsMessagesRoute = AppSettingsMessagesRouteImport.update({
   id: '/messages',
   path: '/messages',
@@ -220,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/app/customers/$customerId': typeof AppCustomersCustomerIdRoute
   '/app/settings/audit': typeof AppSettingsAuditRoute
   '/app/settings/board': typeof AppSettingsBoardRoute
+  '/app/settings/data': typeof AppSettingsDataRoute
   '/app/settings/messages': typeof AppSettingsMessagesRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/shop': typeof AppSettingsShopRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/app/customers/$customerId': typeof AppCustomersCustomerIdRoute
   '/app/settings/audit': typeof AppSettingsAuditRoute
   '/app/settings/board': typeof AppSettingsBoardRoute
+  '/app/settings/data': typeof AppSettingsDataRoute
   '/app/settings/messages': typeof AppSettingsMessagesRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/shop': typeof AppSettingsShopRoute
@@ -285,6 +293,7 @@ export interface FileRoutesById {
   '/app/customers/$customerId': typeof AppCustomersCustomerIdRoute
   '/app/settings/audit': typeof AppSettingsAuditRoute
   '/app/settings/board': typeof AppSettingsBoardRoute
+  '/app/settings/data': typeof AppSettingsDataRoute
   '/app/settings/messages': typeof AppSettingsMessagesRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/shop': typeof AppSettingsShopRoute
@@ -320,6 +329,7 @@ export interface FileRouteTypes {
     | '/app/customers/$customerId'
     | '/app/settings/audit'
     | '/app/settings/board'
+    | '/app/settings/data'
     | '/app/settings/messages'
     | '/app/settings/security'
     | '/app/settings/shop'
@@ -351,6 +361,7 @@ export interface FileRouteTypes {
     | '/app/customers/$customerId'
     | '/app/settings/audit'
     | '/app/settings/board'
+    | '/app/settings/data'
     | '/app/settings/messages'
     | '/app/settings/security'
     | '/app/settings/shop'
@@ -384,6 +395,7 @@ export interface FileRouteTypes {
     | '/app/customers/$customerId'
     | '/app/settings/audit'
     | '/app/settings/board'
+    | '/app/settings/data'
     | '/app/settings/messages'
     | '/app/settings/security'
     | '/app/settings/shop'
@@ -581,6 +593,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsBoardRouteImport
       parentRoute: typeof AppSettingsRoute
     }
+    '/app/settings/data': {
+      id: '/app/settings/data'
+      path: '/data'
+      fullPath: '/app/settings/data'
+      preLoaderRoute: typeof AppSettingsDataRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
     '/app/settings/messages': {
       id: '/app/settings/messages'
       path: '/messages'
@@ -636,6 +655,7 @@ declare module '@tanstack/react-router' {
 interface AppSettingsRouteChildren {
   AppSettingsAuditRoute: typeof AppSettingsAuditRoute
   AppSettingsBoardRoute: typeof AppSettingsBoardRoute
+  AppSettingsDataRoute: typeof AppSettingsDataRoute
   AppSettingsMessagesRoute: typeof AppSettingsMessagesRoute
   AppSettingsSecurityRoute: typeof AppSettingsSecurityRoute
   AppSettingsShopRoute: typeof AppSettingsShopRoute
@@ -647,6 +667,7 @@ interface AppSettingsRouteChildren {
 const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsAuditRoute: AppSettingsAuditRoute,
   AppSettingsBoardRoute: AppSettingsBoardRoute,
+  AppSettingsDataRoute: AppSettingsDataRoute,
   AppSettingsMessagesRoute: AppSettingsMessagesRoute,
   AppSettingsSecurityRoute: AppSettingsSecurityRoute,
   AppSettingsShopRoute: AppSettingsShopRoute,

@@ -10,7 +10,8 @@ Priorities, in order: **security, correctness, a clean editorial UI.**
 - Work in phases (spec §9 + addendum). At the end of each phase: stop, summarize, list what's unverified or decided on Oz's behalf, wait for a go-ahead.
 - Ask before deviating from the spec. Don't fill gaps with assumptions; ask one clear question.
 - Record every decision made on Oz's behalf in `docs/decisions.md` (date, decision, reason, alternatives).
-- Small, descriptive commits. `git pull` before starting; push when a step is done. `main` deploys to Railway (site) and Supabase (migrations, functions): keep it building, and never force-push or rewrite pushed history.
+- Small, descriptive commits. `git pull` before starting; push when a step is done. Never force-push or rewrite pushed history.
+- **Environments (`docs/environments.md`):** work on `feature/*` branches from `develop`; PR into `develop` deploys **staging** (Railway staging + Supabase `mend-staging`); PR `develop` → `main` deploys **production** and needs Oz's approval. Never push to `main` or `develop` directly, and never point AI tools at the production database.
 - **Outside-change guard:** if a pull brings changes from someone else to `supabase/`, RLS, RPC calls, auth or secrets handling, stop and show Oz the diff.
 - Before pushing: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run build`, and `supabase test db` when the database changed.
 

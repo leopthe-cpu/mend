@@ -28,6 +28,10 @@ jobs:
       - run: bun run typecheck
       - run: bun run test
       - run: bun run build
+      # Edge Functions run on Deno; type-check them with the Deno CLI from npm
+      # (package `deno`, the same version used locally).
+      - name: Type-check Edge Functions
+        run: npx --yes deno@2.9.6 check supabase/functions/*/index.ts
       - name: No secrets in repo or client bundle
         run: scripts/check-no-secrets.sh .output/public
 

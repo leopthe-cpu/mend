@@ -164,5 +164,19 @@ select ok((select not bool_or(sms_opted_out) from public.customers where id in (
 set local role service_role;
 reset role;
 
+-- ===== Dispatch helpers =================================================
+set local role service_role;
+select is(public.provider_message_id_for(pg_temp.v('m_pat')), 'SM123', 'the stored SID is available to the webhook');
+select public.record_send_result(pg_temp.v('mq'), true, 'resend', 're_1');
+select public.record_email_complaint('re_1');
+reset role;
+select ok((select email_opted_out from public.customers where id = pg_temp.v('maria')), 'a spam complaint opts the customer out of email');
+select ok(exists (select 1 from public.audit_log where action = 'customer.email_complaint'), 'and is audited');
+select lives_ok($$ select private.dispatch_due_messages() $$, 'the dispatcher is a no-op without its Vault settings');
+select ok(exists (select 1 from cron.job where jobname = 'mend-send-due-messages' and schedule = '* * * * *'), 'the dispatcher runs every minute');
+select ok(not has_function_privilege('authenticated', 'public.provider_message_id_for(uuid)', 'execute')
+      and not has_function_privilege('authenticated', 'public.record_email_complaint(text)', 'execute'),
+  'webhook helpers are not callable by users');
+
 select * from finish();
 rollback;

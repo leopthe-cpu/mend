@@ -5,10 +5,13 @@ import { useCallback, useEffect, useState } from "react";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Field, Panel, selectClass } from "@/components/app/Field";
 import { CustomFieldInput } from "@/components/tickets/CustomFieldInput";
+import { MoneySection } from "@/components/tickets/MoneySection";
 import { StatusMenu } from "@/components/tickets/StatusMenu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { APPROVAL_LABEL, type ApprovalMethod, KIND_LABEL, type PaymentKind } from "@/lib/estimates";
+import { formatMoney } from "@/lib/money";
 import { friendlyDbError, roleAtLeast } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import {
@@ -45,7 +48,7 @@ type Event = {
 };
 type Photo = { id: string; storage_path: string; url?: string | undefined };
 
-function eventText(e: Event): string {
+function eventText(e: Event, currency: string): string {
   const d = e.data;
   switch (e.type) {
     case "created":
@@ -68,9 +71,44 @@ function eventText(e: Event): string {
       return "Passcode deleted";
     case "deleted":
       return "Ticket deleted";
+    case "estimate":
+      return estimateEventText(d, currency);
+    case "payment":
+      return paymentEventText(d, currency);
     default:
       return e.type;
   }
+}
+
+function estimateEventText(d: Record<string, unknown>, currency: string): string {
+  const money = (c: unknown) => formatMoney(Number(c ?? 0), currency);
+  const v = `estimate v${d["version"] ?? ""}`.trim();
+  switch (d["action"]) {
+    case "started":
+      return `Started ${v}`;
+    case "revised":
+      return `Started ${v} (revision)`;
+    case "sent":
+      return `Sent ${v} · ${money(d["total_cents"])}`;
+    case "approved":
+      return `Customer approved ${v}${
+        d["approval_method"] ? ` ${APPROVAL_LABEL[d["approval_method"] as ApprovalMethod]}` : ""
+      } · ${money(d["total_cents"])}`;
+    case "declined":
+      return `Customer declined ${v}`;
+    case "invoiced":
+      return `Invoice #${d["invoice_number"]} issued · ${money(d["total_cents"])}`;
+    default:
+      return "Estimate updated";
+  }
+}
+
+function paymentEventText(d: Record<string, unknown>, currency: string): string {
+  const money = (c: unknown) => formatMoney(Number(c ?? 0), currency);
+  const kind = KIND_LABEL[(d["kind"] as PaymentKind) ?? "payment"] ?? "Payment";
+  const verb =
+    d["action"] === "edited" ? "edited" : d["action"] === "deleted" ? "deleted" : "recorded";
+  return `${kind} of ${money(d["amount_cents"])} ${verb}`;
 }
 
 function TicketDetail() {
@@ -104,6 +142,18 @@ function TicketDetail() {
       : null,
   );
   const [notFound, setNotFound] = useState(false);
+
+  // Money actions add timeline entries; refresh just the timeline.
+  const reloadEvents = useCallback(() => {
+    void getSupabase()
+      .from("ticket_events")
+      .select("id, type, actor_id, data, created_at")
+      .eq("ticket_id", ticketId)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        if (data) setEvents(data as Event[]);
+      });
+  }, [ticketId]);
 
   const load = useCallback(async () => {
     const sb = getSupabase();
@@ -274,154 +324,157 @@ function TicketDetail() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
-        <form method="post" onSubmit={saveDetails} className="flex flex-col gap-6">
-          <Panel title="Details">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Field id="t-item" label="Item">
+        <div className="flex min-w-0 flex-col gap-6">
+          <form method="post" onSubmit={saveDetails} className="flex flex-col gap-6">
+            <Panel title="Details">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <Field id="t-item" label="Item">
+                    <Input
+                      id="t-item"
+                      value={form.item_name ?? ""}
+                      onChange={(e) => setForm({ ...form, item_name: e.target.value })}
+                      maxLength={120}
+                    />
+                  </Field>
+                </div>
+                <div className="sm:col-span-2">
+                  <Field id="t-issue" label="What needs doing">
+                    <Textarea
+                      id="t-issue"
+                      rows={3}
+                      className="bg-surface-2 text-base"
+                      value={form.issue_description ?? ""}
+                      onChange={(e) => setForm({ ...form, issue_description: e.target.value })}
+                    />
+                  </Field>
+                </div>
+                <Field id="t-promised" label="Promised date">
                   <Input
-                    id="t-item"
-                    value={form.item_name ?? ""}
-                    onChange={(e) => setForm({ ...form, item_name: e.target.value })}
-                    maxLength={120}
+                    id="t-promised"
+                    type="date"
+                    value={form.promised_date ?? ""}
+                    onChange={(e) => setForm({ ...form, promised_date: e.target.value })}
                   />
                 </Field>
-              </div>
-              <div className="sm:col-span-2">
-                <Field id="t-issue" label="What needs doing">
-                  <Textarea
-                    id="t-issue"
-                    rows={3}
-                    className="bg-surface-2 text-base"
-                    value={form.issue_description ?? ""}
-                    onChange={(e) => setForm({ ...form, issue_description: e.target.value })}
-                  />
+                <Field id="t-assignee" label="Assigned to">
+                  <select
+                    id="t-assignee"
+                    className={selectClass}
+                    value={form.assigned_to ?? ""}
+                    onChange={(e) => setForm({ ...form, assigned_to: e.target.value || null })}
+                  >
+                    <option value="">Nobody</option>
+                    {members.map((m) => (
+                      <option key={m.user_id} value={m.user_id}>
+                        {m.name || m.email}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
-              </div>
-              <Field id="t-promised" label="Promised date">
-                <Input
-                  id="t-promised"
-                  type="date"
-                  value={form.promised_date ?? ""}
-                  onChange={(e) => setForm({ ...form, promised_date: e.target.value })}
-                />
-              </Field>
-              <Field id="t-assignee" label="Assigned to">
-                <select
-                  id="t-assignee"
-                  className={selectClass}
-                  value={form.assigned_to ?? ""}
-                  onChange={(e) => setForm({ ...form, assigned_to: e.target.value || null })}
-                >
-                  <option value="">Nobody</option>
-                  {members.map((m) => (
-                    <option key={m.user_id} value={m.user_id}>
-                      {m.name || m.email}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              {fields.map((f) => (
-                <Field key={f.id} id={`tcf-${f.id}`} label={f.label} hint={f.help_text}>
-                  <CustomFieldInput
-                    id={`tcf-${f.id}`}
-                    field={f}
-                    value={form.custom_fields?.[f.id]}
-                    onChange={(v) =>
-                      setForm({
-                        ...form,
-                        custom_fields: { ...(form.custom_fields ?? {}), [f.id]: v as string },
-                      })
-                    }
-                  />
-                </Field>
-              ))}
-              <div className="sm:col-span-2">
-                <Field id="t-internal" label="Internal notes" hint="Only your team sees these.">
-                  <Textarea
-                    id="t-internal"
-                    rows={3}
-                    className="bg-surface-2 text-base"
-                    value={form.internal_notes ?? ""}
-                    onChange={(e) => setForm({ ...form, internal_notes: e.target.value })}
-                  />
-                </Field>
-              </div>
-              <div className="sm:col-span-2">
-                <Field
-                  id="t-customer-notes"
-                  label="Notes for the customer"
-                  hint="Can appear on estimates and invoices."
-                >
-                  <Textarea
-                    id="t-customer-notes"
-                    rows={3}
-                    className="bg-surface-2 text-base"
-                    value={form.customer_notes ?? ""}
-                    onChange={(e) => setForm({ ...form, customer_notes: e.target.value })}
-                  />
-                </Field>
-              </div>
-            </div>
-            <Button type="submit" className="mt-4">
-              Save details
-            </Button>
-          </Panel>
-
-          <Panel title="Photos">
-            {photos.length ? (
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {photos.map((p) => (
-                  <li key={p.id}>
-                    {p.url ? (
-                      <a href={p.url} target="_blank" rel="noreferrer">
-                        <img
-                          src={p.url}
-                          alt="Condition photo"
-                          className="aspect-square w-full rounded-md object-cover"
-                          loading="lazy"
-                        />
-                      </a>
-                    ) : null}
-                  </li>
+                {fields.map((f) => (
+                  <Field key={f.id} id={`tcf-${f.id}`} label={f.label} hint={f.help_text}>
+                    <CustomFieldInput
+                      id={`tcf-${f.id}`}
+                      field={f}
+                      value={form.custom_fields?.[f.id]}
+                      onChange={(v) =>
+                        setForm({
+                          ...form,
+                          custom_fields: { ...(form.custom_fields ?? {}), [f.id]: v as string },
+                        })
+                      }
+                    />
+                  </Field>
                 ))}
-              </ul>
-            ) : (
-              <p className="text-muted-foreground">No photos yet.</p>
-            )}
-            <label
-              htmlFor="more-photos"
-              className="mt-4 inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-input px-4 font-medium hover:bg-accent"
-            >
-              <Camera className="size-5" aria-hidden /> Add photos
-            </label>
-            <input
-              id="more-photos"
-              type="file"
-              accept="image/*"
-              capture="environment"
-              multiple
-              className="sr-only"
-              onChange={async (e) => {
-                const files = Array.from(e.target.files ?? []);
-                if (!files.length) return;
-                const problems = await uploadPhotos(ticket.shop_id, ticket.id, files);
-                setMessage(
-                  problems.length
-                    ? { tone: "error", text: problems.join(" ") }
-                    : { tone: "info", text: "Photos added." },
-                );
-                await load();
-              }}
-            />
-          </Panel>
+                <div className="sm:col-span-2">
+                  <Field id="t-internal" label="Internal notes" hint="Only your team sees these.">
+                    <Textarea
+                      id="t-internal"
+                      rows={3}
+                      className="bg-surface-2 text-base"
+                      value={form.internal_notes ?? ""}
+                      onChange={(e) => setForm({ ...form, internal_notes: e.target.value })}
+                    />
+                  </Field>
+                </div>
+                <div className="sm:col-span-2">
+                  <Field
+                    id="t-customer-notes"
+                    label="Notes for the customer"
+                    hint="Can appear on estimates and invoices."
+                  >
+                    <Textarea
+                      id="t-customer-notes"
+                      rows={3}
+                      className="bg-surface-2 text-base"
+                      value={form.customer_notes ?? ""}
+                      onChange={(e) => setForm({ ...form, customer_notes: e.target.value })}
+                    />
+                  </Field>
+                </div>
+              </div>
+              <Button type="submit" className="mt-4">
+                Save details
+              </Button>
+            </Panel>
 
-          <Panel title="Estimate, payments and messages">
-            <p className="text-muted-foreground">
-              Estimates and payments arrive next, then customer messages.
-            </p>
-          </Panel>
-        </form>
+            <Panel title="Photos">
+              {photos.length ? (
+                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {photos.map((p) => (
+                    <li key={p.id}>
+                      {p.url ? (
+                        <a href={p.url} target="_blank" rel="noreferrer">
+                          <img
+                            src={p.url}
+                            alt="Condition photo"
+                            className="aspect-square w-full rounded-md object-cover"
+                            loading="lazy"
+                          />
+                        </a>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground">No photos yet.</p>
+              )}
+              <label
+                htmlFor="more-photos"
+                className="mt-4 inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-input px-4 font-medium hover:bg-accent"
+              >
+                <Camera className="size-5" aria-hidden /> Add photos
+              </label>
+              <input
+                id="more-photos"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple
+                className="sr-only"
+                onChange={async (e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  if (!files.length) return;
+                  const problems = await uploadPhotos(ticket.shop_id, ticket.id, files);
+                  setMessage(
+                    problems.length
+                      ? { tone: "error", text: problems.join(" ") }
+                      : { tone: "info", text: "Photos added." },
+                  );
+                  await load();
+                }}
+              />
+            </Panel>
+          </form>
+          {/* Outside the details form: forms can't nest, and these save on their own. */}
+          <MoneySection
+            ticket={ticket}
+            membership={membership}
+            customerName={ticket.customer?.name ?? ""}
+            onChanged={reloadEvents}
+          />
+        </div>
 
         <div className="flex flex-col gap-6">
           <Panel title="Customer">
@@ -542,7 +595,9 @@ function TicketDetail() {
             <ol className="flex flex-col gap-3">
               {events.map((e) => (
                 <li key={e.id} className="border-l-2 border-border pl-3">
-                  <p className={e.type === "note" ? "whitespace-pre-wrap" : ""}>{eventText(e)}</p>
+                  <p className={e.type === "note" ? "whitespace-pre-wrap" : ""}>
+                    {eventText(e, shop.currency)}
+                  </p>
                   <p className="font-mono text-sm text-muted-foreground">
                     {new Intl.DateTimeFormat(undefined, {
                       dateStyle: "medium",

@@ -312,10 +312,12 @@ const SidebarRail = React.forwardRef<HTMLButtonElement, React.ComponentProps<"bu
 );
 SidebarRail.displayName = "SidebarRail";
 
-const SidebarInset = React.forwardRef<HTMLDivElement, React.ComponentProps<"main">>(
+// A div, not <main>: the app shell puts its own <main id="main"> inside (skip
+// link target), and a page must have only one main landmark.
+const SidebarInset = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
   ({ className, ...props }, ref) => {
     return (
-      <main
+      <div
         ref={ref}
         className={cn(
           "relative flex w-full flex-1 flex-col bg-background",

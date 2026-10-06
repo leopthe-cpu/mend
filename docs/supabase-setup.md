@@ -14,6 +14,9 @@
 | Database → Settings | SSL enforcement | On (Supabase production checklist) |
 | Integrations → GitHub | Connect `leopthe-cpu/mend`, Supabase directory `supabase`, **Deploy to production** from `main` | decision 5 |
 
+## Two-step sign-in (Phase 1B)
+Authentication → Multi-Factor (or "MFA"): make sure **TOTP / authenticator app** is enabled for enrolment and verification. I believe it's on by default for hosted projects but haven't verified it. If Settings → Security in the app shows an error when you click "Set up authenticator app", this is the switch.
+
 ## Before launch
 - **Custom SMTP** (Authentication → Emails → SMTP). The built-in sender is heavily rate limited and meant for development only (verification S8).
 - **Pro plan:** leaked-password protection, daily backups, no pausing (decision 7).

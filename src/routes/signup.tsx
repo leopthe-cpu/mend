@@ -16,10 +16,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { emailSchema, friendlyAuthError, passwordSchema, guard } from "@/lib/auth";
+import { emailSchema, friendlyAuthError, guard, passwordSchema, safeRedirect } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/signup")({
+  // `next`: where to go after confirming the email (e.g. back to an invite).
+  validateSearch: (search: Record<string, unknown>): { next?: string } =>
+    typeof search["next"] === "string" ? { next: search["next"] } : {},
   // Browser-only so the form can never be submitted natively before the
   // script loads (that would put the password in the URL of a GET request).
   ssr: false,
@@ -34,6 +37,7 @@ const schema = z.object({
 type Values = z.input<typeof schema>;
 
 function SignupPage() {
+  const { next } = Route.useSearch();
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const form = useForm<Values>({
@@ -49,7 +53,11 @@ function SignupPage() {
     const { error } = await getSupabase().auth.signUp({
       email: values.email,
       password: values.password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
+      options: {
+        emailRedirectTo:
+          `${window.location.origin}/auth/confirm` +
+          (next ? `?next=${encodeURIComponent(safeRedirect(next))}` : ""),
+      },
     });
     if (error) {
       setError(friendlyAuthError(error));
@@ -97,7 +105,11 @@ function SignupPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/login" className="text-primary underline-offset-4 hover:underline">
+          <Link
+            to="/login"
+            search={next ? { redirect: next } : {}}
+            className="text-primary underline-offset-4 hover:underline"
+          >
             Log in
           </Link>
         </>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/app/AppSidebar";
 import { TopBar } from "@/components/app/TopBar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { fetchMyMembership } from "@/lib/shop";
 import { getSupabase, SupabaseConfigError } from "@/lib/supabase";
 
 // The signed-in app. Rendered in the browser only: the session lives in the
@@ -23,7 +24,22 @@ export const Route = createFileRoute("/app")({
     if (!session) {
       throw redirect({ to: "/login", search: { redirect: location.href } });
     }
-    return { user: session.user };
+    // Two-factor: if this account has a verified factor, the session must have
+    // passed it (aal2) before entering the app (spec §4, Settings → Security).
+    const { data: aal } = await getSupabase().auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+      throw redirect({ to: "/mfa", search: { redirect: location.href } });
+    }
+    const membership = await fetchMyMembership(session.user.id);
+    if (!membership) throw redirect({ to: "/onboarding" });
+    const { data: profile } = await getSupabase()
+      .from("profiles")
+      .select("full_name")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    // Decision 19: show the email until the person adds their name.
+    const displayName = profile?.full_name?.trim() || session.user.email || "";
+    return { user: session.user, membership, displayName };
   },
   component: AppLayout,
 });
@@ -33,7 +49,7 @@ export const Route = createFileRoute("/app")({
 const TABLET_MAX = 1280;
 
 function AppLayout() {
-  const { user } = Route.useRouteContext();
+  const { membership, displayName } = Route.useRouteContext();
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(true);
 
@@ -51,9 +67,6 @@ function AppLayout() {
     return () => data.subscription.unsubscribe();
   }, [navigate]);
 
-  const name =
-    typeof user.user_metadata["full_name"] === "string" ? user.user_metadata["full_name"] : "";
-
   return (
     <SidebarProvider open={navOpen} onOpenChange={setNavOpen}>
       <a
@@ -63,7 +76,8 @@ function AppLayout() {
         Skip to content
       </a>
       <AppSidebar
-        userLabel={name || user.email || ""}
+        userLabel={displayName}
+        shopName={membership.shop.name}
         onSignOut={() => void getSupabase().auth.signOut()}
       />
       {/* Light grey main view, dark nav (decision 21) */}

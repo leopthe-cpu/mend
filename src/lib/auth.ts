@@ -31,7 +31,8 @@ export const emailSchema = z
  */
 export function safeRedirect(target: unknown, fallback = "/app/board"): string {
   if (typeof target !== "string") return fallback;
-  if (!target.startsWith("/app")) return fallback;
+  // In-app pages, plus invite links (to come back after signing up).
+  if (!target.startsWith("/app") && !target.startsWith("/invite/")) return fallback;
   if (target.startsWith("//") || target.includes("\\")) return fallback;
   try {
     const url = new URL(target, "https://mend.invalid");

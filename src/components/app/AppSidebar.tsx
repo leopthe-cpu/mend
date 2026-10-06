@@ -19,7 +19,15 @@ import { appNav } from "./nav";
 const navButtonClass =
   "text-[1.0625rem] [&>svg]:size-[1.375rem] group-data-[collapsible=icon]:!p-[0.6875rem] data-[active=true]:text-primary data-[active=true]:[&>svg]:text-primary";
 
-export function AppSidebar({ userLabel, onSignOut }: { userLabel: string; onSignOut: () => void }) {
+export function AppSidebar({
+  userLabel,
+  shopName,
+  onSignOut,
+}: {
+  userLabel: string;
+  shopName: string;
+  onSignOut: () => void;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
@@ -66,6 +74,9 @@ export function AppSidebar({ userLabel, onSignOut }: { userLabel: string; onSign
       <SidebarFooter className="px-2 pb-4">
         <SidebarMenu>
           <SidebarMenuItem>
+            <div className="truncate px-2 font-medium text-base text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+              {shopName}
+            </div>
             <div className="truncate px-2 pb-1 text-base text-muted-foreground group-data-[collapsible=icon]:hidden">
               {userLabel}
             </div>

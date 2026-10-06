@@ -15,9 +15,8 @@ describe("passwordSchema", () => {
   it("accepts 6+ chars with lower, upper and digit", () => {
     expect(passwordSchema.safeParse("Correct-Horse-9").success).toBe(true);
   });
-  it.each(["Ab1", "alllowercase123", "ALLUPPERCASE123", "NoDigitsHereAtAll"])(
-    "rejects %s",
-    (pw) => expect(passwordSchema.safeParse(pw).success).toBe(false),
+  it.each(["Ab1", "alllowercase123", "ALLUPPERCASE123", "NoDigitsHereAtAll"])("rejects %s", (pw) =>
+    expect(passwordSchema.safeParse(pw).success).toBe(false),
   );
 });
 

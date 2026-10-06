@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MfaRouteImport } from './routes/mfa'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
@@ -26,6 +28,11 @@ import { Route as AppTicketsRouteImport } from './routes/app/tickets'
 import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
 import { Route as InviteTokenRouteImport } from './routes/invite/$token'
 import { Route as TTokenRouteImport } from './routes/t/$token'
+import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/index'
+import { Route as AppSettingsAuditRouteImport } from './routes/app/settings/audit'
+import { Route as AppSettingsSecurityRouteImport } from './routes/app/settings/security'
+import { Route as AppSettingsShopRouteImport } from './routes/app/settings/shop'
+import { Route as AppSettingsTeamRouteImport } from './routes/app/settings/team'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +47,16 @@ const AppRoute = AppRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MfaRoute = MfaRouteImport.update({
+  id: '/mfa',
+  path: '/mfa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -112,11 +129,38 @@ const TTokenRoute = TTokenRouteImport.update({
   path: '/t/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsAuditRoute = AppSettingsAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsSecurityRoute = AppSettingsSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsShopRoute = AppSettingsShopRouteImport.update({
+  id: '/shop',
+  path: '/shop',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsTeamRoute = AppSettingsTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/mfa': typeof MfaRoute
+  '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -125,16 +169,23 @@ export interface FileRoutesByFullPath {
   '/app/catalog': typeof AppCatalogRoute
   '/app/customers': typeof AppCustomersRoute
   '/app/messages': typeof AppMessagesRoute
-  '/app/settings': typeof AppSettingsRoute
+  '/app/settings': typeof AppSettingsRouteWithChildren
   '/app/tickets': typeof AppTicketsRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/invite/$token': typeof InviteTokenRoute
   '/t/$token': typeof TTokenRoute
   '/app/': typeof AppIndexRoute
+  '/app/settings/audit': typeof AppSettingsAuditRoute
+  '/app/settings/security': typeof AppSettingsSecurityRoute
+  '/app/settings/shop': typeof AppSettingsShopRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mfa': typeof MfaRoute
+  '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -143,18 +194,24 @@ export interface FileRoutesByTo {
   '/app/catalog': typeof AppCatalogRoute
   '/app/customers': typeof AppCustomersRoute
   '/app/messages': typeof AppMessagesRoute
-  '/app/settings': typeof AppSettingsRoute
   '/app/tickets': typeof AppTicketsRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/invite/$token': typeof InviteTokenRoute
   '/t/$token': typeof TTokenRoute
   '/app': typeof AppIndexRoute
+  '/app/settings/audit': typeof AppSettingsAuditRoute
+  '/app/settings/security': typeof AppSettingsSecurityRoute
+  '/app/settings/shop': typeof AppSettingsShopRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/mfa': typeof MfaRoute
+  '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -163,12 +220,17 @@ export interface FileRoutesById {
   '/app/catalog': typeof AppCatalogRoute
   '/app/customers': typeof AppCustomersRoute
   '/app/messages': typeof AppMessagesRoute
-  '/app/settings': typeof AppSettingsRoute
+  '/app/settings': typeof AppSettingsRouteWithChildren
   '/app/tickets': typeof AppTicketsRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/invite/$token': typeof InviteTokenRoute
   '/t/$token': typeof TTokenRoute
   '/app/': typeof AppIndexRoute
+  '/app/settings/audit': typeof AppSettingsAuditRoute
+  '/app/settings/security': typeof AppSettingsSecurityRoute
+  '/app/settings/shop': typeof AppSettingsShopRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -176,6 +238,8 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/mfa'
+    | '/onboarding'
     | '/privacy'
     | '/reset-password'
     | '/signup'
@@ -190,10 +254,17 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/t/$token'
     | '/app/'
+    | '/app/settings/audit'
+    | '/app/settings/security'
+    | '/app/settings/shop'
+    | '/app/settings/team'
+    | '/app/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
+    | '/mfa'
+    | '/onboarding'
     | '/privacy'
     | '/reset-password'
     | '/signup'
@@ -202,17 +273,23 @@ export interface FileRouteTypes {
     | '/app/catalog'
     | '/app/customers'
     | '/app/messages'
-    | '/app/settings'
     | '/app/tickets'
     | '/auth/confirm'
     | '/invite/$token'
     | '/t/$token'
     | '/app'
+    | '/app/settings/audit'
+    | '/app/settings/security'
+    | '/app/settings/shop'
+    | '/app/settings/team'
+    | '/app/settings'
   id:
     | '__root__'
     | '/'
     | '/app'
     | '/login'
+    | '/mfa'
+    | '/onboarding'
     | '/privacy'
     | '/reset-password'
     | '/signup'
@@ -227,12 +304,19 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/t/$token'
     | '/app/'
+    | '/app/settings/audit'
+    | '/app/settings/security'
+    | '/app/settings/shop'
+    | '/app/settings/team'
+    | '/app/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  MfaRoute: typeof MfaRoute
+  OnboardingRoute: typeof OnboardingRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
@@ -263,6 +347,20 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mfa': {
+      id: '/mfa'
+      path: '/mfa'
+      fullPath: '/mfa'
+      preLoaderRoute: typeof MfaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -363,15 +461,70 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/settings/': {
+      id: '/app/settings/'
+      path: '/'
+      fullPath: '/app/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/app/settings/audit': {
+      id: '/app/settings/audit'
+      path: '/audit'
+      fullPath: '/app/settings/audit'
+      preLoaderRoute: typeof AppSettingsAuditRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/app/settings/security': {
+      id: '/app/settings/security'
+      path: '/security'
+      fullPath: '/app/settings/security'
+      preLoaderRoute: typeof AppSettingsSecurityRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/app/settings/shop': {
+      id: '/app/settings/shop'
+      path: '/shop'
+      fullPath: '/app/settings/shop'
+      preLoaderRoute: typeof AppSettingsShopRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/app/settings/team': {
+      id: '/app/settings/team'
+      path: '/team'
+      fullPath: '/app/settings/team'
+      preLoaderRoute: typeof AppSettingsTeamRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
   }
 }
+
+interface AppSettingsRouteChildren {
+  AppSettingsAuditRoute: typeof AppSettingsAuditRoute
+  AppSettingsSecurityRoute: typeof AppSettingsSecurityRoute
+  AppSettingsShopRoute: typeof AppSettingsShopRoute
+  AppSettingsTeamRoute: typeof AppSettingsTeamRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
+}
+
+const AppSettingsRouteChildren: AppSettingsRouteChildren = {
+  AppSettingsAuditRoute: AppSettingsAuditRoute,
+  AppSettingsSecurityRoute: AppSettingsSecurityRoute,
+  AppSettingsShopRoute: AppSettingsShopRoute,
+  AppSettingsTeamRoute: AppSettingsTeamRoute,
+  AppSettingsIndexRoute: AppSettingsIndexRoute,
+}
+
+const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
+  AppSettingsRouteChildren,
+)
 
 interface AppRouteChildren {
   AppBoardRoute: typeof AppBoardRoute
   AppCatalogRoute: typeof AppCatalogRoute
   AppCustomersRoute: typeof AppCustomersRoute
   AppMessagesRoute: typeof AppMessagesRoute
-  AppSettingsRoute: typeof AppSettingsRoute
+  AppSettingsRoute: typeof AppSettingsRouteWithChildren
   AppTicketsRoute: typeof AppTicketsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -381,7 +534,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCatalogRoute: AppCatalogRoute,
   AppCustomersRoute: AppCustomersRoute,
   AppMessagesRoute: AppMessagesRoute,
-  AppSettingsRoute: AppSettingsRoute,
+  AppSettingsRoute: AppSettingsRouteWithChildren,
   AppTicketsRoute: AppTicketsRoute,
   AppIndexRoute: AppIndexRoute,
 }
@@ -392,6 +545,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  MfaRoute: MfaRoute,
+  OnboardingRoute: OnboardingRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,

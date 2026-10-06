@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { AuthLayout, FormAlert } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
-import { readAuthRedirectError } from "@/lib/auth";
+import { readAuthRedirectError, safeRedirect } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 
 // Landing page for the email-confirmation link (PKCE: `?code=`). Supabase Auth
@@ -45,7 +45,8 @@ function ConfirmPage() {
         setState({ kind: "login" });
         return;
       }
-      await navigate({ to: "/app/board", replace: true });
+      const next = new URL(window.location.href).searchParams.get("next");
+      await navigate({ to: safeRedirect(next), replace: true });
     })();
   }, [navigate]);
 

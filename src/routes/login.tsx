@@ -81,7 +81,11 @@ function LoginPage() {
       footer={
         <>
           New to Mend?{" "}
-          <Link to="/signup" className="text-primary underline-offset-4 hover:underline">
+          <Link
+            to="/signup"
+            search={redirect ? { next: redirect } : {}}
+            className="text-primary underline-offset-4 hover:underline"
+          >
             Create your shop
           </Link>
         </>

@@ -33,9 +33,9 @@ export type PdfInput = {
   payments?: Payment[];
 };
 
-const NAVY = "#101025";
-const MUTED = "#55586B";
-const RULE = "#D6D7E0";
+const NAVY = "#1A1A1A"; // brand Dominant Dark
+const MUTED = "#5F6368"; // brand Secondary Neutral
+const RULE = "#DDDDD5";
 
 const s = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: NAVY },

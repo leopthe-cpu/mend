@@ -10,8 +10,8 @@
  * The @theme inline block maps CSS custom properties to Tailwind utility
  * classes (e.g. --color-primary -> bg-primary, text-primary).
  *
- * The :root block defines the actual color values using oklch (Mend is dark
- * only for now; see the token comment below for how a light theme is added).
+ * The :root block defines the actual color values using oklch (light brand
+ * palette; .surface-dark switches a region to charcoal).
  * All colors MUST use oklch format, with the source hex in a comment.
  *
  * To add a new semantic color:
@@ -21,8 +21,12 @@
  */
 
 @theme inline {
-  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
-  --font-mono: "Courier Prime", ui-monospace, monospace;
+  /* Brand guidelines: Inter for headings and body. Ticket numbers and money
+     use Inter's tabular figures (see .font-mono below). */
+  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-mono: "Inter Variable", "Inter", system-ui, sans-serif;
+  --color-brand: var(--brand);
+  --color-brand-text: var(--brand-text);
   --color-status-received: var(--status-received);
   --color-status-in-progress: var(--status-in-progress);
   --color-status-waiting: var(--status-waiting);
@@ -77,69 +81,66 @@
 }
 
 /*
- * Mend design tokens (docs/spec.md §8.3). Dark only for the MVP.
+ * Mend design tokens: brand guidelines "Website Copy and Brand Guidelines - Mend"
+ * (Oz, 2026-10-06; decision 50). Light cream canvas, black primary actions,
+ * terracotta accent; deep charcoal for the navigation (.surface-dark).
  *
- * Source of truth = the hex value in each comment (Oz's palette); the oklch
- * value next to it is generated from that hex by src/lib/color.ts, and
+ * Source of truth = the hex value in each comment; the oklch value next to it
+ * is generated from that hex by src/lib/color.ts, and
  * src/lib/design-tokens.test.ts fails if they drift apart or if any pair we
- * use drops below WCAG AA. A future light theme goes in a `.light` block that
- * overrides the same variables.
+ * use drops below WCAG AA.
  */
 :root {
-  color-scheme: dark;
-  --radius: 0.5rem;
+  color-scheme: light;
+  --radius: 0.625rem;
 
   /* Brand palette */
-  --mend-bg: oklch(0.1859 0.0422 281.5); /* #101025 */
-  --mend-surface-1: oklch(0.2288 0.0605 280.5); /* #181838 */
-  --mend-surface-2: oklch(0.2692 0.076 280); /* #20204A */
-  --mend-border: oklch(0.3188 0.0803 280.84); /* #2C2C5A — decorative dividers only */
-  --mend-input-border: oklch(0.5469 0.0835 283.29); /* #6A6AA0 — form controls, needs 3:1 */
-  --mend-text: oklch(0.9626 0.0066 286.27); /* #F2F2F7 */
-  --mend-text-muted: oklch(0.7366 0.0488 285.14); /* #A6A6C8 */
-  --mend-accent: oklch(0.9029 0.154 189.17); /* #1AFFF4 — dark surfaces only */
-  --mend-accent-foreground: oklch(0.1859 0.0422 281.5); /* #101025 */
+  --mend-bg: oklch(0.9756 0.0026 106.45); /* #F7F7F5 — Canvas / Background */
+  --mend-surface-1: oklch(0.9502 0.0093 106.58); /* #EFEFE8 — Card / Panel Contrast */
+  --mend-surface-2: oklch(1 0 0); /* #FFFFFF — inputs, raised elements */
+  --mend-border: oklch(0.8953 0.0108 106.62); /* #DDDDD5 — decorative dividers only */
+  --mend-input-border: oklch(0.5668 0.012 106.78); /* #77776F — form controls, needs 3:1 */
+  --mend-text: oklch(0.2178 0 0); /* #1A1A1A — Dominant Dark: primary text */
+  --mend-text-muted: oklch(
+    0.4979 0.0094 253.91
+  ); /* #5F6368 — Secondary Neutral: subtitles, meta text */
+  --mend-primary: oklch(0 0 0); /* #000000 — Primary Accent: buttons, key focal points */
+  --mend-primary-foreground: oklch(1 0 0); /* #FFFFFF */
+  --mend-accent: oklch(
+    0.5987 0.1506 39.72
+  ); /* #C85A32 — Warm Accent: highlights, indicators, badges (UI, 3:1) */
+  --mend-accent-text: oklch(
+    0.5184 0.1391 40.44
+  ); /* #A8461F — darker terracotta for small text on cream (4.5:1) */
+  --mend-accent-foreground: oklch(1 0 0); /* #FFFFFF */
 
-  /* Status categories: used for icons/dots/borders; labels use --mend-text */
-  --status-received: oklch(0.7107 0.0351 256.79); /* #94A3B8 */
-  --status-in-progress: oklch(0.7137 0.1434 254.62); /* #60A5FA */
-  --status-waiting: oklch(0.8369 0.1644 84.43); /* #FBBF24 */
-  --status-ready: oklch(0.9029 0.154 189.17); /* #1AFFF4 */
-  --status-overdue: oklch(0.7106 0.1661 22.22); /* #F87171 */
-  --status-closed: oklch(0.5544 0.0407 257.42); /* #64748B — fails as text, icon only */
+  /* Status categories: icons/dots/borders; labels use --mend-text */
+  --status-received: oklch(0.5233 0.0413 257.42); /* #5B6B82 */
+  --status-in-progress: oklch(0.5026 0.1672 258.94); /* #1D5FC1 */
+  --status-waiting: oklch(0.5542 0.1169 75.01); /* #9A6700 */
+  --status-ready: oklch(
+    0.5987 0.1506 39.72
+  ); /* #C85A32 — terracotta: the brand accent marks "ready" */
+  --status-overdue: oklch(0.5003 0.1821 29.51); /* #B42318 */
+  --status-closed: oklch(0.5406 0.0119 261.77); /* #6B6F76 */
 
-  /* System feedback */
-  --success: oklch(0.8003 0.1821 151.71); /* #4ADE80 */
-  --warning: oklch(0.8369 0.1644 84.43); /* #FBBF24 */
-  --danger: oklch(0.7106 0.1661 22.22); /* #F87171 */
+  /* System feedback (text-safe on all light surfaces) */
+  --success: oklch(0.4751 0.1198 149.2); /* #1A6E34 */
+  --warning: oklch(0.5078 0.108 73.3); /* #8A5A00 */
+  --danger: oklch(0.5003 0.1821 29.51); /* #B42318 */
 
-  /* Light surface for the main view (Oz, 2026-10-06; decision 21). The nav
-     stays dark. Cyan is never used on these light surfaces: navy takes over
-     buttons, links and focus, and teal stands in for "Ready". */
-  --light-bg: oklch(
-    0.935 0.0081 278.63
-  ); /* #E8E9EF — main view background (light grey, not white) */
-  --light-surface-1: oklch(0.977 0.004 286.33); /* #F7F7FA — cards, panels */
-  --light-surface-2: oklch(1 0 0); /* #FFFFFF — inputs, raised elements */
-  --light-border: oklch(0.8604 0.0165 282.23); /* #CFD0DC — decorative dividers only */
-  --light-input-border: oklch(0.6052 0.0408 283.44); /* #7E7F9A — form controls, needs 3:1 */
-  --light-text: oklch(0.1859 0.0422 281.5); /* #101025 — primary text (brand navy) */
-  --light-text-muted: oklch(0.4272 0.0462 282.66); /* #4B4C68 — secondary text */
-  --light-primary: oklch(
-    0.1859 0.0422 281.5
-  ); /* #101025 — buttons, links, focus ring: navy, never cyan on light */
-  --light-primary-foreground: oklch(1 0 0); /* #FFFFFF */
-  --light-success: oklch(0.4751 0.1198 149.2); /* #1A6E34 */
-  --light-warning: oklch(0.5078 0.108 73.3); /* #8A5A00 */
-  --light-danger: oklch(0.5003 0.1821 29.51); /* #B42318 */
-  --light-status-received: oklch(0.5233 0.0413 257.42); /* #5B6B82 */
-  --light-status-in-progress: oklch(0.5026 0.1672 258.94); /* #1D5FC1 */
-  --light-status-waiting: oklch(0.5542 0.1169 75.01); /* #9A6700 */
-  --light-status-ready: oklch(
-    0.5069 0.088 188.55
-  ); /* #00756F — teal: the light-surface stand-in for brand cyan */
-  --light-status-overdue: oklch(0.5003 0.1821 29.51); /* #B42318 */
-  --light-status-closed: oklch(0.5544 0.0407 257.42); /* #64748B */
+  /* Charcoal surfaces for the navigation and dark sections */
+  --dark-bg: oklch(0.2178 0 0); /* #1A1A1A — Dominant Dark as a container background */
+  --dark-surface-1: oklch(0.2603 0 0); /* #242424 */
+  --dark-surface-2: oklch(0.3012 0 0); /* #2E2E2E */
+  --dark-border: oklch(0.3485 0 0); /* #3A3A3A — decorative dividers only */
+  --dark-input-border: oklch(0.6383 0.0088 106.65); /* #8C8C86 — form controls, needs 3:1 */
+  --dark-text: oklch(0.9756 0.0026 106.45); /* #F7F7F5 */
+  --dark-text-muted: oklch(0.7711 0.0098 106.63); /* #B5B5AE */
+  --dark-accent: oklch(
+    0.7211 0.1241 44.09
+  ); /* #E58A62 — lighter terracotta for text and focus on charcoal */
+  --dark-accent-foreground: oklch(0.2178 0 0); /* #1A1A1A */
 
   /* shadcn/ui semantic variables mapped onto the brand palette */
   --background: var(--mend-bg);
@@ -148,69 +149,62 @@
   --card-foreground: var(--mend-text);
   --popover: var(--mend-surface-2);
   --popover-foreground: var(--mend-text);
-  --primary: var(--mend-accent);
-  --primary-foreground: var(--mend-accent-foreground);
+  --primary: var(--mend-primary);
+  --primary-foreground: var(--mend-primary-foreground);
   --secondary: var(--mend-surface-2);
   --secondary-foreground: var(--mend-text);
   --muted: var(--mend-surface-1);
   --muted-foreground: var(--mend-text-muted);
-  /* shadcn "accent" = hover/selected surface, NOT the brand cyan */
-  --accent: var(--mend-surface-2);
+  /* shadcn "accent" = hover/selected surface, NOT the brand terracotta */
+  --accent: var(--mend-border);
   --accent-foreground: var(--mend-text);
   --destructive: var(--danger);
-  --destructive-foreground: var(--mend-bg);
+  --destructive-foreground: var(--mend-primary-foreground);
   --border: var(--mend-border);
   --input: var(--mend-input-border);
-  --ring: var(--mend-accent);
+  --ring: var(--mend-primary);
+  --brand: var(--mend-accent);
+  --brand-text: var(--mend-accent-text);
   --chart-1: var(--status-in-progress);
   --chart-2: var(--success);
   --chart-3: var(--warning);
   --chart-4: var(--status-received);
   --chart-5: var(--danger);
-  --sidebar: var(--mend-bg);
-  --sidebar-foreground: var(--mend-text);
-  --sidebar-primary: var(--mend-accent);
-  --sidebar-primary-foreground: var(--mend-accent-foreground);
-  --sidebar-accent: var(--mend-surface-2);
-  --sidebar-accent-foreground: var(--mend-text);
-  --sidebar-border: var(--mend-border);
-  --sidebar-ring: var(--mend-accent);
+  --sidebar: var(--dark-bg);
+  --sidebar-foreground: var(--dark-text);
+  --sidebar-primary: var(--dark-accent);
+  --sidebar-primary-foreground: var(--dark-accent-foreground);
+  --sidebar-accent: var(--dark-surface-2);
+  --sidebar-accent-foreground: var(--dark-text);
+  --sidebar-border: var(--dark-border);
+  --sidebar-ring: var(--dark-accent);
 }
 
-/* Scope: wrap any region in .surface-light to render it on the light palette.
-   Everything inside (shadcn components, Tailwind tokens) picks it up. */
-.surface-light {
-  color-scheme: light;
-  --background: var(--light-bg);
-  --foreground: var(--light-text);
-  --card: var(--light-surface-1);
-  --card-foreground: var(--light-text);
-  --popover: var(--light-surface-2);
-  --popover-foreground: var(--light-text);
-  --primary: var(--light-primary);
-  --primary-foreground: var(--light-primary-foreground);
-  --secondary: var(--light-surface-2);
-  --secondary-foreground: var(--light-text);
-  --muted: var(--light-surface-1);
-  --muted-foreground: var(--light-text-muted);
-  --accent: var(--light-border);
-  --accent-foreground: var(--light-text);
-  --destructive: var(--light-danger);
-  --destructive-foreground: var(--light-primary-foreground);
-  --border: var(--light-border);
-  --input: var(--light-input-border);
-  --ring: var(--light-primary);
-  --mend-surface-1: var(--light-surface-1);
-  --mend-surface-2: var(--light-surface-2);
-  --success: var(--light-success);
-  --warning: var(--light-warning);
-  --danger: var(--light-danger);
-  --status-received: var(--light-status-received);
-  --status-in-progress: var(--light-status-in-progress);
-  --status-waiting: var(--light-status-waiting);
-  --status-ready: var(--light-status-ready);
-  --status-overdue: var(--light-status-overdue);
-  --status-closed: var(--light-status-closed);
+/* Scope: wrap a region in .surface-dark to render it on charcoal (the nav,
+   dark marketing sections). Everything inside picks up the dark values. */
+.surface-dark {
+  color-scheme: dark;
+  --background: var(--dark-bg);
+  --foreground: var(--dark-text);
+  --card: var(--dark-surface-1);
+  --card-foreground: var(--dark-text);
+  --popover: var(--dark-surface-2);
+  --popover-foreground: var(--dark-text);
+  --primary: var(--dark-text);
+  --primary-foreground: var(--dark-bg);
+  --secondary: var(--dark-surface-2);
+  --secondary-foreground: var(--dark-text);
+  --muted: var(--dark-surface-1);
+  --muted-foreground: var(--dark-text-muted);
+  --accent: var(--dark-surface-2);
+  --accent-foreground: var(--dark-text);
+  --border: var(--dark-border);
+  --input: var(--dark-input-border);
+  --ring: var(--dark-accent);
+  --brand: var(--mend-accent);
+  --brand-text: var(--dark-accent);
+  --mend-surface-1: var(--dark-surface-1);
+  --mend-surface-2: var(--dark-surface-2);
 }
 
 @layer base {
@@ -222,6 +216,11 @@
     font-size: 100%; /* 16px base; never below 14px for UI text (spec §8.2) */
   }
 
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -229,7 +228,7 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Visible cyan focus ring everywhere (spec §8.4) */
+  /* Visible focus ring everywhere (spec §8.4): black on cream, terracotta on charcoal */
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;

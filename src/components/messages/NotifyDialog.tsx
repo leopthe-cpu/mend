@@ -201,7 +201,7 @@ export function NotifyDialog({
 
   return (
     <Dialog open={!!request} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="surface-light max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-lg">
+      <DialogContent className="max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-2xl">
             {data

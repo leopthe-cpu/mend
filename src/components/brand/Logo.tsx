@@ -1,23 +1,17 @@
 import { cn } from "@/lib/utils";
 
-// The uploaded wordmark is the source of truth (spec §8.1). Never stretch or
-// recolor it; the padding keeps the required clear space (≥ the period's
-// height, about 12% of the image height) around it.
-const WORDMARK = { src: "/brand/mend-wordmark.png", width: 456, height: 176 };
-
+// Typographic wordmark in the brand font (brand guidelines, decision 50).
+// The old PNG wordmark (white with cyan dots, public/brand/) was made for the
+// dark navy theme and disappears on cream; it stays in the repo until Oz
+// supplies a logo file for the new palette. Uses currentColor, so it works on
+// cream and on charcoal.
 export function Logo({ height = 28, className }: { height?: number; className?: string }) {
-  const width = Math.round((WORDMARK.width / WORDMARK.height) * height);
   return (
-    <span className={cn("inline-block", className)} style={{ padding: height * 0.12 }}>
-      <img
-        src={WORDMARK.src}
-        width={width}
-        height={height}
-        alt="mend."
-        className="block h-auto max-w-none select-none"
-        style={{ width, height }}
-        draggable={false}
-      />
+    <span
+      className={cn("inline-block font-sans font-bold tracking-[-0.03em] select-none", className)}
+      style={{ fontSize: height, lineHeight: 1 }}
+    >
+      Mend
     </span>
   );
 }

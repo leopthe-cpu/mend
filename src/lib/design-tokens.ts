@@ -12,63 +12,56 @@ export type ContrastPair = {
 };
 
 const surfaces = ["--mend-bg", "--mend-surface-1", "--mend-surface-2"] as const;
+const darkSurfaces = ["--dark-bg", "--dark-surface-1", "--dark-surface-2"] as const;
 
-const textOnAllSurfaces = (fg: string, use: string): ContrastPair[] =>
+const textOn = (fg: string, use: string): ContrastPair[] =>
   surfaces.map((bg) => ({ fg, bg, min: 4.5, use }));
-const uiOnAllSurfaces = (fg: string, use: string): ContrastPair[] =>
+const uiOn = (fg: string, use: string): ContrastPair[] =>
   surfaces.map((bg) => ({ fg, bg, min: 3, use }));
-
-const lightSurfaces = ["--light-bg", "--light-surface-1", "--light-surface-2"] as const;
-const textOnLight = (fg: string, use: string): ContrastPair[] =>
-  lightSurfaces.map((bg) => ({ fg, bg, min: 4.5, use: `${use} (light)` }));
-const uiOnLight = (fg: string, use: string): ContrastPair[] =>
-  lightSurfaces.map((bg) => ({ fg, bg, min: 3, use: `${use} (light)` }));
+const textOnDark = (fg: string, use: string): ContrastPair[] =>
+  darkSurfaces.map((bg) => ({ fg, bg, min: 4.5, use: `${use} (charcoal)` }));
+const uiOnDark = (fg: string, use: string): ContrastPair[] =>
+  darkSurfaces.map((bg) => ({ fg, bg, min: 3, use: `${use} (charcoal)` }));
 
 export const contrastPairs: ContrastPair[] = [
-  ...textOnAllSurfaces("--mend-text", "Primary text"),
-  ...textOnAllSurfaces("--mend-text-muted", "Secondary text, hints"),
-  ...textOnAllSurfaces("--mend-accent", "Links, active nav label, Ready label"),
-  { fg: "--mend-accent-foreground", bg: "--mend-accent", min: 4.5, use: "Text on cyan buttons" },
-  { fg: "--mend-bg", bg: "--danger", min: 4.5, use: "Text on destructive buttons" },
-  ...textOnAllSurfaces("--success", "Success message text"),
-  ...textOnAllSurfaces("--warning", "Warning message text"),
-  ...textOnAllSurfaces("--danger", "Error message text"),
-  ...uiOnAllSurfaces("--mend-input-border", "Input and checkbox borders"),
-  ...uiOnAllSurfaces("--mend-accent", "Focus ring"),
-  ...uiOnAllSurfaces("--status-received", "Status icon: Received"),
-  ...uiOnAllSurfaces("--status-in-progress", "Status icon: In progress"),
-  ...uiOnAllSurfaces("--status-waiting", "Status icon: Waiting"),
-  ...uiOnAllSurfaces("--status-ready", "Status icon: Ready"),
-  ...uiOnAllSurfaces("--status-overdue", "Overdue badge"),
-  ...uiOnAllSurfaces("--status-closed", "Status icon: Picked up / closed"),
+  // Cream canvas, bone panels, white inputs (brand guidelines, decision 50)
+  ...textOn("--mend-text", "Primary text"),
+  ...textOn("--mend-text-muted", "Secondary text, hints"),
+  ...textOn("--mend-primary", "Links"),
+  ...textOn("--mend-accent-text", "Terracotta text (labels, highlights)"),
+  {
+    fg: "--mend-primary-foreground",
+    bg: "--mend-primary",
+    min: 4.5,
+    use: "Text on black buttons",
+  },
+  {
+    fg: "--mend-accent-foreground",
+    bg: "--mend-accent",
+    min: 3,
+    use: "Large text on terracotta badges",
+  },
+  { fg: "--mend-primary-foreground", bg: "--danger", min: 4.5, use: "Text on destructive buttons" },
+  ...textOn("--success", "Success message text"),
+  ...textOn("--warning", "Warning message text"),
+  ...textOn("--danger", "Error message text"),
+  ...uiOn("--mend-input-border", "Input and checkbox borders"),
+  ...uiOn("--mend-primary", "Focus ring"),
+  ...uiOn("--mend-accent", "Terracotta indicators and badges"),
+  ...uiOn("--status-received", "Status icon: Received"),
+  ...uiOn("--status-in-progress", "Status icon: In progress"),
+  ...uiOn("--status-waiting", "Status icon: Waiting"),
+  ...uiOn("--status-ready", "Status icon: Ready"),
+  ...uiOn("--status-overdue", "Overdue badge"),
+  ...uiOn("--status-closed", "Status icon: Picked up / closed"),
 
-  // Light main view (decision 21)
-  ...textOnLight("--light-text", "Primary text"),
-  ...textOnLight("--light-text-muted", "Secondary text, hints"),
-  ...textOnLight("--light-primary", "Links"),
-  {
-    fg: "--light-primary-foreground",
-    bg: "--light-primary",
-    min: 4.5,
-    use: "Text on navy buttons (light)",
-  },
-  {
-    fg: "--light-primary-foreground",
-    bg: "--light-danger",
-    min: 4.5,
-    use: "Text on destructive buttons (light)",
-  },
-  ...textOnLight("--light-success", "Success message text"),
-  ...textOnLight("--light-warning", "Warning message text"),
-  ...textOnLight("--light-danger", "Error message text"),
-  ...uiOnLight("--light-input-border", "Input and checkbox borders"),
-  ...uiOnLight("--light-primary", "Focus ring"),
-  ...uiOnLight("--light-status-received", "Status icon: Received"),
-  ...uiOnLight("--light-status-in-progress", "Status icon: In progress"),
-  ...uiOnLight("--light-status-waiting", "Status icon: Waiting"),
-  ...uiOnLight("--light-status-ready", "Status icon: Ready"),
-  ...uiOnLight("--light-status-overdue", "Overdue badge"),
-  ...uiOnLight("--light-status-closed", "Status icon: Picked up / closed"),
+  // Charcoal navigation and dark sections
+  ...textOnDark("--dark-text", "Primary text"),
+  ...textOnDark("--dark-text-muted", "Secondary text"),
+  ...textOnDark("--dark-accent", "Active nav label, links"),
+  ...uiOnDark("--dark-input-border", "Input borders"),
+  ...uiOnDark("--dark-accent", "Focus ring"),
+  { fg: "--dark-bg", bg: "--dark-text", min: 4.5, use: "Text on cream buttons (charcoal)" },
 ];
 
 /** Parses `--name: oklch(...); /* #RRGGBB` declarations from styles.css. */

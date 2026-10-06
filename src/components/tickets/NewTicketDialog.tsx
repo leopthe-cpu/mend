@@ -174,7 +174,7 @@ export function NewTicketDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="surface-light max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-2xl">
+      <DialogContent className="max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">New ticket</DialogTitle>
           <DialogDescription>Log the item, the customer and what needs doing.</DialogDescription>

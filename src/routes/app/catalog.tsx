@@ -393,7 +393,7 @@ function ItemDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="surface-light max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-xl">
+      <DialogContent className="max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">{item ? "Edit item" : "Add item"}</DialogTitle>
           <DialogDescription>

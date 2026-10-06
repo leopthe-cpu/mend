@@ -369,7 +369,7 @@ function TransferDialog({
 
   return (
     <Dialog open onOpenChange={(open) => (!open ? onClose() : undefined)}>
-      <DialogContent className="surface-light bg-background text-foreground">
+      <DialogContent className="bg-background text-foreground">
         <DialogHeader>
           <DialogTitle>Make {member.name || member.email} the owner?</DialogTitle>
           <DialogDescription>

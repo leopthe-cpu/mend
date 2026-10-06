@@ -10,6 +10,8 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
+import interCss from "@fontsource-variable/inter/index.css?url";
+
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -84,7 +86,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Track repair jobs, build estimates and tell customers their item is ready, in one tap.",
       },
-      { name: "theme-color", content: "#101025" },
+      { name: "theme-color", content: "#F7F7F5" },
       { property: "og:title", content: "Mend" },
       { property: "og:description", content: "Keep your customers in the loop." },
       { property: "og:type", content: "website" },
@@ -95,13 +97,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      // Fonts (spec §8.2): Courier Prime 400/700 and IBM Plex Sans 400/500/600.
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap",
-      },
+      // Brand font Inter (decision 50), self-hosted from @fontsource-variable/inter
+      // so pages don't depend on, or send visitors' IPs to, a third-party CDN.
+      { rel: "stylesheet", href: interCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),

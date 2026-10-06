@@ -51,10 +51,7 @@ function Header() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <Link
-            to="/login"
-            className="rounded-md px-2 py-2 text-[0.9375rem] font-medium sm:px-3"
-          >
+          <Link to="/login" className="rounded-md px-2 py-2 text-[0.9375rem] font-medium sm:px-3">
             Log in
           </Link>
           <Button asChild>

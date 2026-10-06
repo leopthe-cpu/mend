@@ -87,7 +87,9 @@ export function friendlyAuthError(error: unknown): string {
       return weakPasswordMessage(error);
     case "same_password":
       return "Choose a password you haven't used here before.";
+    // The email limit is per hour (Supabase's sender), so "a minute" would mislead.
     case "over_email_send_rate_limit":
+      return "We can't send more emails right now. Please try again in an hour.";
     case "over_request_rate_limit":
       return "Too many attempts. Please wait a minute and try again.";
     case "flow_state_not_found":

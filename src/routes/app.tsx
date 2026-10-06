@@ -66,7 +66,8 @@ function AppLayout() {
         userLabel={name || user.email || ""}
         onSignOut={() => void getSupabase().auth.signOut()}
       />
-      <SidebarInset className="min-w-0 bg-background">
+      {/* Light grey main view, dark nav (decision 21) */}
+      <SidebarInset className="surface-light min-w-0 bg-background text-foreground">
         <TopBar />
         <main id="main" className="flex-1 px-4 py-6 md:px-8">
           <Outlet />

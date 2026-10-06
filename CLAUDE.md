@@ -51,8 +51,8 @@ Lovable TanStack Start template (React 19, TS strict, Vite, Tailwind v4, shadcn/
 Exactly one Owner per shop. Nobody grants a role above their own. The Owner can't be removed or demoted; ownership only changes by an Owner-started transfer with password re-entry (old Owner becomes Admin).
 
 ## Design rules
-- Dark only for the MVP; tokens structured for a later light mode. Tokens live in `src/styles.css` (hex source values in comments, oklch values).
-- Brand: background `#101025`, accent cyan `#1AFFF4`. Cyan **only on dark surfaces**, and it means "Ready" on the board, so no other status is cyan. PDFs and print: black/grey, no cyan.
+- Dark navy nav and auth/landing pages; the app's main view is light grey (`.surface-light`, decision 21). Tokens live in `src/styles.css` (hex source values in comments, oklch values); every pair used must be listed in `src/lib/design-tokens.ts`.
+- Brand: background `#101025`, accent cyan `#1AFFF4`. Cyan **only on dark surfaces** (in the light main view use navy, and teal `#00756F` for "Ready"); no other status uses the Ready color. PDFs and print: black/grey, no cyan.
 - Fonts: IBM Plex Sans (400/500/600) for UI, 16 px base, never below 14 px. Courier Prime (400/700) only as an accent: logo, ticket numbers, labels, status tags, figures. Never for body text or buttons. −7% letter spacing only for the logo and big display text.
 - Status colors are always paired with a label and an icon. WCAG AA for every pair (`docs/contrast.md`). Touch targets ≥ 44×44 px, visible cyan focus rings, full keyboard support, respect `prefers-reduced-motion`.
 - shadcn/ui restyled with tokens; flat surfaces, subtle borders, no gradients or heavy shadows in the app. Film grain only on the marketing site.

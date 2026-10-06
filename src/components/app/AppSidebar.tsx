@@ -13,6 +13,12 @@ import {
 } from "@/components/ui/sidebar";
 import { appNav } from "./nav";
 
+// Larger than shadcn's defaults for readability at the counter (Oz, decision
+// 22): 17px labels and 22px icons; collapsed padding shrinks so the icon still
+// fits the 44px button.
+const navButtonClass =
+  "text-[1.0625rem] [&>svg]:size-[1.375rem] group-data-[collapsible=icon]:!p-[0.6875rem] data-[active=true]:text-primary data-[active=true]:[&>svg]:text-primary";
+
 export function AppSidebar({ userLabel, onSignOut }: { userLabel: string; onSignOut: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -21,7 +27,7 @@ export function AppSidebar({ userLabel, onSignOut }: { userLabel: string; onSign
       <SidebarHeader className="px-2 pt-4 pb-2 group-data-[collapsible=icon]:items-center">
         <Link to="/app/board" aria-label="Mend home" className="rounded-md">
           <span className="group-data-[collapsible=icon]:hidden">
-            <Logo height={26} />
+            <Logo height={30} />
           </span>
           <span
             aria-hidden
@@ -43,7 +49,7 @@ export function AppSidebar({ userLabel, onSignOut }: { userLabel: string; onSign
                     asChild
                     isActive={active}
                     tooltip={label}
-                    className="data-[active=true]:text-primary data-[active=true]:[&>svg]:text-primary"
+                    className={navButtonClass}
                   >
                     <Link to={to} aria-current={active ? "page" : undefined}>
                       <Icon aria-hidden />
@@ -60,10 +66,10 @@ export function AppSidebar({ userLabel, onSignOut }: { userLabel: string; onSign
       <SidebarFooter className="px-2 pb-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="truncate px-2 pb-1 text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">
+            <div className="truncate px-2 pb-1 text-base text-muted-foreground group-data-[collapsible=icon]:hidden">
               {userLabel}
             </div>
-            <SidebarMenuButton onClick={onSignOut} tooltip="Sign out">
+            <SidebarMenuButton onClick={onSignOut} tooltip="Sign out" className={navButtonClass}>
               <LogOut aria-hidden />
               <span>Sign out</span>
             </SidebarMenuButton>

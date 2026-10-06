@@ -113,6 +113,28 @@
   --warning: oklch(0.8369 0.1644 84.43); /* #FBBF24 */
   --danger: oklch(0.7106 0.1661 22.22); /* #F87171 */
 
+  /* Light surface for the main view (Oz, 2026-10-06; decision 21). The nav
+     stays dark. Cyan is never used on these light surfaces: navy takes over
+     buttons, links and focus, and teal stands in for "Ready". */
+  --light-bg: oklch(0.9350 0.0081 278.63); /* #E8E9EF — main view background (light grey, not white) */
+  --light-surface-1: oklch(0.9770 0.0040 286.33); /* #F7F7FA — cards, panels */
+  --light-surface-2: oklch(1.0000 0.0000 0.00); /* #FFFFFF — inputs, raised elements */
+  --light-border: oklch(0.8604 0.0165 282.23); /* #CFD0DC — decorative dividers only */
+  --light-input-border: oklch(0.6052 0.0408 283.44); /* #7E7F9A — form controls, needs 3:1 */
+  --light-text: oklch(0.1859 0.0422 281.50); /* #101025 — primary text (brand navy) */
+  --light-text-muted: oklch(0.4272 0.0462 282.66); /* #4B4C68 — secondary text */
+  --light-primary: oklch(0.1859 0.0422 281.50); /* #101025 — buttons, links, focus ring: navy, never cyan on light */
+  --light-primary-foreground: oklch(1.0000 0.0000 0.00); /* #FFFFFF */
+  --light-success: oklch(0.4751 0.1198 149.20); /* #1A6E34 */
+  --light-warning: oklch(0.5078 0.1080 73.30); /* #8A5A00 */
+  --light-danger: oklch(0.5003 0.1821 29.51); /* #B42318 */
+  --light-status-received: oklch(0.5233 0.0413 257.42); /* #5B6B82 */
+  --light-status-in-progress: oklch(0.5026 0.1672 258.94); /* #1D5FC1 */
+  --light-status-waiting: oklch(0.5542 0.1169 75.01); /* #9A6700 */
+  --light-status-ready: oklch(0.5069 0.0880 188.55); /* #00756F — teal: the light-surface stand-in for brand cyan */
+  --light-status-overdue: oklch(0.5003 0.1821 29.51); /* #B42318 */
+  --light-status-closed: oklch(0.5544 0.0407 257.42); /* #64748B */
+
   /* shadcn/ui semantic variables mapped onto the brand palette */
   --background: var(--mend-bg);
   --foreground: var(--mend-text);
@@ -147,6 +169,42 @@
   --sidebar-accent-foreground: var(--mend-text);
   --sidebar-border: var(--mend-border);
   --sidebar-ring: var(--mend-accent);
+}
+
+/* Scope: wrap any region in .surface-light to render it on the light palette.
+   Everything inside (shadcn components, Tailwind tokens) picks it up. */
+.surface-light {
+  color-scheme: light;
+  --background: var(--light-bg);
+  --foreground: var(--light-text);
+  --card: var(--light-surface-1);
+  --card-foreground: var(--light-text);
+  --popover: var(--light-surface-2);
+  --popover-foreground: var(--light-text);
+  --primary: var(--light-primary);
+  --primary-foreground: var(--light-primary-foreground);
+  --secondary: var(--light-surface-2);
+  --secondary-foreground: var(--light-text);
+  --muted: var(--light-surface-1);
+  --muted-foreground: var(--light-text-muted);
+  --accent: var(--light-border);
+  --accent-foreground: var(--light-text);
+  --destructive: var(--light-danger);
+  --destructive-foreground: var(--light-primary-foreground);
+  --border: var(--light-border);
+  --input: var(--light-input-border);
+  --ring: var(--light-primary);
+  --mend-surface-1: var(--light-surface-1);
+  --mend-surface-2: var(--light-surface-2);
+  --success: var(--light-success);
+  --warning: var(--light-warning);
+  --danger: var(--light-danger);
+  --status-received: var(--light-status-received);
+  --status-in-progress: var(--light-status-in-progress);
+  --status-waiting: var(--light-status-waiting);
+  --status-ready: var(--light-status-ready);
+  --status-overdue: var(--light-status-overdue);
+  --status-closed: var(--light-status-closed);
 }
 
 @layer base {

@@ -34,6 +34,7 @@ import { Route as AppSettingsAuditRouteImport } from './routes/app/settings/audi
 import { Route as AppSettingsBoardRouteImport } from './routes/app/settings/board'
 import { Route as AppSettingsSecurityRouteImport } from './routes/app/settings/security'
 import { Route as AppSettingsShopRouteImport } from './routes/app/settings/shop'
+import { Route as AppSettingsTaxesRouteImport } from './routes/app/settings/taxes'
 import { Route as AppSettingsTeamRouteImport } from './routes/app/settings/team'
 import { Route as AppTicketsIndexRouteImport } from './routes/app/tickets/index'
 import { Route as AppTicketsTicketIdRouteImport } from './routes/app/tickets/$ticketId'
@@ -163,6 +164,11 @@ const AppSettingsShopRoute = AppSettingsShopRouteImport.update({
   path: '/shop',
   getParentRoute: () => AppSettingsRoute,
 } as any)
+const AppSettingsTaxesRoute = AppSettingsTaxesRouteImport.update({
+  id: '/taxes',
+  path: '/taxes',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
 const AppSettingsTeamRoute = AppSettingsTeamRouteImport.update({
   id: '/team',
   path: '/team',
@@ -203,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/app/settings/board': typeof AppSettingsBoardRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/shop': typeof AppSettingsShopRoute
+  '/app/settings/taxes': typeof AppSettingsTaxesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/app/tickets/$ticketId': typeof AppTicketsTicketIdRoute
   '/app/customers/': typeof AppCustomersIndexRoute
@@ -231,6 +238,7 @@ export interface FileRoutesByTo {
   '/app/settings/board': typeof AppSettingsBoardRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/shop': typeof AppSettingsShopRoute
+  '/app/settings/taxes': typeof AppSettingsTaxesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/app/tickets/$ticketId': typeof AppTicketsTicketIdRoute
   '/app/customers': typeof AppCustomersIndexRoute
@@ -262,6 +270,7 @@ export interface FileRoutesById {
   '/app/settings/board': typeof AppSettingsBoardRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/shop': typeof AppSettingsShopRoute
+  '/app/settings/taxes': typeof AppSettingsTaxesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/app/tickets/$ticketId': typeof AppTicketsTicketIdRoute
   '/app/customers/': typeof AppCustomersIndexRoute
@@ -294,6 +303,7 @@ export interface FileRouteTypes {
     | '/app/settings/board'
     | '/app/settings/security'
     | '/app/settings/shop'
+    | '/app/settings/taxes'
     | '/app/settings/team'
     | '/app/tickets/$ticketId'
     | '/app/customers/'
@@ -322,6 +332,7 @@ export interface FileRouteTypes {
     | '/app/settings/board'
     | '/app/settings/security'
     | '/app/settings/shop'
+    | '/app/settings/taxes'
     | '/app/settings/team'
     | '/app/tickets/$ticketId'
     | '/app/customers'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/app/settings/board'
     | '/app/settings/security'
     | '/app/settings/shop'
+    | '/app/settings/taxes'
     | '/app/settings/team'
     | '/app/tickets/$ticketId'
     | '/app/customers/'
@@ -552,6 +564,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsShopRouteImport
       parentRoute: typeof AppSettingsRoute
     }
+    '/app/settings/taxes': {
+      id: '/app/settings/taxes'
+      path: '/taxes'
+      fullPath: '/app/settings/taxes'
+      preLoaderRoute: typeof AppSettingsTaxesRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
     '/app/settings/team': {
       id: '/app/settings/team'
       path: '/team'
@@ -581,6 +600,7 @@ interface AppSettingsRouteChildren {
   AppSettingsBoardRoute: typeof AppSettingsBoardRoute
   AppSettingsSecurityRoute: typeof AppSettingsSecurityRoute
   AppSettingsShopRoute: typeof AppSettingsShopRoute
+  AppSettingsTaxesRoute: typeof AppSettingsTaxesRoute
   AppSettingsTeamRoute: typeof AppSettingsTeamRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
 }
@@ -590,6 +610,7 @@ const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsBoardRoute: AppSettingsBoardRoute,
   AppSettingsSecurityRoute: AppSettingsSecurityRoute,
   AppSettingsShopRoute: AppSettingsShopRoute,
+  AppSettingsTaxesRoute: AppSettingsTaxesRoute,
   AppSettingsTeamRoute: AppSettingsTeamRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
 }

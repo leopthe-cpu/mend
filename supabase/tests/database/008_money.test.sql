@@ -213,5 +213,34 @@ select throws_ok($$ select public.record_payment(pg_temp.v('tk'), 'payment', 'ca
 select throws_ok($$ select public.start_estimate(pg_temp.v('tk')) $$, 'P0002', null, 'another shop cannot start an estimate');
 reset role;
 
+-- ===== save_catalog_item ===============================================
+select set_config('request.jwt.claims', '{"sub":"d1000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
+set local role authenticated;
+select throws_ok($$ select public.save_catalog_item(pg_temp.v('shop'), null, 'Case', null, 'part', 'each', 1500) $$, '42501', null,
+  'admins cannot change the catalog');
+reset role;
+select set_config('request.jwt.claims', '{"sub":"d1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+set local role authenticated;
+insert into t values ('case', public.save_catalog_item(pg_temp.v('shop'), null, ' Case ', 'Accessories', 'part', 'each', 1500,
+  null, 'percent', 15, '2026-11-01', '2026-11-30', array[pg_temp.v('hst')], 600)::text);
+select results_eq($$ select c.name, c.price_cents, c.discount_value, (select count(*)::int from public.catalog_item_tax_rates x where x.catalog_item_id = c.id),
+                       (select cost_cents from public.catalog_item_costs k where k.catalog_item_id = c.id)
+                      from public.catalog_items c where c.id = pg_temp.v('case') $$,
+  $$ values ('Case'::text, 1500::bigint, 15.00::numeric, 1, 600::bigint) $$, 'owner saves item, taxes and cost together');
+select lives_ok($$ select public.save_catalog_item(pg_temp.v('shop'), pg_temp.v('case'), 'Case', 'Accessories', 'part', 'each', 1800) $$,
+  'owner edits the item');
+select results_eq($$ select c.price_cents, c.discount_type is null, (select count(*)::int from public.catalog_item_tax_rates x where x.catalog_item_id = c.id),
+                       (select count(*)::int from public.catalog_item_costs k where k.catalog_item_id = c.id)
+                      from public.catalog_items c where c.id = pg_temp.v('case') $$,
+  $$ values (1800::bigint, true, 0, 0) $$, 'cleared discount, taxes and cost are removed');
+select throws_ok($$ select public.save_catalog_item(pg_temp.v('shop'), null, 'Bad', null, 'part', 'each', 100, null, 'percent', 10, '2026-12-01', '2026-11-01') $$,
+  '22023', null, 'a discount ending before it starts is rejected');
+select throws_ok($$ select public.save_catalog_item(pg_temp.v('shop_e'), null, 'X', null, 'part', 'each', 100) $$, '42501', null,
+  'not in another shop');
+reset role;
+select is((select old_values ->> 'cost_cents' from public.audit_log
+            where action = 'catalog_item_costs.delete' and old_values ->> 'catalog_item_id' = pg_temp.v('case')::text),
+  '600', 'cost removal is audited with the old cost and the item');
+
 select * from finish();
 rollback;

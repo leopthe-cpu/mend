@@ -10,15 +10,30 @@
  * The @theme inline block maps CSS custom properties to Tailwind utility
  * classes (e.g. --color-primary -> bg-primary, text-primary).
  *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
+ * The :root block defines the actual color values using oklch (Mend is dark
+ * only for now; see the token comment below for how a light theme is added).
+ * All colors MUST use oklch format, with the source hex in a comment.
  *
  * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
+ * 1. Add the variable to :root (oklch value, source hex in a trailing comment)
  * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ * 3. Add its pairs to src/lib/design-tokens.test.ts
  */
 
 @theme inline {
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "Courier Prime", ui-monospace, monospace;
+  --color-status-received: var(--status-received);
+  --color-status-in-progress: var(--status-in-progress);
+  --color-status-waiting: var(--status-waiting);
+  --color-status-ready: var(--status-ready);
+  --color-status-overdue: var(--status-overdue);
+  --color-status-closed: var(--status-closed);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-surface-1: var(--mend-surface-1);
+  --color-surface-2: var(--mend-surface-2);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -61,75 +76,77 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/*
+ * Mend design tokens (docs/spec.md §8.3). Dark only for the MVP.
+ *
+ * Source of truth = the hex value in each comment (Oz's palette); the oklch
+ * value next to it is generated from that hex by src/lib/color.ts, and
+ * src/lib/design-tokens.test.ts fails if they drift apart or if any pair we
+ * use drops below WCAG AA. A future light theme goes in a `.light` block that
+ * overrides the same variables.
+ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
-}
+  color-scheme: dark;
+  --radius: 0.5rem;
 
-.dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  /* Brand palette */
+  --mend-bg: oklch(0.1859 0.0422 281.50); /* #101025 */
+  --mend-surface-1: oklch(0.2288 0.0605 280.50); /* #181838 */
+  --mend-surface-2: oklch(0.2692 0.0760 280.00); /* #20204A */
+  --mend-border: oklch(0.3188 0.0803 280.84); /* #2C2C5A — decorative dividers only */
+  --mend-input-border: oklch(0.5469 0.0835 283.29); /* #6A6AA0 — form controls, needs 3:1 */
+  --mend-text: oklch(0.9626 0.0066 286.27); /* #F2F2F7 */
+  --mend-text-muted: oklch(0.7366 0.0488 285.14); /* #A6A6C8 */
+  --mend-accent: oklch(0.9029 0.1540 189.17); /* #1AFFF4 — dark surfaces only */
+  --mend-accent-foreground: oklch(0.1859 0.0422 281.50); /* #101025 */
+
+  /* Status categories: used for icons/dots/borders; labels use --mend-text */
+  --status-received: oklch(0.7107 0.0351 256.79); /* #94A3B8 */
+  --status-in-progress: oklch(0.7137 0.1434 254.62); /* #60A5FA */
+  --status-waiting: oklch(0.8369 0.1644 84.43); /* #FBBF24 */
+  --status-ready: oklch(0.9029 0.1540 189.17); /* #1AFFF4 */
+  --status-overdue: oklch(0.7106 0.1661 22.22); /* #F87171 */
+  --status-closed: oklch(0.5544 0.0407 257.42); /* #64748B — fails as text, icon only */
+
+  /* System feedback */
+  --success: oklch(0.8003 0.1821 151.71); /* #4ADE80 */
+  --warning: oklch(0.8369 0.1644 84.43); /* #FBBF24 */
+  --danger: oklch(0.7106 0.1661 22.22); /* #F87171 */
+
+  /* shadcn/ui semantic variables mapped onto the brand palette */
+  --background: var(--mend-bg);
+  --foreground: var(--mend-text);
+  --card: var(--mend-surface-1);
+  --card-foreground: var(--mend-text);
+  --popover: var(--mend-surface-2);
+  --popover-foreground: var(--mend-text);
+  --primary: var(--mend-accent);
+  --primary-foreground: var(--mend-accent-foreground);
+  --secondary: var(--mend-surface-2);
+  --secondary-foreground: var(--mend-text);
+  --muted: var(--mend-surface-1);
+  --muted-foreground: var(--mend-text-muted);
+  /* shadcn "accent" = hover/selected surface, NOT the brand cyan */
+  --accent: var(--mend-surface-2);
+  --accent-foreground: var(--mend-text);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--mend-bg);
+  --border: var(--mend-border);
+  --input: var(--mend-input-border);
+  --ring: var(--mend-accent);
+  --chart-1: var(--status-in-progress);
+  --chart-2: var(--success);
+  --chart-3: var(--warning);
+  --chart-4: var(--status-received);
+  --chart-5: var(--danger);
+  --sidebar: var(--mend-bg);
+  --sidebar-foreground: var(--mend-text);
+  --sidebar-primary: var(--mend-accent);
+  --sidebar-primary-foreground: var(--mend-accent-foreground);
+  --sidebar-accent: var(--mend-surface-2);
+  --sidebar-accent-foreground: var(--mend-text);
+  --sidebar-border: var(--mend-border);
+  --sidebar-ring: var(--mend-accent);
 }
 
 @layer base {
@@ -137,8 +154,31 @@
     border-color: var(--color-border);
   }
 
+  html {
+    font-size: 100%; /* 16px base; never below 14px for UI text (spec §8.2) */
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Visible cyan focus ring everywhere (spec §8.4) */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

@@ -4,10 +4,12 @@ import { describe, expect, it } from "vitest";
 import {
   emailSchema,
   friendlyAuthError,
+  guard,
   passwordSchema,
   readAuthRedirectError,
   safeRedirect,
 } from "./auth";
+import { SupabaseConfigError } from "./supabase";
 
 describe("passwordSchema", () => {
   it("accepts 12+ chars with lower, upper and digit", () => {
@@ -61,5 +63,18 @@ describe("readAuthRedirectError", () => {
   });
   it("returns null when there is no error", () => {
     expect(readAuthRedirectError("https://x.test/auth/confirm?code=abc")).toBeNull();
+  });
+});
+
+describe("guard", () => {
+  it("turns thrown errors into a plain message", async () => {
+    const messages: string[] = [];
+    await guard(
+      async () => {
+        throw new SupabaseConfigError("missing env");
+      },
+      (m: string) => messages.push(m),
+    )(undefined);
+    expect(messages).toEqual(["Mend isn't connected to its database in this environment yet."]);
   });
 });

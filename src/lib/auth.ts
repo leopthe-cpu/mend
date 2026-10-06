@@ -1,6 +1,8 @@
 import { isAuthError } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { SupabaseConfigError } from "./supabase";
+
 // Mirrors the Auth settings (supabase/config.toml and the hosted dashboard):
 // 12+ characters with lowercase, uppercase and a digit. The server enforces it
 // regardless; this only gives a friendly message before submitting.
@@ -41,6 +43,13 @@ export function safeRedirect(target: unknown, fallback = "/app/board"): string {
 
 /** Plain-language messages for the auth errors people actually hit. */
 export function friendlyAuthError(error: unknown): string {
+  if (error instanceof SupabaseConfigError) {
+    return "Mend isn't connected to its database in this environment yet.";
+  }
+  if (error instanceof TypeError) {
+    // fetch() rejects with a TypeError when the network is unreachable.
+    return "Can't reach Mend right now. Check your connection and try again.";
+  }
   const code = isAuthError(error) ? error.code : undefined;
   switch (code) {
     case "invalid_credentials":
@@ -77,4 +86,21 @@ export function readAuthRedirectError(href: string): string | null {
   const code = url.searchParams.get("error_code") ?? hash.get("error_code");
   if (code === "otp_expired") return "This link has expired. Request a new one.";
   return description ?? "This link isn't valid any more. Request a new one.";
+}
+
+/**
+ * Wraps a form submit handler so unexpected failures (no network, missing
+ * config) show a plain message instead of failing silently.
+ */
+export function guard<T>(
+  handler: (values: T) => Promise<unknown>,
+  setError: (message: string) => void,
+): (values: T) => Promise<void> {
+  return async (values) => {
+    try {
+      await handler(values);
+    } catch (error) {
+      setError(friendlyAuthError(error));
+    }
+  };
 }

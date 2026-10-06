@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { emailSchema, friendlyAuthError, passwordSchema } from "@/lib/auth";
+import { emailSchema, friendlyAuthError, passwordSchema, guard } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/signup")({
@@ -112,7 +112,7 @@ function SignupPage() {
       <Form {...form}>
         <form
           method="post"
-          onSubmit={form.handleSubmit(onSubmit)}
+          onSubmit={form.handleSubmit(guard(onSubmit, setError))}
           noValidate
           className="flex flex-col gap-5"
         >

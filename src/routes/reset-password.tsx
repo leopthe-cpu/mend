@@ -16,7 +16,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { emailSchema, friendlyAuthError, passwordSchema, readAuthRedirectError } from "@/lib/auth";
+import {
+  emailSchema,
+  friendlyAuthError,
+  passwordSchema,
+  readAuthRedirectError,
+  guard,
+} from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 
 // Two steps on one page: (1) ask for a reset link; (2) the link comes back
@@ -132,7 +138,7 @@ function RequestForm({ linkError }: { linkError: string | null }) {
       <Form {...form}>
         <form
           method="post"
-          onSubmit={form.handleSubmit(onSubmit)}
+          onSubmit={form.handleSubmit(guard(onSubmit, setError))}
           noValidate
           className="flex flex-col gap-5"
         >
@@ -188,7 +194,7 @@ function SetPasswordForm() {
       <Form {...form}>
         <form
           method="post"
-          onSubmit={form.handleSubmit(onSubmit)}
+          onSubmit={form.handleSubmit(guard(onSubmit, setError))}
           noValidate
           className="flex flex-col gap-5"
         >

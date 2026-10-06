@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/app/AppSidebar";
 import { TopBar } from "@/components/app/TopBar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { getSupabase } from "@/lib/supabase";
+import { getSupabase, SupabaseConfigError } from "@/lib/supabase";
 
 // The signed-in app. Rendered in the browser only: the session lives in the
 // browser, and this guard is a convenience, not a security boundary. Data
@@ -12,11 +12,18 @@ import { getSupabase } from "@/lib/supabase";
 export const Route = createFileRoute("/app")({
   ssr: false,
   beforeLoad: async ({ location }) => {
-    const { data } = await getSupabase().auth.getSession();
-    if (!data.session) {
+    let session = null;
+    try {
+      session = (await getSupabase().auth.getSession()).data.session;
+    } catch (error) {
+      // Not configured in this environment: treat as signed out; the login
+      // form explains what's missing.
+      if (!(error instanceof SupabaseConfigError)) throw error;
+    }
+    if (!session) {
       throw redirect({ to: "/login", search: { redirect: location.href } });
     }
-    return { user: data.session.user };
+    return { user: session.user };
   },
   component: AppLayout,
 });

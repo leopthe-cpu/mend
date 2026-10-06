@@ -4,9 +4,10 @@ import { z } from "zod";
 import { SupabaseConfigError } from "./supabase";
 
 // Mirrors the Auth settings (supabase/config.toml and the hosted dashboard):
-// 12+ characters with lowercase, uppercase and a digit. The server enforces it
+// 6+ characters with lowercase, uppercase and a digit (decision 10, revised by
+// Oz on 2026-10-06). The server enforces it
 // regardless; this only gives a friendly message before submitting.
-export const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_MIN_LENGTH = 6;
 
 export const passwordSchema = z
   .string()

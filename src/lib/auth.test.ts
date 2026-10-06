@@ -12,10 +12,10 @@ import {
 import { SupabaseConfigError } from "./supabase";
 
 describe("passwordSchema", () => {
-  it("accepts 12+ chars with lower, upper and digit", () => {
+  it("accepts 6+ chars with lower, upper and digit", () => {
     expect(passwordSchema.safeParse("Correct-Horse-9").success).toBe(true);
   });
-  it.each(["Short1a", "alllowercase123", "ALLUPPERCASE123", "NoDigitsHereAtAll"])(
+  it.each(["Ab1", "alllowercase123", "ALLUPPERCASE123", "NoDigitsHereAtAll"])(
     "rejects %s",
     (pw) => expect(passwordSchema.safeParse(pw).success).toBe(false),
   );

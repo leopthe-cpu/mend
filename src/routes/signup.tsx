@@ -134,7 +134,7 @@ function SignupPage() {
                   <Input type="password" autoComplete="new-password" {...field} />
                 </FormControl>
                 <FormDescription>
-                  At least 12 characters, with upper and lowercase letters and a number.
+                  At least 6 characters, with upper and lowercase letters and a number.
                 </FormDescription>
                 <FormMessage />
               </FormItem>

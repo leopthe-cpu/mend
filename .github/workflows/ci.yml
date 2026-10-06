@@ -37,6 +37,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
+        with:
+          # Same CLI version used locally; the action's default (2.20.3) is too
+          # old to parse supabase/config.toml.
+          version: 2.119.0
       - name: Start Supabase (local, disposable)
         run: supabase start
       - name: Run pgTAP tests

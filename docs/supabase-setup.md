@@ -9,8 +9,8 @@
 | same | Secure password change | **On** |
 | same | Minimum password length | **12** |
 | same | Password requirements | **Lowercase, uppercase letters and digits** |
-| Authentication → URL Configuration | Site URL | the app's production URL (Lovable publish URL or custom domain) |
-| same | Redirect URLs | `<site>/auth/confirm`, `<site>/reset-password`, plus the Lovable preview URL equivalents |
+| Authentication → URL Configuration (`/dashboard/project/zasagjabtifpuhayttki/auth/url-configuration`) | Site URL | `https://id-preview--cf324f45-687b-4a06-acd2-d49d4e407ef2.lovable.app` until launch, then the real domain. It **defaults to `http://localhost:3000`**, which is where email links go when the app's address isn't allowed. |
+| same | Redirect URLs | `https://id-preview--cf324f45-687b-4a06-acd2-d49d4e407ef2.lovable.app/**` and `https://soul-mender-spark.lovable.app/**` (`**` = any path; Supabase docs, "Redirect URLs"). Add the real domain at launch. |
 | Database → Settings | SSL enforcement | On (Supabase production checklist) |
 | Integrations → GitHub | Connect `leopthe-cpu/mend`, Supabase directory `supabase`, **Deploy to production** from `main` | decision 5 |
 

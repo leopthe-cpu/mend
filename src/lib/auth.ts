@@ -1,4 +1,4 @@
-import { isAuthError } from "@supabase/supabase-js";
+import { isAuthError, isAuthWeakPasswordError } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { SupabaseConfigError } from "./supabase";
@@ -41,6 +41,31 @@ export function safeRedirect(target: unknown, fallback = "/app/board"): string {
   }
 }
 
+/**
+ * The server's password rules (set in the Supabase dashboard) are the source
+ * of truth, so describe what *it* rejected rather than repeating our own copy
+ * of the rules. Its raw message lists whole alphabets; this rewrites it.
+ */
+export function weakPasswordMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  const reasons = isAuthWeakPasswordError(error) ? error.reasons : [];
+  const parts: string[] = [];
+  const length = /at least (\d+) characters/i.exec(message)?.[1];
+  if (length) parts.push(`at least ${length} characters`);
+  const needs: string[] = [];
+  if (/abcdefghijklmnopqrstuvwxyz/.test(message)) needs.push("a lowercase letter");
+  if (/ABCDEFGHIJKLMNOPQRSTUVWXYZ/.test(message)) needs.push("an uppercase letter");
+  if (/0123456789/.test(message)) needs.push("a number");
+  if (/[!@#$%^&*]{3,}/.test(message)) needs.push("a symbol");
+  if (needs.length) parts.push(needs.join(", "));
+  if (reasons.includes("pwned")) {
+    return "That password has appeared in a data breach. Please choose a different one.";
+  }
+  return parts.length
+    ? `That password is too weak. Use ${parts.join(", with ")}.`
+    : "That password is too weak. Try a longer one with upper and lowercase letters and a number.";
+}
+
 /** Plain-language messages for the auth errors people actually hit. */
 export function friendlyAuthError(error: unknown): string {
   if (error instanceof SupabaseConfigError) {
@@ -57,7 +82,7 @@ export function friendlyAuthError(error: unknown): string {
     case "email_not_confirmed":
       return "Please confirm your email first. We can send the link again.";
     case "weak_password":
-      return "That password is too weak. Use at least 12 characters with upper and lowercase letters and a number.";
+      return weakPasswordMessage(error);
     case "same_password":
       return "Choose a password you haven't used here before.";
     case "over_email_send_rate_limit":

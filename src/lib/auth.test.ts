@@ -1,4 +1,4 @@
-import { AuthApiError } from "@supabase/supabase-js";
+import { AuthApiError, AuthWeakPasswordError } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -76,5 +76,22 @@ describe("guard", () => {
       (m: string) => messages.push(m),
     )(undefined);
     expect(messages).toEqual(["Mend isn't connected to its database in this environment yet."]);
+  });
+});
+
+describe("weak password message", () => {
+  it("follows the server's rules, not ours", () => {
+    const err = new AuthWeakPasswordError(
+      "Password should be at least 8 characters. Password should contain at least one character of each: abcdefghijklmnopqrstuvwxyz, ABCDEFGHIJKLMNOPQRSTUVWXYZ, 0123456789.",
+      422,
+      ["length", "characters"],
+    );
+    expect(friendlyAuthError(err)).toBe(
+      "That password is too weak. Use at least 8 characters, with a lowercase letter, an uppercase letter, a number.",
+    );
+  });
+  it("explains breached passwords", () => {
+    const err = new AuthWeakPasswordError("Password is known to be weak", 422, ["pwned"]);
+    expect(friendlyAuthError(err)).toMatch(/data breach/);
   });
 });

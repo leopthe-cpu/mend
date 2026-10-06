@@ -44,6 +44,7 @@ import {
   parseQuantity,
   type TaxRate,
 } from "@/lib/money";
+import { logoUrl } from "@/lib/logo";
 import { friendlyDbError, roleAtLeast, type Membership } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import { shopToday, type Ticket } from "@/lib/tickets";
@@ -143,6 +144,9 @@ export function MoneySection({
     setBusy(true);
     try {
       const { downloadPdf } = await import("@/lib/pdf");
+      // The current logo (also on older invoices): a missing or broken logo
+      // just leaves it off rather than failing the PDF.
+      const logo = await logoUrl(shop.logo_path).catch(() => null);
       const invoice = kind === "invoice" ? invoiceFor(est.id) : undefined;
       await downloadPdf({
         kind,
@@ -157,6 +161,7 @@ export function MoneySection({
               currency: shop.currency,
               terms_text: shop.terms_text,
             },
+        logoUrl: logo,
         timeZone: shop.time_zone,
         ticketNumber: ticket.ticket_number,
         itemName: ticket.item_name,

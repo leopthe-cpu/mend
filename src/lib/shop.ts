@@ -24,6 +24,7 @@ export type Shop = {
   quiet_hours_start: string;
   quiet_hours_end: string;
   sms_monthly_cap: number;
+  logo_path: string | null;
   /** Null until the Owner finishes setup in the app (decision 53). */
   setup_completed_at: string | null;
 };

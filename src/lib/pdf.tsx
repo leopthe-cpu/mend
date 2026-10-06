@@ -4,7 +4,7 @@
 // font files; the layout follows Mend's style but leads with the shop's name.
 /* eslint-disable react-refresh/only-export-components -- not a UI module; the
    PDF document component is internal and never hot-reloaded on screen. */
-import { Document, Page, pdf, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Image, Page, pdf, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import type { Estimate, Invoice, Line, Payment } from "@/lib/estimates";
 import { APPROVAL_LABEL, KIND_LABEL, METHOD_LABEL, quantityText } from "@/lib/estimates";
@@ -22,6 +22,8 @@ export type PdfInput = {
     currency: string;
     terms_text?: string | null;
   };
+  /** Short-lived link to the shop's logo (PNG/JPEG), if it has one. */
+  logoUrl?: string | null;
   /** Shop time zone: every date on the document is the shop's calendar date. */
   timeZone: string;
   ticketNumber: number;
@@ -41,6 +43,8 @@ const s = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: NAVY },
   header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 24 },
   shopName: { fontSize: 18, fontFamily: "Helvetica-Bold" },
+  // Fits a wide or tall logo in a 160 × 56 pt box without stretching it.
+  logo: { maxWidth: 160, maxHeight: 56, objectFit: "contain", marginBottom: 8 },
   muted: { color: MUTED },
   docTitle: { fontSize: 16, fontFamily: "Helvetica-Bold", textAlign: "right" },
   meta: { textAlign: "right", color: MUTED, marginTop: 2 },
@@ -92,6 +96,7 @@ function Doc(p: PdfInput) {
       <Page size="LETTER" style={s.page}>
         <View style={s.header}>
           <View>
+            {p.logoUrl ? <Image src={p.logoUrl} style={s.logo} /> : null}
             <Text style={s.shopName}>{p.shop.name}</Text>
             {p.shop.address ? <Text style={s.muted}>{p.shop.address}</Text> : null}
             {p.shop.phone || p.shop.email ? (

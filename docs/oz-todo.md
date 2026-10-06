@@ -43,5 +43,9 @@ own email provider does (Supabase docs: "Send emails with custom SMTP").
 
 ## Before real shops use Mend
 
+- Read `docs/security-review.md` §2 (known gaps) and §3 (needs a lawyer).
+- Decide the passcode-reveal limit (decision 60: 30 per person per hour) and how long to keep closed tickets, photos and messages.
+- Consider a longer minimum password (8+) in Supabase → Authentication → Passwords.
+
 - Decide on Supabase Pro: no pausing after 7 inactive days, downloadable backups, support, test branches, leaked-password checking. Check the current price at supabase.com/pricing.
 - Turn on two-step sign-in for your own Supabase and GitHub accounts.

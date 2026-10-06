@@ -13,8 +13,8 @@ function Index() {
   return (
     <main className="relative min-h-svh overflow-hidden bg-background">
       <img
-        src="/images/phone-repair-night.webp"
-        alt="A phone repair shop lit up at night as a red and white streetcar blurs past"
+        src="/images/tailor-and-cleaners-winter.webp"
+        alt="A tailor and cleaners shop window glowing on a winter evening as a red and white streetcar blurs past"
         className="absolute inset-0 h-full w-full object-cover"
         width={2000}
         height={2000}

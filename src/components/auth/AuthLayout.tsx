@@ -31,7 +31,7 @@ export function AuthLayout({
       </main>
       <div className="relative hidden lg:block" aria-hidden>
         <img
-          src="/images/tailor-and-cleaners-winter.webp"
+          src="/images/phone-repair-night.webp"
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
           width={2000}

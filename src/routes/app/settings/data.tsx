@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Download } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Panel } from "@/components/app/Field";
 import { ReauthDialog } from "@/components/app/ReauthDialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { downloadFile, toCsv } from "@/lib/csv";
 import { friendlyDbError } from "@/lib/shop";
+import { removeShopFiles } from "@/lib/shopFiles";
 import { getSupabase } from "@/lib/supabase";
 
 // Owner-only data export (spec §4 "per-shop data export", decision 56). The
@@ -54,6 +57,8 @@ function DataSettings() {
   const shop = membership.shop;
   const [asking, setAsking] = useState(false);
   const [data, setData] = useState<ShopExport | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [typedName, setTypedName] = useState("");
 
   if (membership.role !== "owner") {
     return (
@@ -165,6 +170,62 @@ function DataSettings() {
           </div>
         )}
       </Panel>
+
+      <Panel
+        title="Delete this shop"
+        description="Permanently deletes the shop and everything in it: customers, tickets, photos, estimates, invoices, payments, messages, settings and the activity log. Your team loses access. This can't be undone."
+      >
+        <p className="text-sm text-muted-foreground">
+          Download your data first if you might need it. Everyone keeps their Mend login.
+        </p>
+        <Button
+          variant="destructive"
+          className="mt-4"
+          onClick={() => {
+            setTypedName("");
+            setDeleting(true);
+          }}
+        >
+          <Trash2 /> Delete shop
+        </Button>
+      </Panel>
+
+      {deleting ? (
+        <ReauthDialog
+          title={`Delete ${shop.name}?`}
+          description="Everything in this shop is deleted for good, for everyone on your team."
+          email={user.email ?? ""}
+          confirmLabel="Delete shop forever"
+          busyLabel="Deleting…"
+          destructive
+          canConfirm={typedName.trim().toLowerCase() === shop.name.trim().toLowerCase()}
+          onClose={() => setDeleting(false)}
+          action={async () => {
+            await removeShopFiles(shop.id);
+            const { error } = await getSupabase().rpc("delete_shop", {
+              p_shop_id: shop.id,
+              p_confirm_name: typedName,
+            });
+            if (error) throw new Error(friendlyDbError(error));
+            // Signed out so the app doesn't open a fresh shop straight away
+            // (decision 53); logging in again starts over.
+            await getSupabase().auth.signOut();
+            window.location.assign("/");
+          }}
+        >
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="confirm-name">
+              Type <span className="font-semibold">{shop.name}</span> to confirm
+            </Label>
+            <Input
+              id="confirm-name"
+              value={typedName}
+              onChange={(e) => setTypedName(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+        </ReauthDialog>
+      ) : null}
 
       {asking ? (
         <ReauthDialog

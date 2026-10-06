@@ -29,10 +29,14 @@ select is_empty(
           -- RLS helpers (policies run as the caller)
           'private.role_rank', 'private.my_shop_ids', 'private.my_role',
           'private.has_role', 'private.my_coworker_ids',
+          'private.my_shop_id_texts', 'private.is_shop_admin_text',
           -- RPCs: each checks the caller's role itself
           'public.create_shop', 'public.create_invite', 'public.invite_preview',
           'public.accept_invite', 'public.revoke_invite', 'public.change_member_role',
-          'public.remove_member', 'public.transfer_ownership'
+          'public.remove_member', 'public.transfer_ownership',
+          'public.save_customer', 'public.customer_contacts', 'public.search_shop',
+          'public.create_ticket', 'public.set_ticket_status', 'public.set_ticket_passcode',
+          'public.reveal_passcode', 'public.add_ticket_note', 'public.delete_ticket'
         ]) $$,
   'authenticated can execute only allow-listed functions'
 );

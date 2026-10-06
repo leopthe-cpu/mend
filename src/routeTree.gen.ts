@@ -23,6 +23,7 @@ import { Route as AppBoardRouteImport } from './routes/app/board'
 import { Route as AppCatalogRouteImport } from './routes/app/catalog'
 import { Route as AppMessagesRouteImport } from './routes/app/messages'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
+import { Route as AppSetupRouteImport } from './routes/app/setup'
 import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
 import { Route as InviteTokenRouteImport } from './routes/invite/$token'
 import { Route as TTokenRouteImport } from './routes/t/$token'
@@ -108,6 +109,11 @@ const AppMessagesRoute = AppMessagesRouteImport.update({
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSetupRoute = AppSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
   getParentRoute: () => AppRoute,
 } as any)
 const AuthConfirmRoute = AuthConfirmRouteImport.update({
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/app/catalog': typeof AppCatalogRoute
   '/app/messages': typeof AppMessagesRoute
   '/app/settings': typeof AppSettingsRouteWithChildren
+  '/app/setup': typeof AppSetupRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/invite/$token': typeof InviteTokenRoute
   '/t/$token': typeof TTokenRoute
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/app/board': typeof AppBoardRoute
   '/app/catalog': typeof AppCatalogRoute
   '/app/messages': typeof AppMessagesRoute
+  '/app/setup': typeof AppSetupRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/invite/$token': typeof InviteTokenRoute
   '/t/$token': typeof TTokenRoute
@@ -268,6 +276,7 @@ export interface FileRoutesById {
   '/app/catalog': typeof AppCatalogRoute
   '/app/messages': typeof AppMessagesRoute
   '/app/settings': typeof AppSettingsRouteWithChildren
+  '/app/setup': typeof AppSetupRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/invite/$token': typeof InviteTokenRoute
   '/t/$token': typeof TTokenRoute
@@ -302,6 +311,7 @@ export interface FileRouteTypes {
     | '/app/catalog'
     | '/app/messages'
     | '/app/settings'
+    | '/app/setup'
     | '/auth/confirm'
     | '/invite/$token'
     | '/t/$token'
@@ -332,6 +342,7 @@ export interface FileRouteTypes {
     | '/app/board'
     | '/app/catalog'
     | '/app/messages'
+    | '/app/setup'
     | '/auth/confirm'
     | '/invite/$token'
     | '/t/$token'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/app/catalog'
     | '/app/messages'
     | '/app/settings'
+    | '/app/setup'
     | '/auth/confirm'
     | '/invite/$token'
     | '/t/$token'
@@ -497,6 +509,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/app/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/setup': {
+      id: '/app/setup'
+      path: '/setup'
+      fullPath: '/app/setup'
+      preLoaderRoute: typeof AppSetupRouteImport
       parentRoute: typeof AppRoute
     }
     '/auth/confirm': {
@@ -645,6 +664,7 @@ interface AppRouteChildren {
   AppCatalogRoute: typeof AppCatalogRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppSettingsRoute: typeof AppSettingsRouteWithChildren
+  AppSetupRoute: typeof AppSetupRoute
   AppIndexRoute: typeof AppIndexRoute
   AppCustomersCustomerIdRoute: typeof AppCustomersCustomerIdRoute
   AppTicketsTicketIdRoute: typeof AppTicketsTicketIdRoute
@@ -657,6 +677,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCatalogRoute: AppCatalogRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppSettingsRoute: AppSettingsRouteWithChildren,
+  AppSetupRoute: AppSetupRoute,
   AppIndexRoute: AppIndexRoute,
   AppCustomersCustomerIdRoute: AppCustomersCustomerIdRoute,
   AppTicketsTicketIdRoute: AppTicketsTicketIdRoute,

@@ -48,8 +48,8 @@ function SignupPage() {
   async function onSubmit(raw: Values) {
     setError(null);
     const values = schema.parse(raw);
-    // Just email and password here. Shop name and your name are asked during
-    // onboarding, and both can be skipped (decision 17).
+    // Just email and password here. After confirming, the shop is created with
+    // defaults and the rest is asked inside the app (decisions 17, 53).
     const { error } = await getSupabase().auth.signUp({
       email: values.email,
       password: values.password,

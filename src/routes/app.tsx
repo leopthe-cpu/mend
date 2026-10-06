@@ -1,10 +1,19 @@
-import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  redirect,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
+import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AppSidebar } from "@/components/app/AppSidebar";
 import { TopBar } from "@/components/app/TopBar";
+import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { fetchMyMembership } from "@/lib/shop";
+import { fetchMyMembership, roleAtLeast } from "@/lib/shop";
 import { getSupabase, SupabaseConfigError } from "@/lib/supabase";
 
 // The signed-in app. Rendered in the browser only: the session lives in the
@@ -52,6 +61,13 @@ function AppLayout() {
   const { membership, displayName } = Route.useRouteContext();
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(true);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Decision 53: the shop starts with defaults; keep a way back to setup in
+  // view until the Owner (or an Admin) finishes it.
+  const showSetup =
+    !membership.shop.setup_completed_at &&
+    roleAtLeast(membership.role, "admin") &&
+    pathname !== "/app/setup";
 
   useEffect(() => {
     if (window.innerWidth < TABLET_MAX) setNavOpen(false);
@@ -84,6 +100,21 @@ function AppLayout() {
       <SidebarInset className="min-w-0 bg-background text-foreground">
         <TopBar membership={membership} />
         <main id="main" className="flex-1 px-4 py-6 md:px-8">
+          {showSetup ? (
+            <div className="mb-6 flex flex-col gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold">Finish setting up your shop</p>
+                <p className="text-sm text-muted-foreground">
+                  Add your shop name, trade, pickup hours and taxes. It takes about two minutes.
+                </p>
+              </div>
+              <Button asChild className="shrink-0">
+                <Link to="/app/setup">
+                  Continue setup <ArrowRight />
+                </Link>
+              </Button>
+            </div>
+          ) : null}
           <Outlet />
         </main>
       </SidebarInset>

@@ -5,7 +5,7 @@ import { getSupabase } from "./supabase";
 // every rule (RLS + RPCs), whatever the UI shows.
 
 export type Role = "owner" | "admin" | "staff";
-export type Vertical = "electronics" | "ski" | "tailoring" | "other";
+export type Vertical = "shoe_leather" | "watch" | "tailoring" | "electronics" | "ski" | "other";
 
 export type Shop = {
   id: string;
@@ -24,6 +24,8 @@ export type Shop = {
   quiet_hours_start: string;
   quiet_hours_end: string;
   sms_monthly_cap: number;
+  /** Null until the Owner finishes setup in the app (decision 53). */
+  setup_completed_at: string | null;
 };
 
 export type Membership = { role: Role; shop: Shop };
@@ -35,10 +37,13 @@ export function roleAtLeast(role: Role, min: Role): boolean {
 
 export const ROLE_LABEL: Record<Role, string> = { owner: "Owner", admin: "Admin", staff: "Staff" };
 
+// The trades the website speaks to come first (decision 52).
 export const VERTICALS: { value: Vertical; label: string; hint: string }[] = [
+  { value: "shoe_leather", label: "Shoe and leather repair", hint: "Resoles, heels, bags, belts" },
+  { value: "watch", label: "Watch repair", hint: "Batteries, straps, servicing" },
+  { value: "tailoring", label: "Tailoring and cleaning", hint: "Alterations, dry cleaning" },
   { value: "electronics", label: "Electronics and phone repair", hint: "Phones, tablets, laptops" },
   { value: "ski", label: "Ski and snowboard", hint: "Tunes, waxing, bindings" },
-  { value: "tailoring", label: "Tailoring and cleaning", hint: "Alterations, dry cleaning" },
   { value: "other", label: "Something else", hint: "Any other repair work" },
 ];
 
@@ -69,6 +74,20 @@ export function guessTimeZone(): string {
     // fall through
   }
   return "America/Toronto";
+}
+
+// Zones in TIME_ZONES that are in the US; everything else there is Canadian.
+const US_ZONES = new Set([
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Phoenix",
+  "America/Los_Angeles",
+  "America/Anchorage",
+  "Pacific/Honolulu",
+]);
+export function countryForTimeZone(tz: string): "CA" | "US" {
+  return US_ZONES.has(tz) ? "US" : "CA";
 }
 
 /** The signed-in user's shop and role, or null if they haven't onboarded. */

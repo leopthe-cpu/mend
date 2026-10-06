@@ -59,6 +59,10 @@ select is((select count(*)::int from public.message_templates where shop_id = (s
 select is((select count(*)::int from public.statuses where shop_id = (select v::uuid from t where k = 'shop_b')), 4, 'ski: 4 statuses seeded');
 select is((select full_name from public.profiles where user_id = 'a0000000-0000-0000-0000-000000000001'), 'Alice Owner', 'owner name saved to profile');
 select is((select role::text from public.memberships where user_id = 'a0000000-0000-0000-0000-000000000001'), 'owner', 'creator is the Owner');
+select is((select email from public.profiles where user_id = 'a0000000-0000-0000-0000-000000000001'), 'owner.a@test.local', 'profile carries the sign-in email for the team page');
+update auth.users set email = 'Owner.A2@test.local' where id = 'a0000000-0000-0000-0000-000000000001';
+select is((select email from public.profiles where user_id = 'a0000000-0000-0000-0000-000000000001'), 'owner.a2@test.local', 'profile email follows email changes');
+update auth.users set email = 'owner.a@test.local' where id = 'a0000000-0000-0000-0000-000000000001';
 
 -- ===== Invites ========================================================
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}', true);

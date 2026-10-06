@@ -33,3 +33,15 @@ Every decision made on Oz's behalf (addendum §4). **Status:** `decided` (made a
 | 7 | 2026-10-06 | Build on Supabase Free; move to Pro before launch (leaked-password protection, backups, no pausing). | approved |
 | 8 | 2026-10-06 | Connect the Supabase project in Lovable only when needed for the preview; never use Lovable's AI for database changes. | approved |
 | 9 | 2026-10-06 | Assets: `public/brand/mend-wordmark.png` (primary logo, white wordmark with cyan details, transparent PNG 456×176) and `public/brand/mend-badge.png` (oval badge variant, 608×264). Photos `public/images/phone-repair-night.webp` and `public/images/tailor-and-cleaners-winter.webp` (2000×2000). The composite mock is kept as a design reference in `docs/design/` and not shipped. An SVG logo is still preferred (spec §8.1): the PNG is sharp up to about 150 px wide on retina screens. | decided |
+
+## Decided during Phase 1A (2026-10-06)
+
+| # | Date | Decision | Reason | Alternatives | Status |
+|---|---|---|---|---|---|
+| 10 | 2026-10-06 | **Password rule:** 12+ characters with lowercase, uppercase and a digit (Supabase `lower_upper_letters_digits`); symbols not required. | Spec asked for 12+. Requiring all classes plus symbols makes life hard for the less technical users the spec describes; length matters more. | Add symbols; or length only. | decided |
+| 11 | 2026-10-06 | **Email must be confirmed before any login** (Supabase "Confirm email" on). | Simplest way to guarantee "verified before sending messages" (spec §4), with no half-verified state to handle. | Allow login, block only messaging until verified. | decided |
+| 12 | 2026-10-06 | **PKCE auth flow**, and `secure_password_change` on. | Codes in the query string are exchanged once on our pages; no tokens in URL fragments. | Implicit flow (supabase-js default). | decided |
+| 13 | 2026-10-06 | `/app` and the auth pages render **in the browser only** (`ssr: false`); auth forms are `method="post"`. | The session lives in the browser. Server-rendered forms submitted before hydration would GET the password into the URL (found while testing). | Cookie-based SSR auth with `@supabase/ssr` (more moving parts; revisit if we need server-rendered app pages). | decided |
+| 14 | 2026-10-06 | New token `--mend-input-border` `#6A6AA0` for form controls; status colors used for icons/dots, labels in `--mend-text`. | `#2C2C5A` borders are about 1.3:1 (form controls need 3:1); `#64748B` closed-grey fails as text. Your palette is otherwise unchanged. | Lighten `--border` everywhere (heavier look); change the closed grey. | decided |
+| 15 | 2026-10-06 | Nav collapses to icons below 1280 px, drawer below 768 px. | Tablets at the counter get more room; phones get the standard drawer. | Always expanded on tablets. | decided |
+| 16 | 2026-10-06 | Interim landing page at `/` (hero photo, tagline, Get started/Log in) and draft privacy/terms pages. | Needed as entry points now, and Twilio needs live legal URLs (T1). The full landing page is still Phase 5. | Blank page until Phase 5. | decided |

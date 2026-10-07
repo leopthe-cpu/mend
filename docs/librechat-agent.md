@@ -19,16 +19,16 @@ fine-grained tokens (not usable by repository collaborators) and rulesets
 The agent must not act as Oz: GitHub never lets you approve your own pull
 request, and Oz's owner rights could be used to merge into `main`.
 
-1. Sign out (or use a private window) and create a GitHub account, e.g.
-   `mend-bot`, with its own email. Turn on two-factor sign-in.
+1. Sign out (or use a private window) and create a GitHub account for the
+   agent, with its own email. Ours is **`w0rkstufff`**. Turn on two-factor sign-in.
 2. As Oz: `leopthe-cpu/mend` → Settings → **Collaborators** → Add people →
-   `mend-bot` with the **Write** role. Accept the invite as `mend-bot`.
-3. As `mend-bot`: Settings → Developer settings → **Personal access tokens →
+   `w0rkstufff` with the **Write** role. Accept the invite as `w0rkstufff`.
+3. As `w0rkstufff`: Settings → Developer settings → **Personal access tokens →
    Tokens (classic)** → Generate new token (classic):
    - Note: `LibreChat Mend agent`; expiration: 90 days (set a reminder).
    - Scopes: **`repo`** and **`workflow`** only.
    - Fine-grained tokens don't work for collaborators, hence classic. The
-     token reaches only repositories `mend-bot` was invited to (just `mend`).
+     token reaches only repositories `w0rkstufff` was invited to (just `mend`).
 4. Copy the token (`ghp_…`). Never paste it into a chat.
 
 ## 2. Branch protection (GitHub → `mend` → Settings → Rules → Rulesets)
@@ -56,21 +56,28 @@ Oz's approval (production).
 
 ## 3. Supabase token (staging only)
 
-1. Supabase → account menu → **Access Tokens** → Generate new token, name
-   `LibreChat staging agent`.
-2. The connector URL below pins it to **mend-staging**
-   (`project_ref=guqmpdlervjwhclsndyn`), so the agent's tools only see staging.
-   Caveat: Supabase access tokens are account-wide; the pinning lives in the
-   URL, not the token. Keep the token only in Railway's variables, and revoke
-   it if LibreChat is ever exposed.
+Supabase → account menu → **Access Tokens** → Generate new token (scoped
+token):
+- Name `LibreChat staging agent`; expiration **90 days** (set a reminder).
+- Project: **mend-staging only** (`guqmpdlervjwhclsndyn`). Never `mend`.
+- Permissions: Project Settings **Read**, Logs **Read**, Advisors **Read**,
+  Database **Read-write**, Migrations **Read**, Edge Functions **Read**,
+  Storage **Read**; everything else **No access**.
+
+The token itself can only reach mend-staging, and the connector URL below
+pins the same project (`project_ref`). Migrations stay read-only on purpose:
+schema changes go through a migration file in a PR, which the Supabase GitHub
+integration applies to staging after the merge into `develop`. Scoped tokens
+were in public alpha when this was set up (2026-10-07); if Supabase changes
+them, re-check this section.
 
 ## 4. Railway: LibreChat variables (production environment, LibreChat service)
 
 | Variable | Value |
 |---|---|
-| `GITHUB_MCP_TOKEN` | the `mend-bot` classic token |
+| `GITHUB_MCP_TOKEN` | the `w0rkstufff` classic token |
 | `SUPABASE_STAGING_MCP_TOKEN` | the Supabase access token |
-| `ALLOW_REGISTRATION` | `false` (after your own LibreChat account exists) |
+| `ALLOW_REGISTRATION` | `false` (after your own LibreChat account exists; overrides the template's value) |
 
 `ALLOW_REGISTRATION=false` stops strangers from creating LibreChat accounts
 and using these tools.
@@ -143,7 +150,7 @@ what you could not verify. No secrets in code, commits or messages.
 
 Ask the agent: "Read docs/environments.md and list the open pull requests.
 Then, on a new feature branch, fix a typo in README.md and open a PR into
-develop." Check on GitHub that the PR is from `mend-bot`, that CI runs, and
+develop." Check on GitHub that the PR is from `w0rkstufff`, that CI runs, and
 that the bot cannot merge into `main`.
 
 ## Not covered yet

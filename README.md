@@ -32,4 +32,4 @@ Checks before pushing: `bun run lint`, `bun run typecheck`, `bun run test`,
 `bun run build`, and `bunx supabase test db` when the database changed.
 
 A production build is a plain Node server: `bun run build && PORT=8080 npm start`.
-Set `NITRO_PRESET` (e.g. `cloudflare-module`) only to build for another host.
+Set `NITRO_PRESET` (e.g., `cloudflare-module`) only to build for another host.

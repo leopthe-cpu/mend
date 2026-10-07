@@ -3,8 +3,9 @@
 Job tracking and "your item is ready" texts and emails for independent repair
 shops (Canada and US).
 
-- **Spec:** `docs/spec.md` · **Decisions:** `docs/decisions.md` · **Security:**
-  `docs/security-review.md` · **Supabase settings:** `docs/supabase-setup.md`
+- **Spec:** `docs/spec.md` · **Decisions:** `docs/decisions.md` ·
+  **Supabase settings:** `docs/supabase-setup.md` · The security review is
+  kept privately, outside this public repo (decision 65).
 - **Stack:** TanStack Start (React 19, TypeScript, Vite, Tailwind v4,
   shadcn/ui) on Supabase (Postgres with RLS, Auth, Storage, Edge Functions).
 

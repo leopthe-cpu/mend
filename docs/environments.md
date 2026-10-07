@@ -21,6 +21,13 @@ feature/* ──PR──▶ develop ──PR (Oz approves)──▶ main
 | Who changes it | anyone, freely | merge a PR into `develop` (tests must pass) | merge a PR into `main` (**Oz approves**) |
 | AI agents (Claude, LibreChat) | full access | full access, including the staging database | **no direct access**; may open PRs only |
 
+## Addresses
+
+| | Staging | Production |
+|---|---|---|
+| Website | https://mend-staging.up.railway.app | https://mend-production-2e99.up.railway.app |
+| Supabase project | `mend-staging` (`guqmpdlervjwhclsndyn`) | `mend` (`zasagjabtifpuhayttki`) |
+
 ## Everyday flow
 
 1. Create a branch from `develop`: `feature/short-name`.
@@ -77,7 +84,9 @@ Repository → Settings → **Branches** (or Rules → Rulesets) → add a rule:
 
 - **`main`**: require a pull request before merging, **require 1 approval**,
   require status checks to pass (the two CI jobs), block force pushes and
-  deletions. Do not allow bypass.
+  deletions. Bypass: Repository admin, **for pull requests only** (Oz can
+  merge his own PRs; nobody can push directly). Details:
+  `docs/librechat-agent.md` §2.
 - **`develop`**: require a pull request, require the CI status checks, block
   force pushes and deletions. No approval needed (staging is for trying
   things).
@@ -91,5 +100,4 @@ From then on, nobody (Claude and LibreChat included) can push straight to
 - The Supabase connector for agents is pinned to **mend-staging**
   (`project_ref`), never production (Supabase's own guidance: "Don't connect
   to production").
-- LibreChat setup: `docs/librechat-agent.md` (to be written once staging
-  exists).
+- LibreChat setup: `docs/librechat-agent.md` (agent account `w0rkstufff`).

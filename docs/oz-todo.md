@@ -43,7 +43,7 @@ own email provider does (Supabase docs: "Send emails with custom SMTP").
 
 ## Before real shops use Mend
 
-- Read `docs/security-review.md` §2 (known gaps) and §3 (needs a lawyer).
+- Read the security review (private copy, decision 65) §2 (known gaps) and §3 (needs a lawyer).
 - Decide the passcode-reveal limit (decision 60: 30 per person per hour) and how long to keep closed tickets, photos and messages.
 - Consider a longer minimum password (8+) in Supabase → Authentication → Passwords.
 

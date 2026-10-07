@@ -5,7 +5,7 @@
 // framing, no plugins, no <base> or form posts to other sites. It does NOT yet
 // restrict scripts or connections: TanStack Start puts inline scripts in the
 // page for hydration, and a script-src without a per-request nonce would block
-// them. That gap is listed in docs/security-review.md.
+// them. That gap is tracked in the (private) security review, decision 65.
 export const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy":
     "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'",

@@ -3,6 +3,7 @@
 Job tracking and "your item is ready" texts and emails for independent repair
 shops (Canada and US).
 
+- **How to run Mend day to day:** `docs/operating-guide.md`
 - **Spec:** `docs/spec.md` · **Decisions:** `docs/decisions.md` ·
   **Supabase settings:** `docs/supabase-setup.md` · The security review is
   kept privately, outside this public repo (decision 65).

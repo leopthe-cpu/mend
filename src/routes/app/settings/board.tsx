@@ -115,7 +115,7 @@ function BoardSettings() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       {!canEdit ? (
-        <FormAlert tone="info">Only the Owner and Admins can change the board setup.</FormAlert>
+        <FormAlert tone="info">Only Admins can change the board setup.</FormAlert>
       ) : null}
       {msg ? <FormAlert tone={msg.tone}>{msg.text}</FormAlert> : null}
 

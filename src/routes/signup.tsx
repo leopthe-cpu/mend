@@ -48,6 +48,7 @@ function SignupPage() {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -70,8 +71,6 @@ function SignupPage() {
       setError(friendlyAuthError(error));
       return;
     }
-    // Same message whether or not the address already has an account, so the
-    // form can't be used to find out who uses Mend.
     setEmail(values.email);
   }
 
@@ -93,7 +92,20 @@ function SignupPage() {
       setError(friendlyAuthError(error));
       return;
     }
-    await navigate({ to: "/onboarding", replace: true });
+    await navigate({ to: safeRedirect(next, "/onboarding"), replace: true });
+  }
+
+  async function resendCode() {
+    if (!email) return;
+    setResending(true);
+    setError(null);
+    const { error } = await getSupabase().auth.resend({ type: "signup", email });
+    setResending(false);
+    if (error) {
+      setError(friendlyAuthError(error));
+      return;
+    }
+    setOtp("");
   }
 
   // If signed up, show the OTP code screen with link fallback.
@@ -145,10 +157,20 @@ function SignupPage() {
           >
             {verifying ? "Verifying…" : "Confirm email"}
           </Button>
-          <p className="text-sm text-muted-foreground">
-            Can't find it? Check your spam folder. You can also use the confirmation
-            link in the email — open it on this device.
-          </p>
+          <div className="flex flex-col items-center gap-1">
+            <Button
+              variant="link"
+              size="sm"
+              disabled={resending}
+              onClick={() => void resendCode()}
+            >
+              {resending ? "Sending…" : "Send a new code"}
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              Can't find it? Check your spam folder. You can also use the
+              confirmation link in the email — open it on this device.
+            </p>
+          </div>
         </div>
       </AuthLayout>
     );

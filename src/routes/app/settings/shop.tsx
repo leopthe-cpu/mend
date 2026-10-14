@@ -83,7 +83,7 @@ function ShopSettings() {
       <LogoPanel shopId={shop.id} logoPath={shop.logo_path} canEdit={canEdit} />
       <form method="post" onSubmit={save} className="flex flex-col gap-6">
         {!canEdit ? (
-          <FormAlert tone="info">Only the Owner and Admins can change shop settings.</FormAlert>
+          <FormAlert tone="info">Only Admins can change shop settings.</FormAlert>
         ) : null}
         <fieldset disabled={!canEdit} className="flex flex-col gap-6">
           <Panel

@@ -24,13 +24,22 @@ import {
 } from "@/lib/tickets";
 import { cn } from "@/lib/utils";
 
+type BoardSearch = { created?: number; ticket?: string; photoProblems?: number };
+
 export const Route = createFileRoute("/app/board")({
   head: () => ({ meta: [{ title: "Board · Mend" }] }),
+  // Set by the new-ticket dialog, which comes back here with a confirmation.
+  validateSearch: (s: Record<string, unknown>): BoardSearch => ({
+    ...(Number(s["created"]) > 0 ? { created: Number(s["created"]) } : {}),
+    ...(typeof s["ticket"] === "string" ? { ticket: s["ticket"] } : {}),
+    ...(Number(s["photoProblems"]) > 0 ? { photoProblems: Number(s["photoProblems"]) } : {}),
+  }),
   component: Board,
 });
 
 function Board() {
   const { membership } = Route.useRouteContext();
+  const { created, ticket: createdId, photoProblems } = Route.useSearch();
   const shop = membership.shop;
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -79,7 +88,9 @@ function Board() {
       /* storage unavailable */
     }
     void load();
-  }, [load]);
+    // createdId: a ticket was just created (possibly while already on the
+    // board), so load again to show it.
+  }, [load, createdId]);
 
   async function move(ticketId: string, statusId: string) {
     const prev = tickets;
@@ -117,6 +128,30 @@ function Board() {
       {error ? (
         <div className="mb-4">
           <FormAlert tone="error">{error}</FormAlert>
+        </div>
+      ) : null}
+      {created && createdId ? (
+        <div className="mb-4">
+          <FormAlert tone="info">
+            Ticket #{created} created
+            {photoProblems ? ", but some photos couldn't be uploaded" : ""}.{" "}
+            <Link
+              to="/app/tickets/$ticketId"
+              params={{ ticketId: createdId }}
+              className="font-medium underline"
+            >
+              Open it
+            </Link>{" "}
+            ·{" "}
+            <Link
+              to="/tag/$ticketId"
+              params={{ ticketId: createdId }}
+              target="_blank"
+              className="font-medium underline"
+            >
+              Print the claim tag
+            </Link>
+          </FormAlert>
         </div>
       ) : null}
       {notice ? (

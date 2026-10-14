@@ -33,6 +33,7 @@
   --color-status-ready: var(--status-ready);
   --color-status-overdue: var(--status-overdue);
   --color-status-closed: var(--status-closed);
+  --color-count-badge: var(--count-badge);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -123,6 +124,9 @@
   ); /* #C85A32 — terracotta: the brand accent marks "ready" */
   --status-overdue: oklch(0.5003 0.1821 29.51); /* #B42318 */
   --status-closed: oklch(0.5406 0.0119 261.77); /* #6B6F76 */
+
+  /* Pick-up calendar: white day count on a grey circle (decision 69) */
+  --count-badge: oklch(0.551 0.0234 264.36); /* #6B7280 */
 
   /* System feedback (text-safe on all light surfaces) */
   --success: oklch(0.4751 0.1198 149.2); /* #1A6E34 */

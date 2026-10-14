@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { friendlyDbError, ROLE_LABEL, roleAtLeast, type Role } from "@/lib/shop";
+import { friendlyDbError, ROLE_LABEL, TEAM_ROLE_LABEL, roleAtLeast, type Role } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/app/settings/team")({
@@ -160,15 +160,15 @@ function TeamSettings() {
                     )
                   }
                 >
-                  <option value="admin">Admin</option>
-                  <option value="staff">Staff</option>
+                  <option value="admin">Admin (co-manager)</option>
+                  <option value="staff">Team member</option>
                 </select>
               ) : (
-                <span className="font-mono text-sm uppercase">{ROLE_LABEL[m.role]}</span>
+                <span className="font-mono text-sm uppercase">{TEAM_ROLE_LABEL[m.role]}</span>
               )}
               {isOwner && m.role !== "owner" ? (
                 <Button variant="outline" size="sm" onClick={() => setTransferTo(m)}>
-                  Make owner
+                  Transfer ownership
                 </Button>
               ) : null}
               {canManage(m) ? (
@@ -202,7 +202,11 @@ function TeamSettings() {
       {isAdmin ? (
         <Panel
           title="Invite someone"
-          description={isOwner ? "Invite Admins or Staff." : "Admins can invite Staff."}
+          description={
+            isOwner
+              ? "Invite Admins (co-managers) or Team members."
+              : "Admins can invite Team members."
+          }
         >
           <form
             method="post"
@@ -228,8 +232,8 @@ function TeamSettings() {
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as Role)}
                 >
-                  {isOwner ? <option value="admin">Admin</option> : null}
-                  <option value="staff">Staff</option>
+                  {isOwner ? <option value="admin">Admin (co-manager)</option> : null}
+                  <option value="staff">Team member</option>
                 </select>
               </Field>
             </div>
@@ -299,7 +303,10 @@ function TeamSettings() {
           onClose={() => setTransferTo(null)}
           onDone={async () => {
             setTransferTo(null);
-            setMessage({ tone: "info", text: "Ownership transferred. You are now an Admin." });
+            setMessage({
+              tone: "info",
+              text: "Ownership transferred. You are now an Admin (co-manager).",
+            });
             await router.invalidate();
             await load();
           }}
@@ -326,8 +333,8 @@ function TransferDialog({
 }) {
   return (
     <ReauthDialog
-      title={`Make ${member.name || member.email} the owner?`}
-      description="They get full control, including billing and deleting the shop. You become an Admin. Only the new owner can undo this."
+      title={`Transfer ownership to ${member.name || member.email}?`}
+      description="They get full control, including billing and deleting the shop. You become an Admin (co-manager). Only the new owner can undo this."
       email={email}
       confirmLabel="Transfer ownership"
       busyLabel="Transferring…"

@@ -45,8 +45,8 @@ export function defaultSchedule(): WeeklySchedule {
 }
 
 /** "09:00" → "9am", "14:30" → "2:30pm", "12:00" → "12pm". */
-function formatTime(t: string): string {
-  const [h, m] = t.split(":").map(Number);
+export function formatHourLabel(t: string): string {
+  const [h = 0, m = 0] = t.split(":").map(Number);
   const ampm = h >= 12 ? "pm" : "am";
   const hour = h % 12 || 12;
   return m === 0 ? `${hour}${ampm}` : `${hour}:${String(m).padStart(2, "0")}${ampm}`;
@@ -54,23 +54,28 @@ function formatTime(t: string): string {
 
 /**
  * Build a readable summary string from a weekly schedule by grouping
- * consecutive open days that share the same hours.  Closed days are
- * omitted.  "Mon–Fri 9am–5pm, Sat 10am–4pm".
+ * consecutive open days that share the same hours.  A closed day breaks
+ * the group.  "Mon–Fri 9am–5pm, Sat 10am–4pm".
  */
 export function scheduleToText(schedule: WeeklySchedule): string {
   const byDay = new Map(schedule.map((s) => [s.day, s]));
   const groups: { days: string[]; hours: string }[] = [];
+  let gap = false;
 
   for (const day of DAY_ORDER) {
     const s = byDay.get(day);
-    if (!s || !s.open) continue;
-    const label = `${formatTime(s.opens)}–${formatTime(s.closes)}`;
+    if (!s || !s.open) {
+      gap = true;
+      continue;
+    }
+    const label = `${formatHourLabel(s.opens)}–${formatHourLabel(s.closes)}`;
     const last = groups[groups.length - 1];
-    if (last && last.hours === label) {
+    if (last && !gap && last.hours === label) {
       last.days.push(DAY_SHORT[day]);
     } else {
       groups.push({ days: [DAY_SHORT[day]], hours: label });
     }
+    gap = false;
   }
 
   return groups

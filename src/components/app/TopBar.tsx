@@ -96,9 +96,19 @@ export function TopBar({ membership }: { membership: Membership }) {
           Ctrl K
         </kbd>
       </button>
-      <Button className="ml-auto" onClick={() => setNewOpen(true)} aria-keyshortcuts="N">
+      {/* The one solid-black button in the app (UX plan v2): every other "+"
+          button is outlined. The label shortens to "+" on phones, so the
+          accessible name stays "New ticket" either way. */}
+      <Button
+        className="ml-auto"
+        onClick={() => setNewOpen(true)}
+        aria-keyshortcuts="N"
+        aria-label="New ticket"
+      >
         <Plus aria-hidden />
-        <span className="hidden sm:inline">New ticket</span>
+        <span className="hidden sm:inline" aria-hidden>
+          Ticket
+        </span>
       </Button>
 
       <CommandDialog

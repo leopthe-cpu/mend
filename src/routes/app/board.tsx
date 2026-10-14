@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { PageHeader } from "@/components/app/EmptyState";
 import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
-import { StatusMenu } from "@/components/tickets/StatusMenu";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import {
@@ -137,10 +136,13 @@ function Board() {
         <p className="mb-4 text-muted-foreground">
           No tickets yet. Press{" "}
           <kbd className="rounded border border-border px-1.5 font-mono">N</kbd> or click{" "}
-          <strong>New ticket</strong> to log your first job.
+          <strong>+ Ticket</strong> to log your first job.
         </p>
       ) : null}
-      <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-4 md:-mx-8 md:px-8">
+      {/* Columns scroll sideways inside the board only. The scroll padding keeps
+          the first column lined up with the page title: without it, snapping
+          pulls the first column flush to the edge (Oz's feedback, UX plan v2). */}
+      <div className="-mx-4 flex snap-x scroll-px-4 gap-4 overflow-x-auto px-4 pb-4 md:-mx-8 md:scroll-px-8 md:px-8">
         {statuses.map((s) => {
           const col = tickets.filter((t) => t.status_id === s.id && onBoard(t, s));
           return (
@@ -148,7 +150,7 @@ function Board() {
               key={s.id}
               aria-label={`${s.name}, ${col.length} tickets`}
               className={cn(
-                "flex w-72 shrink-0 snap-start flex-col rounded-lg border border-border bg-card",
+                "flex w-[17rem] shrink-0 snap-start flex-col rounded-lg border border-border bg-card sm:w-72",
                 dragOver === s.id && "ring-2 ring-ring",
               )}
               onDragOver={(e) => {
@@ -240,13 +242,6 @@ function Board() {
                           </button>
                         ) : null}
                       </div>
-                      <StatusMenu
-                        className="mt-2 h-10"
-                        statuses={statuses}
-                        value={t.status_id}
-                        onChange={(id) => void move(t.id, id)}
-                        label={`Move #${t.ticket_number} to`}
-                      />
                     </li>
                   );
                 })}
@@ -257,8 +252,8 @@ function Board() {
       </div>
       {statuses.length ? (
         <p className="mt-2 text-sm text-muted-foreground">
-          Drag a card or use its menu to move it. Picked-up tickets leave the board after 7 days;
-          they stay in{" "}
+          Drag a card to another column to move it, or open the ticket to change its status.
+          Picked-up tickets leave the board after 7 days; they stay in{" "}
           <Link to="/app/tickets" className="underline">
             Tickets
           </Link>

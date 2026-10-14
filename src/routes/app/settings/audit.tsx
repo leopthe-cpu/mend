@@ -68,7 +68,7 @@ function AuditLog() {
   }, [membership.shop.id]);
 
   if (!roleAtLeast(membership.role, "admin")) {
-    return <FormAlert tone="info">Only the Owner and Admins can see the audit log.</FormAlert>;
+    return <FormAlert tone="info">Only Admins can see the audit log.</FormAlert>;
   }
   const fmt = new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",

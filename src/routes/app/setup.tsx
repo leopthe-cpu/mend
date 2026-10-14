@@ -48,7 +48,7 @@ function Setup() {
       <>
         <PageHeader title="Finish setting up" />
         <p className="max-w-xl text-muted-foreground">
-          Your shop's owner is still setting things up. You can start using Mend in the meantime.
+          An Admin is still setting things up. You can start using Mend in the meantime.
         </p>
       </>
     );

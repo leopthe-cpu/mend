@@ -261,6 +261,10 @@ export function MoneySection({
                 </ul>
               )}
 
+              {editable && !isAdmin ? (
+                <p className="text-sm text-muted-foreground">Only Admins can change discounts.</p>
+              ) : null}
+
               {editable ? (
                 <AddLine
                   estimateId={shown.id}

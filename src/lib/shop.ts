@@ -36,7 +36,19 @@ export function roleAtLeast(role: Role, min: Role): boolean {
   return RANK[role] >= RANK[min];
 }
 
-export const ROLE_LABEL: Record<Role, string> = { owner: "Owner", admin: "Admin", staff: "Staff" };
+// Role names shown in the UI (decision 67). The account creator (owner) reads
+// as "Admin" in most places; the Team page names it "Admin (owner)" so people
+// can tell the account owner apart from a co-manager.
+export const ROLE_LABEL: Record<Role, string> = {
+  owner: "Admin",
+  admin: "Admin (co-manager)",
+  staff: "Team member",
+};
+export const TEAM_ROLE_LABEL: Record<Role, string> = {
+  owner: "Admin (owner)",
+  admin: "Admin (co-manager)",
+  staff: "Team member",
+};
 
 // The trades the website speaks to come first (decision 52).
 export const VERTICALS: { value: Vertical; label: string; hint: string }[] = [
@@ -112,7 +124,7 @@ export async function fetchMyMembership(userId: string): Promise<Membership | nu
 export function friendlyDbError(error: unknown): string {
   const e = error as { code?: string; message?: string; hint?: string } | null;
   if (e?.hint === "reauthentication_needed") return "Please confirm your password again.";
-  const ours = ["42501", "22023", "23505", "P0002", "54000"];
+  const ours = ["42501", "22023", "23505", "55000", "P0002", "54000"];
   if (e?.code && ours.includes(e.code) && e.message && e.message.length < 120) {
     if (e.message.startsWith("new row violates row-level security")) {
       return "You don't have permission to do that.";

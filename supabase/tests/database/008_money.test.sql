@@ -213,34 +213,43 @@ select throws_ok($$ select public.record_payment(pg_temp.v('tk'), 'payment', 'ca
 select throws_ok($$ select public.start_estimate(pg_temp.v('tk')) $$, 'P0002', null, 'another shop cannot start an estimate');
 reset role;
 
--- ===== save_catalog_item ===============================================
+-- ===== save_catalog_item: Admins (owner + admin) manage the catalog =====
+-- Admin (co-manager) can create and edit items and their catalog discounts.
 select set_config('request.jwt.claims', '{"sub":"d1000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 set local role authenticated;
-select throws_ok($$ select public.save_catalog_item(pg_temp.v('shop'), null, 'Case', null, 'part', 'each', 1500) $$, '42501', null,
-  'admins cannot change the catalog');
-reset role;
-select set_config('request.jwt.claims', '{"sub":"d1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
-set local role authenticated;
 insert into t values ('case', public.save_catalog_item(pg_temp.v('shop'), null, ' Case ', 'Accessories', 'part', 'each', 1500,
-  null, 'percent', 15, '2026-11-01', '2026-11-30', array[pg_temp.v('hst')], 600)::text);
-select results_eq($$ select c.name, c.price_cents, c.discount_value, (select count(*)::int from public.catalog_item_tax_rates x where x.catalog_item_id = c.id),
-                       (select cost_cents from public.catalog_item_costs k where k.catalog_item_id = c.id)
+  null, 'percent', 15, '2026-11-01', '2026-11-30', array[pg_temp.v('hst')])::text);
+select results_eq($$ select c.name, c.price_cents, c.discount_value, (select count(*)::int from public.catalog_item_tax_rates x where x.catalog_item_id = c.id)
                       from public.catalog_items c where c.id = pg_temp.v('case') $$,
-  $$ values ('Case'::text, 1500::bigint, 15.00::numeric, 1, 600::bigint) $$, 'owner saves item, taxes and cost together');
+  $$ values ('Case'::text, 1500::bigint, 15.00::numeric, 1) $$, 'an admin saves an item with a catalog discount and taxes');
+select is((select count(*)::int from public.catalog_item_costs where catalog_item_id = pg_temp.v('case')), 0,
+  'saving an item never creates or changes its cost');
 select lives_ok($$ select public.save_catalog_item(pg_temp.v('shop'), pg_temp.v('case'), 'Case', 'Accessories', 'part', 'each', 1800) $$,
-  'owner edits the item');
-select results_eq($$ select c.price_cents, c.discount_type is null, (select count(*)::int from public.catalog_item_tax_rates x where x.catalog_item_id = c.id),
-                       (select count(*)::int from public.catalog_item_costs k where k.catalog_item_id = c.id)
+  'an admin edits the item');
+select results_eq($$ select c.price_cents, c.discount_type is null, (select count(*)::int from public.catalog_item_tax_rates x where x.catalog_item_id = c.id)
                       from public.catalog_items c where c.id = pg_temp.v('case') $$,
-  $$ values (1800::bigint, true, 0, 0) $$, 'cleared discount, taxes and cost are removed');
+  $$ values (1800::bigint, true, 0) $$, 'cleared discount and taxes are removed');
 select throws_ok($$ select public.save_catalog_item(pg_temp.v('shop'), null, 'Bad', null, 'part', 'each', 100, null, 'percent', 10, '2026-12-01', '2026-11-01') $$,
   '22023', null, 'a discount ending before it starts is rejected');
+reset role;
+-- Team member (staff) cannot change the catalog.
+select set_config('request.jwt.claims', '{"sub":"d1000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
+set local role authenticated;
+select throws_ok($$ select public.save_catalog_item(pg_temp.v('shop'), null, 'Nope', null, 'part', 'each', 100) $$, '42501', null,
+  'staff cannot change the catalog');
+select throws_ok($$ insert into public.catalog_items (shop_id, name, item_type, price_cents) values (pg_temp.v('shop'), 'Nope', 'part', 100) $$,
+  '42501', null, 'staff cannot add catalog items directly');
+select throws_ok($$ update public.catalog_items set price_cents = 1 where id = pg_temp.v('case') $$,
+  '42501', null, 'staff cannot change catalog prices directly');
+select throws_ok($$ delete from public.catalog_items where id = pg_temp.v('case') $$,
+  '42501', null, 'staff cannot delete catalog items');
+reset role;
+-- Owner still full control, and still cannot act in another shop.
+select set_config('request.jwt.claims', '{"sub":"d1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+set local role authenticated;
 select throws_ok($$ select public.save_catalog_item(pg_temp.v('shop_e'), null, 'X', null, 'part', 'each', 100) $$, '42501', null,
   'not in another shop');
 reset role;
-select is((select old_values ->> 'cost_cents' from public.audit_log
-            where action = 'catalog_item_costs.delete' and old_values ->> 'catalog_item_id' = pg_temp.v('case')::text),
-  '600', 'cost removal is audited with the old cost and the item');
 
 select * from finish();
 rollback;

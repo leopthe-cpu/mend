@@ -51,9 +51,7 @@ describe("scheduleToText", () => {
       c("saturday"),
       c("sunday"),
     ];
-    expect(scheduleToText(schedule)).toBe(
-      "Mon 9am–5pm, Wed 9am–5pm, Fri 9am–5pm",
-    );
+    expect(scheduleToText(schedule)).toBe("Mon 9am–5pm, Wed 9am–5pm, Fri 9am–5pm");
   });
 
   it("returns empty string when every day is closed", () => {

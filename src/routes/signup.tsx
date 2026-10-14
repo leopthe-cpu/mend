@@ -16,11 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { emailSchema, friendlyAuthError, guard, passwordSchema, safeRedirect } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 
@@ -116,8 +112,9 @@ function SignupPage() {
         title="Check your email"
         subtitle={
           <>
-            We sent a 6‑digit code to <strong className="text-foreground">{email}</strong>.
-            Enter it below to confirm your address.
+            We sent a 6‑digit code to{" "}
+            <strong className="text-foreground">{email}</strong>. Enter it below to confirm your
+            address.
           </>
         }
         footer={
@@ -167,8 +164,8 @@ function SignupPage() {
               {resending ? "Sending…" : "Send a new code"}
             </Button>
             <p className="text-sm text-muted-foreground">
-              Can't find it? Check your spam folder. You can also use the
-              confirmation link in the email — open it on this device.
+              Can't find it? Check your spam folder. You can also use the confirmation link in the
+              email — open it on this device.
             </p>
           </div>
         </div>

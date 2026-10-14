@@ -80,10 +80,7 @@ export function scheduleToText(schedule: WeeklySchedule): string {
 
   return groups
     .map((g) => {
-      const days =
-        g.days.length > 2
-          ? `${g.days[0]}–${g.days[g.days.length - 1]}`
-          : g.days.join(", ");
+      const days = g.days.length > 2 ? `${g.days[0]}–${g.days[g.days.length - 1]}` : g.days.join(", ");
       return `${days} ${g.hours}`;
     })
     .join(", ");

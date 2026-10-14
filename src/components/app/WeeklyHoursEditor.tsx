@@ -29,9 +29,7 @@ export function WeeklyHoursEditor({
   const byDay = new Map(value.map((d) => [d.day, d]));
 
   function setDay(day: DayKey, patch: Partial<(typeof value)[number]>) {
-    onChange(
-      value.map((d) => (d.day === day ? { ...d, ...patch } : d)),
-    );
+    onChange(value.map((d) => (d.day === day ? { ...d, ...patch } : d)));
   }
 
   const timeInvalid = (day: DayKey) => {

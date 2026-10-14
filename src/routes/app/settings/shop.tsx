@@ -130,11 +130,7 @@ function ShopSettings() {
                 />
               </Field>
               <div className="sm:col-span-2">
-                <Field
-                  id="hours"
-                  label="Shop hours"
-                  hint="Shown in 'your item is ready' messages."
-                >
+                <Field id="hours" label="Shop hours" hint="Shown in 'your item is ready' messages.">
                   {existingHoursText ? (
                     <p className="mb-2 text-sm text-muted-foreground">
                       Your current hours: {existingHoursText}

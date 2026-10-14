@@ -250,9 +250,7 @@ function Setup() {
                       key={v.value}
                       className={cn(
                         "flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-input p-3 text-center transition-colors",
-                        vertical === v.value
-                          ? "border-primary bg-surface-2"
-                          : "hover:bg-surface-2",
+                        vertical === v.value ? "border-primary bg-surface-2" : "hover:bg-surface-2",
                       )}
                     >
                       <input

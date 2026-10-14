@@ -63,6 +63,10 @@ function Setup() {
   const [schedule, setSchedule] = useState<WeeklySchedule>(
     shop.business_hours?.schedule ?? defaultSchedule(),
   );
+  const existingHoursText =
+    shop.business_hours?.text && !shop.business_hours?.schedule
+      ? shop.business_hours.text
+      : null;
 
   // Step 3 — Taxes
   const [taxes, setTaxes] = useState<TaxRow[]>([{ name: "", rate: "" }]);
@@ -96,8 +100,8 @@ function Setup() {
     return null;
   });
 
-  async function finishSetup() {
-    if (taxErrors.some(Boolean)) return;
+  async function finishSetup(skipTaxes?: boolean) {
+    if (!skipTaxes && taxErrors.some(Boolean)) return;
     if (!shopName.trim()) {
       setStep(0);
       return setError("The shop needs a name.");
@@ -114,9 +118,11 @@ function Setup() {
       p_address: address.trim(),
       p_phone: phone.trim(),
       p_business_hours: { text: scheduleToText(schedule), schedule },
-      p_tax_rates: taxes
-        .filter((t) => t.name.trim() && t.rate.trim())
-        .map((t) => ({ name: t.name.trim(), rate: Number(t.rate) })),
+      p_tax_rates: skipTaxes
+        ? []
+        : taxes
+            .filter((t) => t.name.trim() && t.rate.trim())
+            .map((t) => ({ name: t.name.trim(), rate: Number(t.rate) })),
     });
     setSaving(false);
     if (error) return setError(friendlyDbError(error));
@@ -149,8 +155,12 @@ function Setup() {
   const back = () => setStep((s) => Math.max(s - 1, 0));
   const skip = () => {
     setError(null);
+    if (step === 3) {
+      // Taxes: save everything with no tax rates, then invite step.
+      void finishSetup(true);
+      return;
+    }
     if (step === STEPS.length - 1) {
-      // Last step (Invite): go to board.
       void done();
     } else {
       next();
@@ -361,6 +371,11 @@ function Setup() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Shop hours</Label>
+                {existingHoursText ? (
+                  <p className="text-sm text-muted-foreground">
+                    Your current hours: {existingHoursText}
+                  </p>
+                ) : null}
                 <WeeklyHoursEditor value={schedule} onChange={setSchedule} />
                 <p className="text-sm text-muted-foreground">
                   Shown in "your item is ready" messages and on your shop page.
@@ -452,7 +467,7 @@ function Setup() {
                 <Button
                   size="lg"
                   className="flex-1"
-                  onClick={finishSetup}
+                  onClick={() => finishSetup()}
                   disabled={saving || taxErrors.some(Boolean)}
                 >
                   {saving ? "Saving…" : "Finish setup"}

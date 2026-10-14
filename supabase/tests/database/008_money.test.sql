@@ -239,10 +239,10 @@ select throws_ok($$ select public.save_catalog_item(pg_temp.v('shop'), null, 'No
   'staff cannot change the catalog');
 select throws_ok($$ insert into public.catalog_items (shop_id, name, item_type, price_cents) values (pg_temp.v('shop'), 'Nope', 'part', 100) $$,
   '42501', null, 'staff cannot add catalog items directly');
-select throws_ok($$ update public.catalog_items set price_cents = 1 where id = pg_temp.v('case') $$,
-  '42501', null, 'staff cannot change catalog prices directly');
-select throws_ok($$ delete from public.catalog_items where id = pg_temp.v('case') $$,
-  '42501', null, 'staff cannot delete catalog items');
+select is_empty($$ update public.catalog_items set price_cents = 1 where id = pg_temp.v('case') returning 1 $$,
+  'staff cannot change catalog prices directly');
+select is_empty($$ delete from public.catalog_items where id = pg_temp.v('case') returning 1 $$,
+  'staff cannot delete catalog items');
 reset role;
 -- Owner still full control, and still cannot act in another shop.
 select set_config('request.jwt.claims', '{"sub":"d1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);

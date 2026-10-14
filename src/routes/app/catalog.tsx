@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { MoneyInput } from "@/components/app/MaskedInputs";
 import { Input } from "@/components/ui/input";
 import {
   type CatalogItem,
@@ -126,8 +127,8 @@ function CatalogPage() {
     <>
       <PageHeader title="Catalog">
         {isAdmin ? (
-          <Button onClick={() => setEditing("new")}>
-            <Plus /> Add item
+          <Button variant="outline" onClick={() => setEditing("new")}>
+            <Plus /> Item
           </Button>
         ) : null}
       </PageHeader>
@@ -393,12 +394,10 @@ function ItemDialog({
             id="ci-price"
             label={form.unit === "hour" ? `Price per hour (${currency})` : `Price (${currency})`}
           >
-            <Input
+            <MoneyInput
               id="ci-price"
-              inputMode="decimal"
               value={form.price}
-              placeholder="0.00"
-              onChange={(e) => setForm({ ...form, price: e.target.value })}
+              onValueChange={(price) => setForm({ ...form, price })}
             />
           </Field>
           <Field id="ci-type" label="Type">
@@ -501,12 +500,20 @@ function ItemDialog({
                   label={form.discount_type === "percent" ? "Percent" : `Amount (${currency})`}
                   hint={form.discount_type === "fixed" ? "Comes off the whole line." : undefined}
                 >
-                  <Input
-                    id="ci-dvalue"
-                    inputMode="decimal"
-                    value={form.discount_value}
-                    onChange={(e) => setForm({ ...form, discount_value: e.target.value })}
-                  />
+                  {form.discount_type === "fixed" ? (
+                    <MoneyInput
+                      id="ci-dvalue"
+                      value={form.discount_value}
+                      onValueChange={(discount_value) => setForm({ ...form, discount_value })}
+                    />
+                  ) : (
+                    <Input
+                      id="ci-dvalue"
+                      inputMode="decimal"
+                      value={form.discount_value}
+                      onChange={(e) => setForm({ ...form, discount_value: e.target.value })}
+                    />
+                  )}
                 </Field>
                 <Field id="ci-start" label="Starts (optional)">
                   <Input

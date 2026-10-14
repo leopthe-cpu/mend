@@ -142,8 +142,8 @@ function TaxSettings() {
                 onChange={(e) => setRate(e.target.value)}
               />
             </Field>
-            <Button type="submit">
-              <Plus /> Add tax
+            <Button type="submit" variant="outline">
+              <Plus /> Tax
             </Button>
           </form>
         ) : null}

@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Field, Panel, selectClass } from "@/components/app/Field";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
+import { MoneyInput } from "@/components/app/MaskedInputs";
 import { Input } from "@/components/ui/input";
 import {
   APPROVAL_LABEL,
@@ -555,13 +556,7 @@ function LineRow({
           }}
         >
           <Field id={`lp-${l.id}`} label="Unit price">
-            <Input
-              id={`lp-${l.id}`}
-              className="w-32"
-              inputMode="decimal"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-            />
+            <MoneyInput id={`lp-${l.id}`} className="w-32" value={price} onValueChange={setPrice} />
           </Field>
           <Button type="submit" disabled={busy}>
             <Check /> Save price
@@ -645,12 +640,16 @@ function DiscountEditor({
       {type ? (
         <>
           <Field id={`dv-${l.id}`} label={type === "percent" ? "Percent" : "Amount"}>
-            <Input
-              id={`dv-${l.id}`}
-              inputMode="decimal"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-            />
+            {type === "fixed" ? (
+              <MoneyInput id={`dv-${l.id}`} value={value} onValueChange={setValue} />
+            ) : (
+              <Input
+                id={`dv-${l.id}`}
+                inputMode="decimal"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+              />
+            )}
           </Field>
           <Field id={`dr-${l.id}`} label="Reason (optional)">
             <Input
@@ -770,8 +769,8 @@ function AddLine({
             onChange={(e) => setQty(e.target.value)}
           />
         </Field>
-        <Button type="submit" disabled={busy}>
-          <Plus /> Add
+        <Button type="submit" variant="outline" disabled={busy}>
+          <Plus /> Item
         </Button>
       </form>
 
@@ -823,11 +822,10 @@ function AddLine({
               />
             </Field>
             <Field id={`cp-${estimateId}`} label="Unit price">
-              <Input
+              <MoneyInput
                 id={`cp-${estimateId}`}
-                inputMode="decimal"
                 value={c.price}
-                onChange={(e) => setC({ ...c, price: e.target.value })}
+                onValueChange={(price) => setC({ ...c, price })}
               />
             </Field>
             <div className="flex flex-wrap gap-4 sm:col-span-3">
@@ -851,8 +849,8 @@ function AddLine({
               ))}
             </div>
             <div className="flex gap-2 sm:col-span-3">
-              <Button type="submit" disabled={busy}>
-                <Plus /> Add custom line
+              <Button type="submit" variant="outline" disabled={busy}>
+                <Plus /> Custom line
               </Button>
               <Button type="button" variant="ghost" onClick={() => setCustom(false)}>
                 Cancel
@@ -1086,11 +1084,10 @@ function PaymentForm({
         </select>
       </Field>
       <Field id={`${id}-amount`} label="Amount">
-        <Input
+        <MoneyInput
           id={`${id}-amount`}
-          inputMode="decimal"
           value={v.amount}
-          onChange={(e) => setV({ ...v, amount: e.target.value })}
+          onValueChange={(amount) => setV({ ...v, amount })}
         />
       </Field>
       <Field id={`${id}-date`} label="Date">

@@ -5,6 +5,7 @@ import { FormAlert } from "@/components/auth/AuthLayout";
 import { Field, Panel, selectClass } from "@/components/app/Field";
 import { LogoPanel } from "@/components/app/LogoPanel";
 import { Button } from "@/components/ui/button";
+import { PhoneInput } from "@/components/app/MaskedInputs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { friendlyDbError, roleAtLeast, TIME_ZONES } from "@/lib/shop";
@@ -105,12 +106,10 @@ function ShopSettings() {
                 </Field>
               </div>
               <Field id="phone" label="Phone">
-                <Input
+                <PhoneInput
                   id="phone"
-                  type="tel"
                   value={form.phone}
-                  onChange={set("phone")}
-                  maxLength={40}
+                  onValueChange={(phone) => setForm({ ...form, phone })}
                 />
               </Field>
               <Field id="email" label="Email" hint="Customer replies to Mend emails go here.">

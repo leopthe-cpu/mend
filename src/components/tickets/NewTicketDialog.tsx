@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PhoneInput } from "@/components/app/MaskedInputs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { friendlyDbError, type Membership } from "@/lib/shop";
@@ -212,12 +213,10 @@ export function NewTicketDialog({
                   </Field>
                 </div>
                 <Field id="nc-phone" label="Mobile phone">
-                  <Input
+                  <PhoneInput
                     id="nc-phone"
-                    type="tel"
-                    inputMode="tel"
                     value={newCust.phone}
-                    onChange={(e) => setNewCust({ ...newCust, phone: e.target.value })}
+                    onValueChange={(phone) => setNewCust({ ...newCust, phone })}
                   />
                 </Field>
                 <Field id="nc-email" label="Email">
@@ -287,7 +286,7 @@ export function NewTicketDialog({
                     });
                   }}
                 >
-                  <UserPlus /> New customer
+                  <UserPlus /> Customer
                 </Button>
               </div>
             )}

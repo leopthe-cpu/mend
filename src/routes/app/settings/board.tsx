@@ -172,7 +172,7 @@ function BoardSettings() {
               )
             }
           >
-            <Plus /> Add status
+            <Plus /> Status
           </Button>
         ) : null}
       </Panel>
@@ -628,8 +628,8 @@ function NewField({
       ) : null}
       {err ? <p className="text-danger sm:col-span-2">{err}</p> : null}
       <div className="sm:col-span-2">
-        <Button type="submit">
-          <Plus /> Add field
+        <Button type="submit" variant="outline">
+          <Plus /> Field
         </Button>
       </div>
     </form>

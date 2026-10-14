@@ -5,6 +5,7 @@ import { useState } from "react";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { PageHeader } from "@/components/app/EmptyState";
 import { Button } from "@/components/ui/button";
+import { PhoneInput } from "@/components/app/MaskedInputs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getSupabase } from "@/lib/supabase";
@@ -255,14 +256,7 @@ function Setup() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="phone">Shop phone</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  autoComplete="tel"
-                  maxLength={40}
-                />
+                <PhoneInput id="phone" value={phone} onValueChange={setPhone} />
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="hours">Pickup hours</Label>
@@ -346,7 +340,7 @@ function Setup() {
                   variant="outline"
                   onClick={() => setTaxes([...taxes, { name: "", rate: "" }])}
                 >
-                  <Plus /> Add another tax
+                  <Plus /> Tax
                 </Button>
               ) : null}
               <div className="flex gap-3">

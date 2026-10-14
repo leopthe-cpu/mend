@@ -124,7 +124,7 @@ export async function fetchMyMembership(userId: string): Promise<Membership | nu
 export function friendlyDbError(error: unknown): string {
   const e = error as { code?: string; message?: string; hint?: string } | null;
   if (e?.hint === "reauthentication_needed") return "Please confirm your password again.";
-  const ours = ["42501", "22023", "23505", "55000", "P0002", "54000"];
+  const ours = ["42501", "22023", "23505", "P0002", "54000"];
   if (e?.code && ours.includes(e.code) && e.message && e.message.length < 120) {
     if (e.message.startsWith("new row violates row-level security")) {
       return "You don't have permission to do that.";

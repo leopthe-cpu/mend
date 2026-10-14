@@ -25,6 +25,10 @@ function ShopSettings() {
   const [schedule, setSchedule] = useState<WeeklySchedule>(
     shop.business_hours?.schedule ?? defaultSchedule(),
   );
+  const existingHoursText =
+    shop.business_hours?.text && !shop.business_hours?.schedule
+      ? shop.business_hours.text
+      : null;
   const [form, setForm] = useState({
     name: shop.name,
     address: shop.address ?? "",
@@ -131,6 +135,11 @@ function ShopSettings() {
                   label="Shop hours"
                   hint="Shown in 'your item is ready' messages."
                 >
+                  {existingHoursText ? (
+                    <p className="mb-2 text-sm text-muted-foreground">
+                      Your current hours: {existingHoursText}
+                    </p>
+                  ) : null}
                   <WeeklyHoursEditor value={schedule} onChange={setSchedule} id="hours" />
                 </Field>
               </div>

@@ -64,9 +64,7 @@ function Setup() {
     shop.business_hours?.schedule ?? defaultSchedule(),
   );
   const existingHoursText =
-    shop.business_hours?.text && !shop.business_hours?.schedule
-      ? shop.business_hours.text
-      : null;
+    shop.business_hours?.text && !shop.business_hours?.schedule ? shop.business_hours.text : null;
 
   // Step 3 — Taxes
   const [taxes, setTaxes] = useState<TaxRow[]>([{ name: "", rate: "" }]);

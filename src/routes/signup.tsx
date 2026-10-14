@@ -112,9 +112,8 @@ function SignupPage() {
         title="Check your email"
         subtitle={
           <>
-            We sent a 6‑digit code to{" "}
-            <strong className="text-foreground">{email}</strong>. Enter it below to confirm your
-            address.
+            We sent a 6‑digit code to <strong className="text-foreground">{email}</strong>. Enter it
+            below to confirm your address.
           </>
         }
         footer={
@@ -155,12 +154,7 @@ function SignupPage() {
             {verifying ? "Verifying…" : "Confirm email"}
           </Button>
           <div className="flex flex-col items-center gap-1">
-            <Button
-              variant="link"
-              size="sm"
-              disabled={resending}
-              onClick={() => void resendCode()}
-            >
+            <Button variant="link" size="sm" disabled={resending} onClick={() => void resendCode()}>
               {resending ? "Sending…" : "Send a new code"}
             </Button>
             <p className="text-sm text-muted-foreground">

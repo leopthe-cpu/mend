@@ -26,9 +26,7 @@ function ShopSettings() {
     shop.business_hours?.schedule ?? defaultSchedule(),
   );
   const existingHoursText =
-    shop.business_hours?.text && !shop.business_hours?.schedule
-      ? shop.business_hours.text
-      : null;
+    shop.business_hours?.text && !shop.business_hours?.schedule ? shop.business_hours.text : null;
   const [form, setForm] = useState({
     name: shop.name,
     address: shop.address ?? "",

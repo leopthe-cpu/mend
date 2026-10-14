@@ -1,21 +1,35 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { Plus, Trash2 } from "lucide-react";
+import { Check, Copy, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { PageHeader } from "@/components/app/EmptyState";
+import { Field, selectClass } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
 import { PhoneInput } from "@/components/app/MaskedInputs";
+import { WeeklyHoursEditor } from "@/components/app/WeeklyHoursEditor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getSupabase } from "@/lib/supabase";
-import { friendlyDbError, roleAtLeast, TIME_ZONES, VERTICALS, type Vertical } from "@/lib/shop";
+import { defaultSchedule, scheduleToText, type WeeklySchedule } from "@/lib/hours";
+import {
+  countryForTimeZone,
+  friendlyDbError,
+  guessTimeZone,
+  roleAtLeast,
+  ROLE_LABEL,
+  TIME_ZONES,
+  VERTICALS,
+  type Role,
+  type Vertical,
+} from "@/lib/shop";
 import { cn } from "@/lib/utils";
 
 // Finish setting up, inside the app (decision 53). The shop already exists
-// with defaults; this saves the Owner's answers in one server call
-// (finish_shop_setup) and can be left for later at any step. Once finished,
-// changes go through Settings.
+// with defaults; this saves the Owner's answers via finish_shop_setup() and
+// can be left for later at any step. Once finished, changes go through
+// Settings. The invite step comes after the save so the team is ready from
+// day one.
 export const Route = createFileRoute("/app/setup")({
   beforeLoad: ({ context }) => {
     if (context.membership.shop.setup_completed_at) throw redirect({ to: "/app/settings/shop" });
@@ -25,22 +39,40 @@ export const Route = createFileRoute("/app/setup")({
 });
 
 type TaxRow = { name: string; rate: string };
-const STEPS = ["Names", "Your trade", "Location", "Taxes"] as const;
+const STEPS = ["Names", "Your trade", "Location & hours", "Taxes", "Invite your team"] as const;
 
 function Setup() {
   const { membership } = Route.useRouteContext();
   const shop = membership.shop;
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+
+  // Step 0 — Names
   const [shopName, setShopName] = useState(shop.name);
   const [fullName, setFullName] = useState("");
+
+  // Step 1 — Trade
   const [vertical, setVertical] = useState<Vertical>(shop.vertical);
+
+  // Step 2 — Location & hours
   const [country, setCountry] = useState<"CA" | "US">(shop.country);
   const [timeZone, setTimeZone] = useState(shop.time_zone);
+  const [showTzPicker, setShowTzPicker] = useState(false);
   const [address, setAddress] = useState(shop.address ?? "");
   const [phone, setPhone] = useState(shop.phone ?? "");
-  const [hours, setHours] = useState(shop.business_hours?.text ?? "");
+  const [schedule, setSchedule] = useState<WeeklySchedule>(
+    shop.business_hours?.schedule ?? defaultSchedule(),
+  );
+
+  // Step 3 — Taxes
   const [taxes, setTaxes] = useState<TaxRow[]>([{ name: "", rate: "" }]);
+
+  // Step 4 — Invite
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<Role>("staff");
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -64,7 +96,7 @@ function Setup() {
     return null;
   });
 
-  async function finish() {
+  async function finishSetup() {
     if (taxErrors.some(Boolean)) return;
     if (!shopName.trim()) {
       setStep(0);
@@ -81,21 +113,53 @@ function Setup() {
       p_time_zone: timeZone,
       p_address: address.trim(),
       p_phone: phone.trim(),
-      p_business_hours: hours.trim() ? { text: hours.trim() } : {},
+      p_business_hours: { text: scheduleToText(schedule), schedule },
       p_tax_rates: taxes
         .filter((t) => t.name.trim() && t.rate.trim())
         .map((t) => ({ name: t.name.trim(), rate: Number(t.rate) })),
     });
     setSaving(false);
     if (error) return setError(friendlyDbError(error));
-    // Navigating re-runs the /app guard, which reloads the shop (and hides the
-    // setup card). A separate router.invalidate() here raced the navigation
-    // and aborted that request.
+    // Advance to the invite step without navigating (the guard won't re-fire
+    // because we stay on the same page).
+    setStep(4);
+  }
+
+  async function inviteSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setInviteLink(null);
+    setCopied(false);
+    const { data, error } = await getSupabase().rpc("create_invite", {
+      p_shop_id: shop.id,
+      p_email: inviteEmail,
+      p_role: inviteRole,
+    });
+    if (error) return setError(friendlyDbError(error));
+    const token = (data as { token: string }[])[0]?.token;
+    if (token) setInviteLink(`${window.location.origin}/invite/${token}`);
+    setInviteEmail("");
+  }
+
+  async function done() {
     await navigate({ to: "/app/board", replace: true });
   }
 
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
+  const skip = () => {
+    setError(null);
+    if (step === STEPS.length - 1) {
+      // Last step (Invite): go to board.
+      void done();
+    } else {
+      next();
+    }
+  };
+
+  const tzLabel = TIME_ZONES.find((z) => z.value === timeZone)?.label ?? timeZone;
+  const tzGuess = guessTimeZone();
+  const countryGuess = countryForTimeZone(tzGuess);
 
   return (
     <>
@@ -127,6 +191,7 @@ function Setup() {
         <section className="mt-6 flex flex-col gap-5 rounded-lg border border-border bg-card p-6">
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
+          {/* ─── Step 0: Names ─── */}
           {step === 0 && (
             <>
               <div className="flex flex-col gap-2">
@@ -155,44 +220,53 @@ function Setup() {
                   Optional. Until you add it, we'll show your email.
                 </p>
               </div>
+              <Button variant="ghost" className="self-start" onClick={skip}>
+                Skip this step
+              </Button>
               <Button size="lg" onClick={next}>
                 Continue
               </Button>
             </>
           )}
 
+          {/* ─── Step 1: Trade ─── */}
           {step === 1 && (
             <>
-              <fieldset className="flex flex-col gap-3">
-                <legend className="mb-2 font-medium">What do you repair?</legend>
-                {VERTICALS.map((v) => (
-                  <label
-                    key={v.value}
-                    className={cn(
-                      "flex min-h-14 cursor-pointer items-center gap-3 rounded-md border border-input px-4 py-3 transition-colors",
-                      vertical === v.value ? "border-primary bg-surface-2" : "hover:bg-surface-2",
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="vertical"
-                      value={v.value}
-                      checked={vertical === v.value}
-                      onChange={() => setVertical(v.value)}
-                      className="size-5 accent-[var(--color-primary)]"
-                    />
-                    <span className="flex flex-col">
-                      <span className="font-medium">{v.label}</span>
-                      <span className="text-sm text-muted-foreground">{v.hint}</span>
-                    </span>
-                  </label>
-                ))}
+              <fieldset>
+                <legend className="mb-3 font-medium">What do you repair?</legend>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  {VERTICALS.map((v) => (
+                    <label
+                      key={v.value}
+                      className={cn(
+                        "flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-input p-3 text-center transition-colors",
+                        vertical === v.value
+                          ? "border-primary bg-surface-2"
+                          : "hover:bg-surface-2",
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="vertical"
+                        value={v.value}
+                        checked={vertical === v.value}
+                        onChange={() => setVertical(v.value)}
+                        className="sr-only"
+                      />
+                      <span className="text-sm font-medium">{v.label}</span>
+                      <span className="text-xs text-muted-foreground">{v.hint}</span>
+                    </label>
+                  ))}
+                </div>
               </fieldset>
               <p className="text-sm text-muted-foreground">
                 We'll set up matching board columns, ticket fields and a starter price list. You can
                 change all of it later in Settings. The trade itself can only change before your
                 first ticket.
               </p>
+              <Button variant="ghost" className="self-start" onClick={skip}>
+                Skip this step
+              </Button>
               <div className="flex gap-3">
                 <Button size="lg" variant="outline" onClick={back}>
                   Back
@@ -204,45 +278,72 @@ function Setup() {
             </>
           )}
 
+          {/* ─── Step 2: Location & hours ─── */}
           {step === 2 && (
             <>
-              <fieldset className="flex flex-col gap-2">
-                <legend className="mb-2 font-medium">Country</legend>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  {(["CA", "US"] as const).map((c) => (
-                    <label
-                      key={c}
-                      className={cn(
-                        "flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-input",
-                        country === c && "border-primary bg-surface-2",
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="country"
-                        checked={country === c}
-                        onChange={() => setCountry(c)}
-                        className="size-4"
-                      />
-                      {c === "CA" ? "Canada (CAD)" : "United States (USD)"}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="tz">Time zone</Label>
-                <select
-                  id="tz"
-                  value={timeZone}
-                  onChange={(e) => setTimeZone(e.target.value)}
-                  className="h-11 rounded-md border border-input bg-surface-2 px-3 text-base"
-                >
-                  {TIME_ZONES.map((z) => (
-                    <option key={z.value} value={z.value}>
-                      {z.label}
-                    </option>
-                  ))}
-                </select>
+                <Label>Country &amp; time zone</Label>
+                {showTzPicker ? (
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <select
+                      value={country}
+                      onChange={(e) => {
+                        setCountry(e.target.value as "CA" | "US");
+                        if (e.target.value === "US") setTimeZone("America/New_York");
+                        else setTimeZone("America/Toronto");
+                      }}
+                      className={selectClass}
+                    >
+                      <option value="CA">Canada (CAD)</option>
+                      <option value="US">United States (USD)</option>
+                    </select>
+                    <select
+                      value={timeZone}
+                      onChange={(e) => setTimeZone(e.target.value)}
+                      className={selectClass}
+                    >
+                      {TIME_ZONES.filter((z) =>
+                        country === "US"
+                          ? [
+                              "America/New_York",
+                              "America/Chicago",
+                              "America/Denver",
+                              "America/Phoenix",
+                              "America/Los_Angeles",
+                              "America/Anchorage",
+                              "Pacific/Honolulu",
+                            ].includes(z.value)
+                          : ![
+                              "America/New_York",
+                              "America/Chicago",
+                              "America/Denver",
+                              "America/Phoenix",
+                              "America/Los_Angeles",
+                              "America/Anchorage",
+                              "Pacific/Honolulu",
+                            ].includes(z.value),
+                      ).map((z) => (
+                        <option key={z.value} value={z.value}>
+                          {z.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <p className="text-sm">
+                    {country === "CA" ? "Canada" : "United States"} · {tzLabel}{" "}
+                    {country !== countryGuess || timeZone !== tzGuess ? null : (
+                      <span className="text-muted-foreground">(from your device)</span>
+                    )}
+                    <button
+                      type="button"
+                      className="ml-2 text-primary underline-offset-4 hover:underline"
+                      onClick={() => setShowTzPicker(true)}
+                    >
+                      Change
+                    </button>
+                  </p>
+                )}
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="address">Address</Label>
@@ -259,18 +360,15 @@ function Setup() {
                 <PhoneInput id="phone" value={phone} onValueChange={setPhone} />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="hours">Pickup hours</Label>
-                <Input
-                  id="hours"
-                  value={hours}
-                  onChange={(e) => setHours(e.target.value)}
-                  placeholder="Mon–Fri 10am–6pm, Sat 10am–4pm"
-                  maxLength={200}
-                />
+                <Label>Shop hours</Label>
+                <WeeklyHoursEditor value={schedule} onChange={setSchedule} />
                 <p className="text-sm text-muted-foreground">
-                  Shown in "your item is ready" messages.
+                  Shown in "your item is ready" messages and on your shop page.
                 </p>
               </div>
+              <Button variant="ghost" className="self-start" onClick={skip}>
+                Skip this step
+              </Button>
               <div className="flex gap-3">
                 <Button size="lg" variant="outline" onClick={back}>
                   Back
@@ -282,6 +380,7 @@ function Setup() {
             </>
           )}
 
+          {/* ─── Step 3: Taxes ─── */}
           {step === 3 && (
             <>
               <p className="text-muted-foreground">
@@ -343,6 +442,9 @@ function Setup() {
                   <Plus /> Tax
                 </Button>
               ) : null}
+              <Button variant="ghost" className="self-start" onClick={skip}>
+                Skip this step
+              </Button>
               <div className="flex gap-3">
                 <Button size="lg" variant="outline" onClick={back}>
                   Back
@@ -350,10 +452,90 @@ function Setup() {
                 <Button
                   size="lg"
                   className="flex-1"
-                  onClick={finish}
+                  onClick={finishSetup}
                   disabled={saving || taxErrors.some(Boolean)}
                 >
                   {saving ? "Saving…" : "Finish setup"}
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* ─── Step 4: Invite your team ─── */}
+          {step === 4 && (
+            <>
+              <p className="text-muted-foreground">
+                Invite your first team members now so they can get started right away. You can add
+                more people later in Settings.
+              </p>
+
+              <form
+                method="post"
+                onSubmit={inviteSubmit}
+                className="flex flex-col gap-4 sm:flex-row sm:items-end"
+              >
+                <div className="flex-1">
+                  <Field id="invite-email" label="Email">
+                    <Input
+                      id="invite-email"
+                      type="email"
+                      required
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <div className="sm:w-44">
+                  <Field id="invite-role" label="Role">
+                    <select
+                      id="invite-role"
+                      className={selectClass}
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value as Role)}
+                    >
+                      <option value="admin">Admin (co-manager)</option>
+                      <option value="staff">Team member</option>
+                    </select>
+                  </Field>
+                </div>
+                <Button type="submit">Create invite link</Button>
+              </form>
+
+              {inviteLink ? (
+                <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-4">
+                  <p className="text-sm">
+                    Send this link to them. It works once, for that email address, for 72 hours.
+                    (Emailing invites from Mend arrives with email sending.)
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      readOnly
+                      value={inviteLink}
+                      aria-label="Invite link"
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        void navigator.clipboard.writeText(inviteLink).then(() => setCopied(true))
+                      }
+                    >
+                      {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              <Button variant="ghost" className="self-start" onClick={skip}>
+                Skip this step
+              </Button>
+              <div className="flex gap-3">
+                <Button size="lg" variant="outline" onClick={back}>
+                  Back
+                </Button>
+                <Button size="lg" className="flex-1" onClick={() => void done()}>
+                  Go to your board
                 </Button>
               </div>
             </>

@@ -226,9 +226,7 @@ function TicketList() {
           </Chip>
         ) : null}
         {creatorFilter ? (
-          <Chip onClear={() => setCreatorFilter(null)}>
-            Created by {memberName(creatorFilter)}
-          </Chip>
+          <Chip onClear={() => setCreatorFilter(null)}>Created by {memberName(creatorFilter)}</Chip>
         ) : null}
       </div>
 
@@ -313,9 +311,7 @@ function TicketList() {
                         className="min-h-11 rounded-md underline-offset-4 hover:underline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setCreatorFilter(
-                            creatorFilter === t.created_by ? null : t.created_by,
-                          );
+                          setCreatorFilter(creatorFilter === t.created_by ? null : t.created_by);
                         }}
                       >
                         {memberName(t.created_by)}

@@ -133,9 +133,7 @@ function CustomerList() {
                 }}
               >
                 <td className="px-3 py-3 font-medium">{c.name}</td>
-                <td className="px-3 py-3 font-mono text-sm">
-                  {contacts.get(c.id)?.phone ?? ""}
-                </td>
+                <td className="px-3 py-3 font-mono text-sm">{contacts.get(c.id)?.phone ?? ""}</td>
                 <td className="px-3 py-3">{contacts.get(c.id)?.email ?? ""}</td>
                 <td className="px-3 py-3">
                   {c.preferred_channel === "sms" ? "Text" : "Email"}

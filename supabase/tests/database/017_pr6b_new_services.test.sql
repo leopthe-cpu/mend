@@ -7,14 +7,14 @@ create extension if not exists pgtap with schema extensions;
 select no_plan();
 
 insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values
-  ('g1000000-0000-0000-0000-000000000001', 'owner@h.test', now(), '{}'),
-  ('g1000000-0000-0000-0000-000000000003', 'staff@h.test', now(), '{}');
+  ('a7000000-0000-0000-0000-000000000001', 'owner@h.test', now(), '{}'),
+  ('a7000000-0000-0000-0000-000000000003', 'staff@h.test', now(), '{}');
 create temp table t (k text primary key, v text);
 grant all on t to authenticated;
 create function pg_temp.v(p text) returns uuid language sql as $$ select v::uuid from t where k = p $$;
 grant execute on function pg_temp.v(text) to authenticated;
 
-select set_config('request.jwt.claims', '{"sub":"g1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"a7000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 insert into t values ('shop', public.create_shop('H Services', null, 'other', 'CA', null, 'America/Toronto',
   null, null, null, '{}', '[{"name":"HST","rate":13}]')::text);
@@ -24,13 +24,12 @@ with x as (insert into public.catalog_items (shop_id, name, item_type, unit, pri
 insert into t select 'polish', id::text from x;
 insert into t values ('cust', public.save_customer(pg_temp.v('shop'), null, 'Tom', '4165550200')::text);
 insert into public.memberships (shop_id, user_id, role) values
-  (pg_temp.v('shop'), 'g1000000-0000-0000-0000-000000000003', 'staff');
+  (pg_temp.v('shop'), 'a7000000-0000-0000-0000-000000000003', 'staff');
 reset role;
 
 -- ===== Atomicity: a failure after save_catalog_item rolls everything back ===
-select set_config('request.jwt.claims', '{"sub":"g1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"a7000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
--- A line that names a new service but has an invalid (over-100%) discount.
 select throws_ok($$ select * from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'),
   'Atomic fail', null, null, null, '{}', null, false,
   '[{"name":"FailMe","quantity":1,"price_cents":1000,"discount_type":"percent","discount_value":200}]') $$,
@@ -42,7 +41,7 @@ select is((select count(*)::int from public.tickets where shop_id = pg_temp.v('s
 reset role;
 
 -- ===== Duplicate name: a typed name matching an existing item re-uses it ====
-select set_config('request.jwt.claims', '{"sub":"g1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"a7000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 insert into t select 'dup', ticket_id::text from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'),
   'Shine', null, null, null, '{}', null, false,
@@ -57,7 +56,7 @@ select is((select count(*)::int from public.estimate_line_items l
 reset role;
 
 -- ===== A new service with taxes stores them on the catalog item ============
-select set_config('request.jwt.claims', '{"sub":"g1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"a7000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 insert into t select 'taxed', ticket_id::text from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'),
   'Wax', null, null, null, '{}', null, false,
@@ -71,7 +70,7 @@ select is((select count(*)::int from public.catalog_items where shop_id = pg_tem
 reset role;
 
 -- ===== Staff cannot add a new catalog service ==============================
-select set_config('request.jwt.claims', '{"sub":"g1000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"a7000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
 set local role authenticated;
 select throws_ok($$ select * from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'),
   'Nope', null, null, null, '{}', null, false, '[{"name":"Nope","price_cents":100}]') $$,

@@ -1,5 +1,7 @@
 -- New-ticket flow (UX plan v2, PR 6, decision 69): create_ticket_full does the
 -- whole intake in one transaction; promised_date_counts feeds the calendar.
+-- PR 6b (15 Oct): Admin-typed services are saved to the catalog; payment
+-- method is always 'other' (the new dropdown has no method picker).
 begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
@@ -42,7 +44,8 @@ insert into t select 'titled', ticket_id::text
 select is((select item_name from public.tickets where id = pg_temp.v('titled')), 'Winter coat',
   'a typed title is kept');
 
--- 2) Owner: catalog line + custom line with a 10% discount, paid in full.
+-- 2) Owner: catalog line + typed service with a 10% discount, paid in full.
+--    PR 6b: the typed service "Dye" is saved to the catalog as service/each.
 insert into t select 'full', ticket_id::text from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'),
   'Resole and dye', null, null, null, '{}', null, false,
   ('[{"catalog_item_id":"' || pg_temp.v('resole') || '","quantity":1},
@@ -54,10 +57,16 @@ select is((select e.total_cents from public.estimates e where e.ticket_id = pg_t
 select is((select array_agg(name_snapshot order by position) from public.estimate_line_items l
              join public.estimates e on e.id = l.estimate_id where e.ticket_id = pg_temp.v('full')),
   array['Resole', 'Dye'], 'both lines are on the draft estimate, in order');
-select is((select count(*)::int from public.catalog_items where shop_id = pg_temp.v('shop') and name = 'Dye'), 0,
-  'a custom line is not saved to the catalog');
+-- PR 6b: a typed service is saved to the catalog.
+select is((select count(*)::int from public.catalog_items where shop_id = pg_temp.v('shop') and name = 'Dye'), 1,
+  'a typed service is saved to the catalog');
+select is((select item_type::text from public.catalog_items where shop_id = pg_temp.v('shop') and name = 'Dye'),
+  'service', 'saved as a Service');
+select is((select unit::text from public.catalog_items where shop_id = pg_temp.v('shop') and name = 'Dye'),
+  'each', 'saved as each');
+-- PR 6b: payment method is always 'other' (no method picker).
 select results_eq($$ select kind::text, method::text, amount_cents from public.payments where ticket_id = pg_temp.v('full') $$,
-  $$ values ('payment', 'card', 14670::bigint) $$, 'paid in full records the whole total');
+  $$ values ('payment', 'other', 14670::bigint) $$, 'paid in full records the whole total');
 
 select throws_ok($$ select * from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'), 'No price',
   null, null, null, '{}', null, false, '[]', '{"full":true,"method":"cash"}') $$,
@@ -71,8 +80,10 @@ reset role;
 insert into public.memberships (shop_id, user_id, role) values
   (pg_temp.v('shop'), 'f1000000-0000-0000-0000-000000000003', 'staff');
 
--- 3) Team member: catalog lines and a deposit are fine; custom lines and
---    discounts are Admin-only, and a refusal saves nothing.
+-- 3) Team member: catalog lines and a deposit are fine; new services and
+--    discounts are Admin-only (PR 6b: the 42501 now comes from
+--    create_ticket_full itself, not add_custom_line), and a refusal saves
+--    nothing.
 select set_config('request.jwt.claims', '{"sub":"f1000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
 set local role authenticated;
 insert into t select 'staff', ticket_id::text from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'),
@@ -83,11 +94,11 @@ select results_eq($$ select kind::text, amount_cents from public.payments where 
 insert into t select 'before', count(*)::text from public.tickets where shop_id = pg_temp.v('shop');
 select throws_ok($$ select * from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'), 'Custom',
   null, null, null, '{}', null, false, '[{"name":"Odd job","price_cents":1000}]') $$,
-  '42501', null, 'a team member can''t add a custom line');
+  '42501', null, 'a team member cannot add a new catalog service');
 select throws_ok($$ select * from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'), 'Discount',
   null, null, null, '{}', null, false,
   ('[{"catalog_item_id":"' || pg_temp.v('resole') || '","discount_type":"fixed","discount_value":5}]')::jsonb) $$,
-  '42501', null, 'a team member can''t add a discount');
+  '42501', null, 'a team member cannot add a discount');
 select is((select count(*)::text from public.tickets where shop_id = pg_temp.v('shop')),
   (select v from t where k = 'before'), 'a refused intake leaves no ticket behind');
 reset role;

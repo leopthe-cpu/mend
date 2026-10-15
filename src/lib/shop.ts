@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import type { WeeklySchedule } from "./hours";
 
 // Client-side view of the tenancy model (supabase/migrations/*_tenancy_core.sql).
 // The UI uses roles only to hide what a role can't do; the database enforces
@@ -17,7 +18,7 @@ export type Shop = {
   address: string | null;
   phone: string | null;
   email: string | null;
-  business_hours: { text?: string };
+  business_hours: { text?: string; schedule?: WeeklySchedule };
   tax_registration_number: string | null;
   terms_text: string | null;
   unclaimed_reminder_days: number;

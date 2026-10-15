@@ -21,11 +21,7 @@ export function TicketPhotosPanel({
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     const problems = await uploadPhotos(ticket.shop_id, ticket.id, files);
-    setMsg(
-      problems.length
-        ? problems.join(" ")
-        : null,
-    );
+    setMsg(problems.length ? problems.join(" ") : null);
     await onReload();
     // Clear so re-uploading the same file triggers onChange again.
     e.target.value = "";

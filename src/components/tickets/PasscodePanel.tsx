@@ -87,7 +87,11 @@ export function PasscodePanel({
           onChange={(e) => setNewPasscode(e.target.value)}
           maxLength={64}
         />
-        <Button variant="outline" disabled={!newPasscode || saving} onClick={() => void savePasscode()}>
+        <Button
+          variant="outline"
+          disabled={!newPasscode || saving}
+          onClick={() => void savePasscode()}
+        >
           Save
         </Button>
       </div>

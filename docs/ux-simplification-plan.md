@@ -3,7 +3,11 @@
 Work plan for the coding agent. Oz has already made the product decisions below;
 record each one in `docs/decisions.md` when it is implemented. v2 merges Oz's
 first round of feedback from testing staging (14 Oct) with the remaining work
-of v1. PR 1 (permissions) is done and merged.
+of v1.
+
+**Status (15 Oct):** PR 1, 2, 3 and 6 are done and released to production
+(release PR #13). Next: PR 4, 5, 6b, 7, 8. PR 6b is Oz's feedback on the new
+new-ticket flow (15 Oct); its open questions must be answered before it starts.
 
 ## How to work
 
@@ -72,6 +76,18 @@ of v1. PR 1 (permissions) is done and merged.
   accessible.
 - **Page padding:** content (including the board's first column) aligns with
   the page title.
+- **Required fields on submit** (15 Oct): if the user submits with a required
+  field empty (or an unconfirmed entry, see "Confirm small entries"), don't
+  only show an error at the bottom: scroll to the **first** problem from top to
+  bottom, focus it and show its message next to the field. Only one problem is
+  shown at a time; after it is fixed, the next submit goes to the next one.
+  Build this once as a shared helper and use it in every form.
+- **Confirm small entries** (15 Oct): a value added inline under a row (e.g. a
+  discount) gets a ✓ button to confirm it. Until it is confirmed it counts as
+  an unfinished required field (rule above).
+- **Pickers that list records** (customers, services): clicking or focusing
+  the field opens the list straight away (recent / A–Z), and typing filters it.
+  Don't wait for the user to type.
 
 ## PR 2: Foundations (layout, mobile, shared components)
 
@@ -112,12 +128,13 @@ of v1. PR 1 (permissions) is done and merged.
 - Migration: convert `labor` items to `service`; `save_catalog_item` rejects
   `labor` from now on (keep the enum value to avoid breaking old rows/tests,
   or explain a safe alternative).
-- "+ Item" is a secondary button.
+- "+ Item" is a secondary button, labelled **"+ Catalog item"** (15 Oct).
 
 ## PR 5: Customers and tickets lists
 
 - Customers list: whole row clickable → customer page; "+ Customer" button
-  (secondary) to create a customer from this page (name*, phone and/or email*,
+  (secondary) to create a customer from this page (Oz, 15 Oct: still missing
+  on staging, keep it in this PR) (name*, phone and/or email*,
   preferred contact).
 - Tickets list: whole row clickable; one date-range picker (single component)
   instead of two date fields; add a "Created by" column; clicking a status or
@@ -154,6 +171,56 @@ In `src/components/tickets/NewTicketDialog.tsx`:
   functions.
 - Button label "Create ticket". After creating, return to the board (not the
   ticket), with a short confirmation.
+
+## PR 6b: New-ticket refinements (Oz's feedback on staging, 15 Oct)
+
+Follow-up to PR 6 in `src/components/tickets/NewTicketDialog.tsx`. Answer the
+open questions at the end with Oz before writing code.
+
+- **Customer field:** clicking the field opens the list of customers right
+  away (most recent first; typing filters it), like the service list does. Each
+  row shows the name **and** "Customer since <Mon YYYY>" (and phone or email
+  if it fits). "+ Customer" stays to the right of the field.
+- **Section renamed "Service"** (was "Items and price"). One row per service
+  with three inline fields:
+  1. **Service** — a combobox: pick from the catalog list (opens on click,
+     filters as you type) or type a new name.
+  2. **Qty** — defaults to 1.
+  3. **Price** — for a catalog service it is filled from the catalog and
+     **read-only**; for a newly typed service the user enters it
+     (MoneyInput).
+  A newly typed service is **saved to the catalog** when the ticket is
+  created, so it can be picked next time. This replaces the separate
+  "+ Custom line" button (removed). Below the rows, "+ Service" adds another
+  row.
+- **"+ Discount"** under each row: opens the discount field with a ✓ button;
+  the discount only counts once confirmed (shared rule "Confirm small
+  entries").
+- **Pick-up date:** a normal date field that opens the calendar (popover) when
+  clicked, not a calendar always shown. Keep the grey day counts inside the
+  popover.
+- **Payment:** a single **toggle** "Paid", **off by default** = "Pay at
+  pick-up"; on = "Paid" (records a payment for the total). No row of buttons.
+- **Required fields:** use the shared "Required fields on submit" rule
+  (scroll to the first missing field, one at a time, top to bottom).
+
+### Open questions for Oz (answer before building)
+
+1. **Who can create a new service by typing it?** Today only Admins can add
+   to the catalog (decision 67) and custom lines are Admin-only (decision 69).
+   Options: (a) Admins only (team members can only pick existing services);
+   (b) anyone, and team-created services are saved to the catalog; (c) anyone
+   can type a one-off service for this ticket, but it is only saved to the
+   catalog when an Admin creates it.
+2. **Tax on a newly typed service:** apply all of the shop's active taxes by
+   default (the usual case), or none?
+3. **Deposits:** the toggle is Paid / Pay at pick-up only. Remove the deposit
+   (partial payment) option from ticket creation? (Deposits can still be
+   recorded later on the ticket.)
+4. **Payment method when "Paid" is on:** keep a small "Paid by" (cash, card,
+   e-Transfer, other) next to the toggle, or always record it as "other"?
+5. **Discount on a catalog service:** catalog discounts apply automatically.
+   Is "+ Discount" still Admin-only (current rule), or open to team members?
 
 ## PR 7: Ticket view
 

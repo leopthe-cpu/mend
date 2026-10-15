@@ -6,8 +6,8 @@ first round of feedback from testing staging (14 Oct) with the remaining work
 of v1.
 
 **Status (15 Oct):** PR 1, 2, 3 and 6 are done and released to production
-(release PR #13). Next: PR 4, 5, 6b, 7, 8. PR 6b is Oz's feedback on the new
-new-ticket flow (15 Oct); its open questions must be answered before it starts.
+(release PR #13). Next: PR 4, 5, 6b, 7, 8. PR 6b is Oz's feedback on the
+new-ticket flow (15 Oct).
 
 ## How to work
 
@@ -123,7 +123,10 @@ new-ticket flow (15 Oct); its open questions must be answered before it starts.
 ## PR 4: Catalog simplification
 
 - Item form: name*, type (Service / Part), price* (MoneyInput), "+ Add
-  discount", "+ Add tax". Remove category, SKU and "sold by" from the UI (keep
+  discount", "+ Add tax". **Tax is managed on the item** (Oz, 15 Oct):
+  "+ Add tax" lets the Admin pick one of the shop's taxes or create a new one
+  right there (name + rate %), which is added to the shop's taxes and linked
+  to the item. Remove a tax from the item with an ×. Remove category, SKU and "sold by" from the UI (keep
   the database columns; don't delete data).
 - Migration: convert `labor` items to `service`; `save_catalog_item` rejects
   `labor` from now on (keep the enum value to avoid breaking old rows/tests,
@@ -174,8 +177,9 @@ In `src/components/tickets/NewTicketDialog.tsx`:
 
 ## PR 6b: New-ticket refinements (Oz's feedback on staging, 15 Oct)
 
-Follow-up to PR 6 in `src/components/tickets/NewTicketDialog.tsx`. Answer the
-open questions at the end with Oz before writing code.
+Follow-up to PR 6 in `src/components/tickets/NewTicketDialog.tsx`. Oz answered
+the open questions on 15 Oct; they are folded in below. Build PR 4 first (the
+catalog tax field below is reused here).
 
 - **Customer field:** clicking the field opens the list of customers right
   away (most recent first; typing filters it), like the service list does. Each
@@ -183,44 +187,44 @@ open questions at the end with Oz before writing code.
   if it fits). "+ Customer" stays to the right of the field.
 - **Section renamed "Service"** (was "Items and price"). One row per service
   with three inline fields:
-  1. **Service** — a combobox: pick from the catalog list (opens on click,
+  1. **Service:** a combobox. Pick from the catalog list (it opens on click and
      filters as you type) or type a new name.
-  2. **Qty** — defaults to 1.
-  3. **Price** — for a catalog service it is filled from the catalog and
-     **read-only**; for a newly typed service the user enters it
-     (MoneyInput).
-  A newly typed service is **saved to the catalog** when the ticket is
-  created, so it can be picked next time. This replaces the separate
-  "+ Custom line" button (removed). Below the rows, "+ Service" adds another
-  row.
-- **"+ Discount"** under each row: opens the discount field with a ✓ button;
-  the discount only counts once confirmed (shared rule "Confirm small
-  entries").
+  2. **Qty:** defaults to 1.
+  3. **Price:** for a catalog service it is filled from the catalog and
+     **read-only**. For a newly typed service the user enters it (MoneyInput).
+  - **Typing a new service is Admins only.** Team members can only pick
+    existing catalog services; for them the field is a picker, not free text.
+  - A newly typed service is **saved to the catalog** (as a Service item, with
+    the price and any taxes entered) when the ticket is created, so it can be
+    picked next time. It is saved in the same transaction as the ticket
+    (extend `create_ticket_full`, which must enforce Admin for new services).
+    The separate "+ Custom line" button is removed.
+  - Below the rows, "+ Service" adds another row.
+- **"+ Discount" and "+ Tax"** under each row, **Admins only**. Each opens a
+  small inline field with a ✓ button and only counts once confirmed (shared
+  rule "Confirm small entries").
+  - Discount: % or $ amount, as today.
+  - Tax: pick one of the shop's taxes or add a new one (name + rate %).
+  - For a catalog service, the catalog's taxes and discount apply
+    automatically and are shown on the row.
 - **Pick-up date:** a normal date field that opens the calendar (popover) when
-  clicked, not a calendar always shown. Keep the grey day counts inside the
-  popover.
-- **Payment:** a single **toggle** "Paid", **off by default** = "Pay at
-  pick-up"; on = "Paid" (records a payment for the total). No row of buttons.
-- **Required fields:** use the shared "Required fields on submit" rule
-  (scroll to the first missing field, one at a time, top to bottom).
+  clicked, not a calendar that is always shown. Keep the grey day counts inside
+  the popover.
+- **Payment:** one dropdown with three options:
+  - **Pay at pick-up** (the default): records nothing.
+  - **Paid**: records a payment for the full total. No other details are
+    asked; record the method as `other`.
+  - **Deposit**: shows a required amount field (MoneyInput). It must be above
+    0 and at most the total when there is a total. Recorded as a deposit with
+    method `other`.
 
-### Open questions for Oz (answer before building)
-
-1. **Who can create a new service by typing it?** Today only Admins can add
-   to the catalog (decision 67) and custom lines are Admin-only (decision 69).
-   Options: (a) Admins only (team members can only pick existing services);
-   (b) anyone, and team-created services are saved to the catalog; (c) anyone
-   can type a one-off service for this ticket, but it is only saved to the
-   catalog when an Admin creates it.
-2. **Tax on a newly typed service:** apply all of the shop's active taxes by
-   default (the usual case), or none?
-3. **Deposits:** the toggle is Paid / Pay at pick-up only. Remove the deposit
-   (partial payment) option from ticket creation? (Deposits can still be
-   recorded later on the ticket.)
-4. **Payment method when "Paid" is on:** keep a small "Paid by" (cash, card,
-   e-Transfer, other) next to the toggle, or always record it as "other"?
-5. **Discount on a catalog service:** catalog discounts apply automatically.
-   Is "+ Discount" still Admin-only (current rule), or open to team members?
+  "Paid" needs a total above 0; if there is no price, hide "Paid" or explain
+  why it can't be picked. Remove the old button row and the "%" option.
+- **Required fields:** use the shared "Required fields on submit" rule (scroll
+  to the first missing field, one at a time, top to bottom), including the
+  deposit amount and any unconfirmed discount or tax.
+- Record this as a new decision in `docs/decisions.md` (it changes parts of
+  decision 69).
 
 ## PR 7: Ticket view
 

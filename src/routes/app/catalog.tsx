@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { MoneyInput } from "@/components/app/MaskedInputs";
 import { Input } from "@/components/ui/input";
 import {
   type CatalogItem,
@@ -55,10 +56,9 @@ function salePrice(i: CatalogItem): number {
 function CatalogPage() {
   const { membership } = Route.useRouteContext();
   const shop = membership.shop;
-  const isOwner = roleAtLeast(membership.role, "owner");
+  const isAdmin = roleAtLeast(membership.role, "admin");
   const [items, setItems] = useState<CatalogItem[] | null>(null);
   const [taxes, setTaxes] = useState<TaxRate[]>([]);
-  const [costs, setCosts] = useState<Map<string, number>>(new Map());
   const [query, setQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<CatalogItem | "new" | null>(null);
@@ -70,19 +70,10 @@ function CatalogPage() {
       const [c, t] = await Promise.all([fetchCatalog(shop.id), fetchTaxRates(shop.id)]);
       setItems(c);
       setTaxes(t);
-      if (isOwner) {
-        // RLS returns nothing for non-owners anyway; skip the request.
-        const { data, error } = await getSupabase()
-          .from("catalog_item_costs")
-          .select("catalog_item_id, cost_cents")
-          .eq("shop_id", shop.id);
-        if (error) throw error;
-        setCosts(new Map((data ?? []).map((r) => [r.catalog_item_id, Number(r.cost_cents)])));
-      }
     } catch (e) {
       setMsg({ tone: "error", text: friendlyDbError(e) });
     }
-  }, [shop.id, isOwner]);
+  }, [shop.id]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -109,7 +100,7 @@ function CatalogPage() {
     if (error || !data?.length)
       return setMsg({
         tone: "error",
-        text: error ? friendlyDbError(error) : "Only the owner can change the catalog.",
+        text: error ? friendlyDbError(error) : "Only Admins can change the catalog.",
       });
     setMsg({ tone: "info", text: archived ? `${item.name} archived.` : `${item.name} restored.` });
     await load();
@@ -126,7 +117,7 @@ function CatalogPage() {
     if (error || !data?.length)
       return setMsg({
         tone: "error",
-        text: error ? friendlyDbError(error) : "Only the owner can change the catalog.",
+        text: error ? friendlyDbError(error) : "Only Admins can change the catalog.",
       });
     setMsg({ tone: "info", text: `${item.name} deleted.` });
     await load();
@@ -135,16 +126,16 @@ function CatalogPage() {
   return (
     <>
       <PageHeader title="Catalog">
-        {isOwner ? (
-          <Button onClick={() => setEditing("new")}>
-            <Plus /> Add item
+        {isAdmin ? (
+          <Button variant="outline" onClick={() => setEditing("new")}>
+            <Plus /> Item
           </Button>
         ) : null}
       </PageHeader>
       <div className="flex max-w-5xl flex-col gap-4">
-        {!isOwner ? (
+        {!isAdmin ? (
           <FormAlert tone="info">
-            Only the shop owner can change prices. You can use these items on estimates.
+            Only Admins can change prices. You can use these items on estimates.
           </FormAlert>
         ) : null}
         {msg ? <FormAlert tone={msg.tone}>{msg.text}</FormAlert> : null}
@@ -179,9 +170,9 @@ function CatalogPage() {
         ) : visible.length === 0 ? (
           <p className="rounded-lg border border-border bg-card p-6 text-muted-foreground">
             {items.length === 0
-              ? isOwner
+              ? isAdmin
                 ? "No items yet. Add the services and parts you sell."
-                : "No items yet. The owner adds them."
+                : "No items yet. An Admin adds them."
               : "Nothing matches."}
           </p>
         ) : (
@@ -252,13 +243,8 @@ function CatalogPage() {
                           ) : null}
                         </>
                       )}
-                      {isOwner && costs.has(i.id) ? (
-                        <p className="text-sm text-muted-foreground">
-                          Cost {formatMoney(costs.get(i.id) ?? 0, shop.currency)}
-                        </p>
-                      ) : null}
                     </div>
-                    {isOwner ? (
+                    {isAdmin ? (
                       <div className="flex gap-1">
                         <Button
                           variant="ghost"
@@ -294,13 +280,12 @@ function CatalogPage() {
         )}
       </div>
 
-      {isOwner && editing ? (
+      {isAdmin && editing ? (
         <ItemDialog
           key={editing === "new" ? "new" : editing.id}
           shopId={shop.id}
           currency={shop.currency}
           item={editing === "new" ? null : editing}
-          cost={editing === "new" ? undefined : costs.get(editing.id)}
           taxes={taxes}
           today={today}
           onClose={() => setEditing(null)}
@@ -319,7 +304,6 @@ function ItemDialog({
   shopId,
   currency,
   item,
-  cost,
   taxes,
   today,
   onClose,
@@ -328,7 +312,6 @@ function ItemDialog({
   shopId: string;
   currency: string;
   item: CatalogItem | null;
-  cost: number | undefined;
   taxes: TaxRate[];
   today: string;
   onClose: () => void;
@@ -347,7 +330,6 @@ function ItemDialog({
     ends: item?.discount_ends_on ?? "",
     // New items get every active rate ticked; most shops tax everything.
     taxIds: item ? item.tax_rate_ids : taxes.filter((t) => t.active).map((t) => t.id),
-    cost: cost === undefined ? "" : centsToInput(cost),
   });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -366,8 +348,6 @@ function ItemDialog({
       if (form.discount_type === "percent" && dValue > 100)
         return setError("A percent discount is 0 to 100.");
     }
-    const costCents = form.cost.trim() ? parseMoney(form.cost) : null;
-    if (form.cost.trim() && costCents === null) return setError("Enter the cost as a number.");
     setSaving(true);
     setError(null);
     const { error } = await getSupabase().rpc("save_catalog_item", {
@@ -384,7 +364,6 @@ function ItemDialog({
       p_discount_starts_on: form.discount_type && form.starts ? form.starts : null,
       p_discount_ends_on: form.discount_type && form.ends ? form.ends : null,
       p_tax_rate_ids: form.taxIds,
-      p_cost_cents: costCents,
     });
     setSaving(false);
     if (error) return setError(friendlyDbError(error));
@@ -415,21 +394,10 @@ function ItemDialog({
             id="ci-price"
             label={form.unit === "hour" ? `Price per hour (${currency})` : `Price (${currency})`}
           >
-            <Input
+            <MoneyInput
               id="ci-price"
-              inputMode="decimal"
               value={form.price}
-              placeholder="0.00"
-              onChange={(e) => setForm({ ...form, price: e.target.value })}
-            />
-          </Field>
-          <Field id="ci-cost" label="Your cost (optional)" hint="Only you see this.">
-            <Input
-              id="ci-cost"
-              inputMode="decimal"
-              value={form.cost}
-              placeholder="0.00"
-              onChange={(e) => setForm({ ...form, cost: e.target.value })}
+              onValueChange={(price) => setForm({ ...form, price })}
             />
           </Field>
           <Field id="ci-type" label="Type">
@@ -532,12 +500,20 @@ function ItemDialog({
                   label={form.discount_type === "percent" ? "Percent" : `Amount (${currency})`}
                   hint={form.discount_type === "fixed" ? "Comes off the whole line." : undefined}
                 >
-                  <Input
-                    id="ci-dvalue"
-                    inputMode="decimal"
-                    value={form.discount_value}
-                    onChange={(e) => setForm({ ...form, discount_value: e.target.value })}
-                  />
+                  {form.discount_type === "fixed" ? (
+                    <MoneyInput
+                      id="ci-dvalue"
+                      value={form.discount_value}
+                      onValueChange={(discount_value) => setForm({ ...form, discount_value })}
+                    />
+                  ) : (
+                    <Input
+                      id="ci-dvalue"
+                      inputMode="decimal"
+                      value={form.discount_value}
+                      onChange={(e) => setForm({ ...form, discount_value: e.target.value })}
+                    />
+                  )}
                 </Field>
                 <Field id="ci-start" label="Starts (optional)">
                   <Input

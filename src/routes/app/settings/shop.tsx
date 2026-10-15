@@ -5,9 +5,12 @@ import { FormAlert } from "@/components/auth/AuthLayout";
 import { Field, Panel, selectClass } from "@/components/app/Field";
 import { LogoPanel } from "@/components/app/LogoPanel";
 import { Button } from "@/components/ui/button";
+import { PhoneInput } from "@/components/app/MaskedInputs";
+import { WeeklyHoursEditor } from "@/components/app/WeeklyHoursEditor";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { friendlyDbError, roleAtLeast, TIME_ZONES } from "@/lib/shop";
+import { defaultSchedule, scheduleToText, type WeeklySchedule } from "@/lib/hours";
 import { getSupabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/app/settings/shop")({
@@ -19,12 +22,16 @@ function ShopSettings() {
   const router = useRouter();
   const shop = membership.shop;
   const canEdit = roleAtLeast(membership.role, "admin");
+  const [schedule, setSchedule] = useState<WeeklySchedule>(
+    shop.business_hours?.schedule ?? defaultSchedule(),
+  );
+  const existingHoursText =
+    shop.business_hours?.text && !shop.business_hours?.schedule ? shop.business_hours.text : null;
   const [form, setForm] = useState({
     name: shop.name,
     address: shop.address ?? "",
     phone: shop.phone ?? "",
     email: shop.email ?? "",
-    hours: shop.business_hours?.text ?? "",
     time_zone: shop.time_zone,
     currency: shop.currency,
     tax_registration_number: shop.tax_registration_number ?? "",
@@ -56,7 +63,7 @@ function ShopSettings() {
         address: form.address.trim() || null,
         phone: form.phone.trim() || null,
         email: form.email.trim().toLowerCase() || null,
-        business_hours: form.hours.trim() ? { text: form.hours.trim() } : {},
+        business_hours: { text: scheduleToText(schedule), schedule },
         time_zone: form.time_zone,
         currency: form.currency,
         tax_registration_number: form.tax_registration_number.trim() || null,
@@ -82,9 +89,7 @@ function ShopSettings() {
     <div className="flex max-w-2xl flex-col gap-6">
       <LogoPanel shopId={shop.id} logoPath={shop.logo_path} canEdit={canEdit} />
       <form method="post" onSubmit={save} className="flex flex-col gap-6">
-        {!canEdit ? (
-          <FormAlert tone="info">Only the Owner and Admins can change shop settings.</FormAlert>
-        ) : null}
+        {!canEdit ? <FormAlert tone="info">Only Admins can change shop settings.</FormAlert> : null}
         <fieldset disabled={!canEdit} className="flex flex-col gap-6">
           <Panel
             title="Shop profile"
@@ -107,12 +112,10 @@ function ShopSettings() {
                 </Field>
               </div>
               <Field id="phone" label="Phone">
-                <Input
+                <PhoneInput
                   id="phone"
-                  type="tel"
                   value={form.phone}
-                  onChange={set("phone")}
-                  maxLength={40}
+                  onValueChange={(phone) => setForm({ ...form, phone })}
                 />
               </Field>
               <Field id="email" label="Email" hint="Customer replies to Mend emails go here.">
@@ -125,8 +128,13 @@ function ShopSettings() {
                 />
               </Field>
               <div className="sm:col-span-2">
-                <Field id="hours" label="Pickup hours" hint="Used for {pickup_hours} in messages.">
-                  <Input id="hours" value={form.hours} onChange={set("hours")} maxLength={200} />
+                <Field id="hours" label="Shop hours" hint="Shown in 'your item is ready' messages.">
+                  {existingHoursText ? (
+                    <p className="mb-2 text-sm text-muted-foreground">
+                      Your current hours: {existingHoursText}
+                    </p>
+                  ) : null}
+                  <WeeklyHoursEditor value={schedule} onChange={setSchedule} id="hours" />
                 </Field>
               </div>
               <Field id="tz" label="Time zone">

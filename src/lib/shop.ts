@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import type { WeeklySchedule } from "./hours";
 
 // Client-side view of the tenancy model (supabase/migrations/*_tenancy_core.sql).
 // The UI uses roles only to hide what a role can't do; the database enforces
@@ -17,7 +18,7 @@ export type Shop = {
   address: string | null;
   phone: string | null;
   email: string | null;
-  business_hours: { text?: string };
+  business_hours: { text?: string; schedule?: WeeklySchedule };
   tax_registration_number: string | null;
   terms_text: string | null;
   unclaimed_reminder_days: number;
@@ -36,7 +37,19 @@ export function roleAtLeast(role: Role, min: Role): boolean {
   return RANK[role] >= RANK[min];
 }
 
-export const ROLE_LABEL: Record<Role, string> = { owner: "Owner", admin: "Admin", staff: "Staff" };
+// Role names shown in the UI (decision 67). The account creator (owner) reads
+// as "Admin" in most places; the Team page names it "Admin (owner)" so people
+// can tell the account owner apart from a co-manager.
+export const ROLE_LABEL: Record<Role, string> = {
+  owner: "Admin",
+  admin: "Admin (co-manager)",
+  staff: "Team member",
+};
+export const TEAM_ROLE_LABEL: Record<Role, string> = {
+  owner: "Admin (owner)",
+  admin: "Admin (co-manager)",
+  staff: "Team member",
+};
 
 // The trades the website speaks to come first (decision 52).
 export const VERTICALS: { value: Vertical; label: string; hint: string }[] = [

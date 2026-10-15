@@ -142,6 +142,7 @@ select is((select count(*)::int from public.invites), 0, 'staff cannot see invit
 select throws_ok($$ insert into public.statuses (shop_id, name, position, category) values ((select v::uuid from t where k = 'shop_a'), 'X', 99, 'open') $$, '42501', null, 'staff cannot change statuses');
 select is_empty($$ update public.shops set name = 'Staff Shop' returning 1 $$, 'staff cannot edit shop settings');
 select throws_ok($$ select * from public.create_invite((select v::uuid from t where k = 'shop_a'), 'y@test.local', 'staff') $$, '42501', null, 'staff cannot invite');
+select throws_ok($$ insert into public.catalog_items (shop_id, name, item_type) values ((select v::uuid from t where k = 'shop_a'), 'Staff item', 'service') $$, '42501', null, 'staff cannot edit the catalog');
 select is((select count(*)::int from public.profiles), 3, 'coworkers can see each other''s names');
 reset role;
 
@@ -149,7 +150,7 @@ reset role;
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 set local role authenticated;
 select lives_ok($$ insert into public.statuses (shop_id, name, position, category) values ((select v::uuid from t where k = 'shop_a'), 'Quality check', 8, 'open') $$, 'admin can add a status');
-select throws_ok($$ insert into public.catalog_items (shop_id, name, item_type) values ((select v::uuid from t where k = 'shop_a'), 'Admin item', 'service') $$, '42501', null, 'admin cannot edit the catalog (Owner only)');
+select lives_ok($$ insert into public.catalog_items (shop_id, name, item_type) values ((select v::uuid from t where k = 'shop_a'), 'Admin item', 'service') $$, 'admin can edit the catalog');
 select throws_ok($$ select * from public.create_invite((select v::uuid from t where k = 'shop_a'), 'admin2@test.local', 'admin') $$, '42501', null, 'admin cannot invite an Admin');
 select lives_ok($$ select * from public.create_invite((select v::uuid from t where k = 'shop_a'), 'staff2@test.local', 'staff') $$, 'admin can invite Staff');
 select throws_ok($$ select public.change_member_role((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000003', 'admin') $$, '42501', null, 'admin cannot promote to Admin');

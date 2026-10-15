@@ -33,6 +33,7 @@
   --color-status-ready: var(--status-ready);
   --color-status-overdue: var(--status-overdue);
   --color-status-closed: var(--status-closed);
+  --color-count-badge: var(--count-badge);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -123,6 +124,9 @@
   ); /* #C85A32 — terracotta: the brand accent marks "ready" */
   --status-overdue: oklch(0.5003 0.1821 29.51); /* #B42318 */
   --status-closed: oklch(0.5406 0.0119 261.77); /* #6B6F76 */
+
+  /* Pick-up calendar: white day count on a grey circle (decision 69) */
+  --count-badge: oklch(0.551 0.0234 264.36); /* #6B7280 */
 
   /* System feedback (text-safe on all light surfaces) */
   --success: oklch(0.4751 0.1198 149.2); /* #1A6E34 */
@@ -244,4 +248,17 @@
       scroll-behavior: auto !important;
     }
   }
+}
+
+/* Native dropdowns: the browser's own arrow sits flush against the right
+   border and can't be positioned, so draw our own chevron with right
+   padding. One rule for every <select> in the app (UX plan v2, PR 2). Unlayered on purpose:
+   it must beat Tailwind's padding utilities (e.g. px-3) on each select. */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235F6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.125rem;
+  padding-right: 2.5rem;
 }

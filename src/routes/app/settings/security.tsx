@@ -95,9 +95,7 @@ function SecuritySettings() {
         description="After your password, you'll enter a 6-digit code from an authenticator app such as Google Authenticator, 1Password or Authy."
       >
         {!offered ? (
-          <p className="text-muted-foreground">
-            Two-step sign-in is available to Owners and Admins.
-          </p>
+          <p className="text-muted-foreground">Two-step sign-in is available to Admins.</p>
         ) : verified ? (
           <div className="flex flex-wrap items-center gap-4">
             <span className="font-mono text-sm uppercase text-success">On</span>

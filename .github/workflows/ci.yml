@@ -11,9 +11,13 @@ on:
   push:
   pull_request:
 
+# Pull requests: a newer push replaces the run that is now out of date.
+# Pushes: every commit keeps its own run and is never cancelled. A new branch
+# starts on a commit it shares with develop/main, so cancelling there left red
+# "cancelled" marks on that shared commit (and on PRs that contain it).
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name }}-${{ github.ref }}-${{ github.event_name == 'push' && github.sha || 'latest' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   app:

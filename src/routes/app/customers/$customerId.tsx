@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Field, Panel, selectClass } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
+import { PhoneInput } from "@/components/app/MaskedInputs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { friendlyDbError, roleAtLeast } from "@/lib/shop";
@@ -132,11 +133,10 @@ function CustomerDetail() {
               </Field>
             </div>
             <Field id="c-phone" label="Mobile phone">
-              <Input
+              <PhoneInput
                 id="c-phone"
-                type="tel"
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                onValueChange={(phone) => setForm({ ...form, phone })}
               />
             </Field>
             <Field id="c-email" label="Email">

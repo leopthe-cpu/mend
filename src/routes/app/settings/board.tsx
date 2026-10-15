@@ -114,9 +114,7 @@ function BoardSettings() {
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      {!canEdit ? (
-        <FormAlert tone="info">Only the Owner and Admins can change the board setup.</FormAlert>
-      ) : null}
+      {!canEdit ? <FormAlert tone="info">Only Admins can change the board setup.</FormAlert> : null}
       {msg ? <FormAlert tone={msg.tone}>{msg.text}</FormAlert> : null}
 
       <Panel
@@ -174,7 +172,7 @@ function BoardSettings() {
               )
             }
           >
-            <Plus /> Add status
+            <Plus /> Status
           </Button>
         ) : null}
       </Panel>
@@ -630,8 +628,8 @@ function NewField({
       ) : null}
       {err ? <p className="text-danger sm:col-span-2">{err}</p> : null}
       <div className="sm:col-span-2">
-        <Button type="submit">
-          <Plus /> Add field
+        <Button type="submit" variant="outline">
+          <Plus /> Field
         </Button>
       </div>
     </form>

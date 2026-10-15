@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { emailSchema, friendlyAuthError, guard, passwordSchema, safeRedirect } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 
@@ -38,8 +39,13 @@ type Values = z.input<typeof schema>;
 
 function SignupPage() {
   const { next } = Route.useSearch();
-  const [sentTo, setSentTo] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const [email, setEmail] = useState<string | null>(null);
+  const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
+
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
@@ -48,8 +54,6 @@ function SignupPage() {
   async function onSubmit(raw: Values) {
     setError(null);
     const values = schema.parse(raw);
-    // Just email and password here. After confirming, the shop is created with
-    // defaults and the rest is asked inside the app (decisions 17, 53).
     const { error } = await getSupabase().auth.signUp({
       email: values.email,
       password: values.password,
@@ -63,19 +67,53 @@ function SignupPage() {
       setError(friendlyAuthError(error));
       return;
     }
-    // Same message whether or not the address already has an account, so the
-    // form can't be used to find out who uses Mend.
-    setSentTo(values.email);
+    setEmail(values.email);
   }
 
-  if (sentTo) {
+  async function verifyCode() {
+    if (otp.length !== 6 || !email) return;
+    setVerifying(true);
+    setError(null);
+    const { error } = await getSupabase().auth.verifyOtp({
+      email,
+      token: otp,
+      type: "email",
+    });
+    setVerifying(false);
+    if (error) {
+      if (error.code === "otp_expired" || error.code === "token_invalid") {
+        setError("That code didn't work. Check it and try again, or request a new one.");
+        return;
+      }
+      setError(friendlyAuthError(error));
+      return;
+    }
+    await navigate({ to: safeRedirect(next, "/onboarding"), replace: true });
+  }
+
+  async function resendCode() {
+    if (!email) return;
+    setResending(true);
+    setError(null);
+    const { error } = await getSupabase().auth.resend({ type: "signup", email });
+    setResending(false);
+    if (error) {
+      setError(friendlyAuthError(error));
+      return;
+    }
+    setOtp("");
+  }
+
+  // If signed up, show the OTP code screen with link fallback.
+  if (email) {
+    const canSubmit = otp.length === 6;
     return (
       <AuthLayout
         title="Check your email"
         subtitle={
           <>
-            We sent a confirmation link to <strong className="text-foreground">{sentTo}</strong>.
-            Open it on this device to finish setting up your shop.
+            We sent a 6‑digit code to <strong className="text-foreground">{email}</strong>. Enter it
+            below to confirm your address.
           </>
         }
         footer={
@@ -84,16 +122,47 @@ function SignupPage() {
             <button
               type="button"
               className="text-primary underline-offset-4 hover:underline"
-              onClick={() => setSentTo(null)}
+              onClick={() => {
+                setEmail(null);
+                setOtp("");
+                setError(null);
+              }}
             >
               Start again
             </button>
           </>
         }
       >
-        <FormAlert tone="info">
-          The link expires after a while. You can request a new one when you log in.
-        </FormAlert>
+        {error ? <FormAlert tone="error">{error}</FormAlert> : null}
+        <div className="mt-6 flex flex-col items-center gap-6">
+          <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+            <InputOTPGroup>
+              <InputOTPSlot index={0} />
+              <InputOTPSlot index={1} />
+              <InputOTPSlot index={2} />
+              <InputOTPSlot index={3} />
+              <InputOTPSlot index={4} />
+              <InputOTPSlot index={5} />
+            </InputOTPGroup>
+          </InputOTP>
+          <Button
+            size="lg"
+            className="w-full"
+            disabled={!canSubmit || verifying}
+            onClick={() => void verifyCode()}
+          >
+            {verifying ? "Verifying…" : "Confirm email"}
+          </Button>
+          <div className="flex flex-col items-center gap-1">
+            <Button variant="link" size="sm" disabled={resending} onClick={() => void resendCode()}>
+              {resending ? "Sending…" : "Send a new code"}
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              Can't find it? Check your spam folder. You can also use the confirmation link in the
+              email — open it on this device.
+            </p>
+          </div>
+        </div>
       </AuthLayout>
     );
   }

@@ -64,6 +64,7 @@ function TicketList() {
   const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
   const [range, setRange] = useState<DateRangeValue>({ from: "", to: "" });
   const [overdue, setOverdue] = useState(false);
+  const [showClosed, setShowClosed] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({
     key: "ticket_number",
     asc: false,
@@ -103,7 +104,8 @@ function TicketList() {
       }
       if (creatorFilter && t.created_by !== creatorFilter) return false;
       if (overdue && !isOverdue(t, s, today)) return false;
-      // Compare in the shop's time zone, not UTC (created_at.slice(0, 10)).
+      if (s?.category === "closed" && !(showClosed || t.status_id === statusFilter)) return false;
+      // Compare in the shop's time zone (not UTC).
       const created = shopToday(shop.time_zone, new Date(t.created_at));
       if (range.from && created < range.from) return false;
       if (range.to && created > range.to) return false;
@@ -139,6 +141,7 @@ function TicketList() {
     assigneeFilter,
     creatorFilter,
     overdue,
+    showClosed,
     range,
     sort,
     today,
@@ -202,6 +205,16 @@ function TicketList() {
         >
           Overdue only
         </button>
+        <button
+          type="button"
+          onClick={() => setShowClosed(!showClosed)}
+          className={cn(
+            "min-h-11 rounded-md border px-3 text-sm font-medium",
+            showClosed ? "border-primary bg-surface-2 text-foreground" : "border-input",
+          )}
+        >
+          Include picked up
+        </button>
         {statusFilter ? (
           <Chip onClear={() => setStatusFilter(null)}>
             {statuses.find((s) => s.id === statusFilter)?.name}
@@ -213,7 +226,9 @@ function TicketList() {
           </Chip>
         ) : null}
         {creatorFilter ? (
-          <Chip onClear={() => setCreatorFilter(null)}>Created by {memberName(creatorFilter)}</Chip>
+          <Chip onClear={() => setCreatorFilter(null)}>
+            Created by {memberName(creatorFilter)}
+          </Chip>
         ) : null}
       </div>
 
@@ -298,7 +313,9 @@ function TicketList() {
                         className="min-h-11 rounded-md underline-offset-4 hover:underline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setCreatorFilter(creatorFilter === t.created_by ? null : t.created_by);
+                          setCreatorFilter(
+                            creatorFilter === t.created_by ? null : t.created_by,
+                          );
                         }}
                       >
                         {memberName(t.created_by)}

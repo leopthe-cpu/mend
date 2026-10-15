@@ -119,7 +119,12 @@ function TicketDetail() {
       setEvents((ev.data ?? []) as Event[]);
       const list = (ph.data ?? []) as Photo[];
       const urls = await signedPhotoUrls(list.map((p) => p.storage_path));
-      setPhotos(list.map((p) => ({ ...p, url: urls.get(p.storage_path) })));
+      setPhotos(
+        list.map((p) => {
+          const url = urls.get(p.storage_path);
+          return url ? { ...p, url } : p;
+        }),
+      );
     } catch (e) {
       setMessage({ tone: "error", text: friendlyDbError(e) });
     }
@@ -191,7 +196,6 @@ function TicketDetail() {
       .update({
         item_name: values.item_name,
         issue_description: values.issue_description || null,
-        item_description: null,
         promised_date: values.promised_date || null,
         assigned_to: values.assigned_to || null,
         custom_fields: custom,

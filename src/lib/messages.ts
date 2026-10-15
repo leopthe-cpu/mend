@@ -73,11 +73,18 @@ export type TemplateVars = {
   payment_line: string;
 };
 
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "2026-10-20" -> "Tue, Oct 20" (matches SQL to_char(date, 'Dy, Mon DD')). */
+export function formatPromisedDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "a date to be confirmed";
+  return `${WEEKDAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+}
+
 /** Pure substitution: replace every {key} in vars with its value, then trim. */
-export function renderTemplate(
-  text: string,
-  vars: Partial<TemplateVars>,
-): string {
+export function renderTemplate(text: string, vars: Partial<TemplateVars>): string {
   let out = text;
   for (const [k, v] of Object.entries(vars)) {
     out = out.split(`{${k}}`).join(v === undefined || v === null ? "" : String(v));
@@ -111,12 +118,8 @@ export const DEFAULT_TEMPLATES: Record<
   },
 };
 
-/** Legacy reminder default, kept for the NotifyDialog fallback. */
 export const REMINDER_TEMPLATE = DEFAULT_TEMPLATES.reminder.sms.body;
 
-// GSM 03.38 default alphabet and extension table (extension characters take
-// two septets). Anything else forces UCS-2: 70 characters per single SMS,
-// 67 per part when split; GSM-7 is 160 / 153.
 const GSM_BASIC =
   "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
 const GSM_EXT = "^{}\\[~]|€\f";

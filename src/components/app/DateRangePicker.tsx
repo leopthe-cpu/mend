@@ -41,7 +41,7 @@ export function DateRangePicker({
         <Calendar
           mode="range"
           selected={selected}
-          defaultMonth={selected.from}
+          {...(selected.from ? { defaultMonth: selected.from } : {})}
           numberOfMonths={1}
           onSelect={(range) => {
             onChange({

@@ -39,6 +39,8 @@ export function CustomerPicker({
   const [creating, setCreating] = useState(false);
   const [newCust, setNewCust] = useState(EMPTY_CUSTOMER);
   const searchSeq = useRef(0);
+  // Bumped on focus so clicking the field always (re)opens the list.
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     const q = query.trim();
@@ -54,9 +56,9 @@ export function CustomerPicker({
           p_query: q,
         });
         if (seq !== searchSeq.current) return;
-        const rows = (
-          (data ?? []) as { kind: string; id: string; label: string }[]
-        ).filter((r) => r.kind === "customer");
+        const rows = ((data ?? []) as { kind: string; id: string; label: string }[]).filter(
+          (r) => r.kind === "customer",
+        );
         setFound(
           rows
             .filter((r, i) => rows.findIndex((x) => x.id === r.id) === i)
@@ -76,26 +78,26 @@ export function CustomerPicker({
       .then(({ data }) => {
         if (seq !== searchSeq.current) return;
         setFound(
-          ((data ?? []) as { id: string; name: string; created_at: string }[]).map(
-            (c) => {
-              const since = c.created_at
-                ? new Intl.DateTimeFormat("en-CA", {
-                    month: "short",
-                    year: "numeric",
-                    timeZone,
-                  }).format(new Date(c.created_at))
-                : undefined;
-              return { id: c.id, label: c.name, since };
-            },
-          ),
+          ((data ?? []) as { id: string; name: string; created_at: string }[]).map((c) => {
+            const since = c.created_at
+              ? new Intl.DateTimeFormat("en-CA", {
+                  month: "short",
+                  year: "numeric",
+                  timeZone,
+                }).format(new Date(c.created_at))
+              : undefined;
+            return since ? { id: c.id, label: c.name, since } : { id: c.id, label: c.name };
+          }),
         );
       });
-  }, [query, customer, shopId, timeZone]);
+    return undefined;
+  }, [query, customer, shopId, timeZone, reload]);
 
   async function choose(f: Found) {
     onCustomerChange(f);
     setQuery("");
     setFound([]);
+    if (f.since) return;
     // Fetch the exact created_at for the "since" tag in the selected state.
     const { data } = await getSupabase()
       .from("customers")
@@ -108,7 +110,7 @@ export function CustomerPicker({
         year: "numeric",
         timeZone,
       }).format(new Date(data.created_at as string));
-      onCustomerChange((c) => (c?.id === f.id ? { ...c, since } : c));
+      onCustomerChange({ ...f, since });
     }
   }
 
@@ -139,9 +141,7 @@ export function CustomerPicker({
             <div className="min-w-0">
               <p className="truncate font-medium">{customer.label}</p>
               {customer.since ? (
-                <p className="text-sm text-muted-foreground">
-                  Customer since {customer.since}
-                </p>
+                <p className="text-sm text-muted-foreground">Customer since {customer.since}</p>
               ) : null}
             </div>
             <Button
@@ -161,12 +161,7 @@ export function CustomerPicker({
         <div className="grid gap-4 rounded-md border border-input bg-surface-1 p-4 sm:grid-cols-2">
           <div className="flex items-center justify-between sm:col-span-2">
             <h3 className={sectionTitle}>New customer</h3>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setCreating(false)}
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={() => setCreating(false)}>
               Search instead
             </Button>
           </div>
@@ -224,13 +219,20 @@ export function CustomerPicker({
                 id="cust-search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onFocus={() => searchSeq.current++}
+                onFocus={() => setReload((r) => r + 1)}
+                onClick={() => setReload((r) => r + 1)}
+                onKeyDown={(e) => {
+                  // Escape closes only the list; the dialog checks for an open
+                  // list (data-picker-list) before closing itself.
+                  if (e.key === "Escape") setFound([]);
+                }}
                 placeholder="Name, phone or email"
                 autoFocus
                 autoComplete="off"
               />
               {found.length ? (
                 <ul
+                  data-picker-list
                   className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-border bg-background shadow-md"
                   onKeyDown={(e) => {
                     if (e.key === "Escape") {

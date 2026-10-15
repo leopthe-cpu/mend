@@ -40,6 +40,7 @@ export function ServiceLine({
   currency,
   onChange,
   onRemove,
+  onTaxCreated,
 }: {
   line: DraftLine;
   isAdmin: boolean;
@@ -49,13 +50,13 @@ export function ServiceLine({
   currency: string;
   onChange: (patch: Partial<DraftLine>) => void;
   onRemove: () => void;
+  /** A tax created inline is added to the shop's list, so it shows and counts. */
+  onTaxCreated: (rate: TaxRate) => void;
 }) {
   const id = `line-${l.key}`;
   const money = (c: number) => formatMoney(c, currency);
   const catalogDiscount =
-    l.item?.discount_type &&
-    !l.discount &&
-    discountActiveOn(l.item, today)
+    l.item?.discount_type && !l.discount && discountActiveOn(l.item, today)
       ? discountLabel(l.item.discount_type, l.item.discount_value ?? 0, currency)
       : null;
   const taxNames = (ids: string[]) =>
@@ -74,9 +75,7 @@ export function ServiceLine({
               <p className="text-sm text-muted-foreground">
                 {money(l.item.price_cents)}
                 {l.item.unit === "hour" ? " per hour" : " each"}
-                {l.item.tax_rate_ids.length
-                  ? ` · ${taxNames(l.item.tax_rate_ids)}`
-                  : ""}
+                {l.item.tax_rate_ids.length ? ` · ${taxNames(l.item.tax_rate_ids)}` : ""}
                 {catalogDiscount ? ` · ${catalogDiscount}` : ""}
               </p>
             </>
@@ -107,10 +106,7 @@ export function ServiceLine({
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-20">
-          <Field
-            id={`${id}-qty`}
-            label={l.item?.unit === "hour" ? "Hours" : "Qty"}
-          >
+          <Field id={`${id}-qty`} label={l.item?.unit === "hour" ? "Hours" : "Qty"}>
             <Input
               id={`${id}-qty`}
               inputMode="decimal"
@@ -195,9 +191,7 @@ export function ServiceLine({
             size="icon"
             aria-label="Confirm discount"
             disabled={!l.discount.value.trim()}
-            onClick={() =>
-              onChange({ discount: { ...l.discount!, confirmed: true } })
-            }
+            onClick={() => onChange({ discount: { ...l.discount!, confirmed: true } })}
           >
             <Check />
           </Button>
@@ -282,9 +276,10 @@ export function ServiceLine({
             <InlineTaxCreator
               shopId={shopId}
               taxes={taxes}
-              onCreated={(rate) =>
-                onChange({ taxIds: [...(l.taxIds ?? []), rate.id] })
-              }
+              onCreated={(rate) => {
+                onTaxCreated(rate);
+                onChange({ taxIds: [...(l.taxIds ?? []), rate.id] });
+              }}
             />
           </div>
         </div>

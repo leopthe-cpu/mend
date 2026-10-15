@@ -19,11 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { focusFirstMissingField } from "@/lib/form";
 import { previewTotals, titleFromText, type PreviewLine } from "@/lib/intake";
@@ -35,6 +31,8 @@ import {
   formatMoney,
   parseMoney,
   parseQuantity,
+  discountActiveOn,
+  type TaxRate,
 } from "@/lib/money";
 import { friendlyDbError, roleAtLeast, type Membership } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
@@ -46,8 +44,8 @@ import {
   type CustomField,
   type Member,
 } from "@/lib/tickets";
-import { CustomFieldInput } from "../CustomFieldInput";
-import { PickupCalendar } from "../PickupCalendar";
+import { CustomFieldInput } from "./CustomFieldInput";
+import { PickupCalendar } from "./PickupCalendar";
 import { CustomerPicker, type Found } from "./intake/CustomerPicker";
 import { PaymentField, type PayMode } from "./intake/PaymentField";
 import { ServiceLine, type Discount, type DraftLine } from "./intake/ServiceLine";
@@ -69,8 +67,7 @@ function lineTotalOf(l: PreviewLine): number {
 
 function linePayload(l: DraftLine) {
   const qty = parseQuantity(l.qty) ?? 1;
-  const discount =
-    l.discount?.confirmed && l.discount.value.trim() ? toDiscount(l.discount) : null;
+  const discount = l.discount?.confirmed && l.discount.value.trim() ? toDiscount(l.discount) : null;
   const d = discount ? { discount_type: discount.type, discount_value: discount.value } : {};
   return l.item
     ? { catalog_item_id: l.item.id, quantity: qty, ...d }
@@ -284,9 +281,7 @@ export function NewTicketDialog({
         return;
       }
       if (hasTotal && depositCents > totals.totalCents) {
-        setError(
-          `The deposit can't be more than the total (${money(totals.totalCents)}).`,
-        );
+        setError(`The deposit can't be more than the total (${money(totals.totalCents)}).`);
         return;
       }
     }
@@ -298,12 +293,11 @@ export function NewTicketDialog({
     setSaving(true);
     try {
       const sb = getSupabase();
-      let customerId = customer?.id;
+      const customerId = customer?.id;
       if (!customerId) throw new Error("no customer");
       const cleanCustom = Object.fromEntries(
         Object.entries(custom).filter(
-          ([id, v]) =>
-            v !== undefined && v !== "" && detailFields.some((f) => f.id === id),
+          ([id, v]) => v !== undefined && v !== "" && detailFields.some((f) => f.id === id),
         ),
       );
       const { data, error } = await sb.rpc("create_ticket_full", {
@@ -327,9 +321,7 @@ export function NewTicketDialog({
       if (error) throw error;
       const created = (data as { ticket_id: string; ticket_number: number }[])[0];
       if (!created) throw new Error("no ticket");
-      const problems = photos.length
-        ? await uploadPhotos(shop.id, created.ticket_id, photos)
-        : [];
+      const problems = photos.length ? await uploadPhotos(shop.id, created.ticket_id, photos) : [];
       reset();
       onOpenChange(false);
       await navigate({
@@ -349,12 +341,17 @@ export function NewTicketDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-2xl">
+      <DialogContent
+        className="max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-2xl"
+        // Escape with a customer or service list open closes that list only,
+        // not the whole form (and everything typed into it).
+        onEscapeKeyDown={(e) => {
+          if (document.querySelector("[data-picker-list]")) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="text-2xl">New ticket</DialogTitle>
-          <DialogDescription>
-            Only the customer and the description are required.
-          </DialogDescription>
+          <DialogDescription>Only the customer and the description are required.</DialogDescription>
         </DialogHeader>
         <form method="post" onSubmit={save} noValidate className="flex min-w-0 flex-col gap-6">
           <CustomerPicker
@@ -383,9 +380,7 @@ export function NewTicketDialog({
             <Field
               id="title"
               label="Title"
-              hint={
-                titleEdited ? undefined : "Filled in from the description. You can change it."
-              }
+              hint={titleEdited ? undefined : "Filled in from the description. You can change it."}
             >
               <Input
                 id="title"
@@ -457,8 +452,7 @@ export function NewTicketDialog({
           {/* Service (optional) */}
           <section className="flex flex-col gap-3">
             <h3 className={sectionTitle}>
-              Service{" "}
-              <span className="font-normal text-muted-foreground">(optional)</span>
+              Service <span className="font-normal text-muted-foreground">(optional)</span>
             </h3>
             {lines.length ? (
               <ul className="flex flex-col gap-3">
@@ -472,15 +466,18 @@ export function NewTicketDialog({
                     today={today}
                     currency={shop.currency}
                     onChange={(patch) => updateLine(l.key, patch)}
-                    onRemove={() =>
-                      setLines(lines.filter((x) => x.key !== l.key))
-                    }
+                    onRemove={() => setLines(lines.filter((x) => x.key !== l.key))}
+                    onTaxCreated={(rate) => setTaxes((ts) => [...ts, rate])}
                   />
                 ))}
               </ul>
             ) : null}
             <div className="relative">
               <Input
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setSvcOpen(false);
+                }}
+                onClick={() => setSvcOpen(true)}
                 aria-label="Add a service"
                 value={svcQuery}
                 onChange={(e) => {
@@ -488,17 +485,26 @@ export function NewTicketDialog({
                   setSvcOpen(true);
                 }}
                 onFocus={() => setSvcOpen(true)}
-                onBlur={() => setSvcOpen(false)}
+                onBlur={() => {
+                  setSvcOpen(false);
+                  // A typed name is kept when focus leaves the field, instead
+                  // of being silently dropped: an exact catalog match adds that
+                  // item; otherwise an Admin gets a new-service row.
+                  const q = svcQuery.trim().toLowerCase();
+                  if (!q) return;
+                  const match = catalog.find((i) => i.name.trim().toLowerCase() === q);
+                  if (match) addServiceLine(match);
+                  else if (isAdmin) addServiceLine();
+                }}
                 placeholder={
-                  catalog.length
-                    ? "Search the catalog or type a new name"
-                    : "The catalog is empty"
+                  catalog.length ? "Search the catalog or type a new name" : "The catalog is empty"
                 }
                 disabled={!catalog.length && !isAdmin}
                 autoComplete="off"
               />
               {svcOpen && svcMatches.length ? (
                 <ul
+                  data-picker-list
                   className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-border bg-background shadow-md"
                   onKeyDown={(e) => {
                     if (e.key === "Escape") {
@@ -533,6 +539,7 @@ export function NewTicketDialog({
                 type="button"
                 variant="outline"
                 className="w-fit"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => addServiceLine()}
               >
                 <Plus /> New service &ldquo;{svcQuery.trim()}&rdquo;
@@ -542,6 +549,7 @@ export function NewTicketDialog({
               type="button"
               variant="outline"
               className="w-fit"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => addServiceLine()}
             >
               <Plus /> Service
@@ -553,9 +561,7 @@ export function NewTicketDialog({
                 {totals.savingsCents ? (
                   <>
                     <dt className="text-muted-foreground">Discounts</dt>
-                    <dd className="text-right">
-                      −{money(totals.savingsCents)}
-                    </dd>
+                    <dd className="text-right">−{money(totals.savingsCents)}</dd>
                   </>
                 ) : null}
                 {totals.taxes.map((t) => (
@@ -566,9 +572,7 @@ export function NewTicketDialog({
                     <dd className="text-right">{money(t.taxCents)}</dd>
                   </div>
                 ))}
-                <dt className="border-t border-border pt-1 text-base font-semibold">
-                  Total
-                </dt>
+                <dt className="border-t border-border pt-1 text-base font-semibold">Total</dt>
                 <dd className="border-t border-border pt-1 text-right text-base font-semibold">
                   {money(totals.totalCents)}
                 </dd>
@@ -578,7 +582,6 @@ export function NewTicketDialog({
 
           {/* Payment (optional) */}
           <section className="flex flex-col gap-3">
-            <h3 className={sectionTitle}>Payment</h3>
             <PaymentField
               payMode={payMode}
               onPayModeChange={setPayMode}
@@ -597,16 +600,10 @@ export function NewTicketDialog({
           <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-3">
               <h3 className={sectionTitle}>
-                Pick-up date{" "}
-                <span className="font-normal text-muted-foreground">(optional)</span>
+                Pick-up date <span className="font-normal text-muted-foreground">(optional)</span>
               </h3>
               {promised ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setPromised("")}
-                >
+                <Button type="button" variant="ghost" size="sm" onClick={() => setPromised("")}>
                   <X /> Clear
                 </Button>
               ) : null}
@@ -618,12 +615,8 @@ export function NewTicketDialog({
             </p>
             <Popover open={pickOpen} onOpenChange={setPickOpen}>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="justify-start gap-2 font-normal"
-                >
-                  <CalendarDays />{" "}
-                  {promised ? promisedDisplay : "Choose a date"}
+                <Button variant="outline" className="justify-start gap-2 font-normal">
+                  <CalendarDays /> {promised ? promisedDisplay : "Choose a date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-auto p-0">
@@ -687,14 +680,12 @@ export function NewTicketDialog({
               capture="environment"
               multiple
               className="sr-only"
-              onChange={(e) =>
-                setPhotos([...photos, ...Array.from(e.target.files ?? [])])
-              }
+              onChange={(e) => setPhotos([...photos, ...Array.from(e.target.files ?? [])])}
             />
             {photos.length ? (
               <p className="text-sm text-muted-foreground">
-                {photos.length} photo{photos.length > 1 ? "s" : ""} ready to
-                upload (10 MB max each).
+                {photos.length} photo{photos.length > 1 ? "s" : ""} ready to upload (10 MB max
+                each).
               </p>
             ) : null}
           </section>
@@ -719,11 +710,7 @@ export function NewTicketDialog({
 
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
           <div className="flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" size="lg" disabled={saving}>

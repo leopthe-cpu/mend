@@ -49,11 +49,7 @@ export function PaymentField({
           label="Deposit *"
           hint={hasTotal ? `At most ${money(total)}` : undefined}
         >
-          <MoneyInput
-            id="deposit"
-            value={depositAmount}
-            onValueChange={onDepositAmountChange}
-          />
+          <MoneyInput id="deposit" value={depositAmount} onValueChange={onDepositAmountChange} />
         </Field>
       ) : null}
     </div>

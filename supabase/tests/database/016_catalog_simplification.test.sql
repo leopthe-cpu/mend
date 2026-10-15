@@ -22,6 +22,9 @@ grant execute on function pg_temp.v(text) to authenticated;
 select set_config('request.jwt.claims', '{"sub":"c1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 insert into t values ('shop', public.create_shop('C Catalog', null, 'other', 'CA', null, 'America/Toronto')::text);
+reset role;
+select set_config('request.jwt.claims', '{"sub":"c2000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+set local role authenticated;
 insert into t values ('shop_e', public.create_shop('E Catalog', null, 'other', 'CA', null, 'America/Toronto')::text);
 reset role;
 

@@ -1,10 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Camera, Plus, X } from "lucide-react";
+import { Camera, CalendarDays, Check, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Field, selectClass } from "@/components/app/Field";
 import { MoneyInput, PhoneInput } from "@/components/app/MaskedInputs";
+import { NewCustomerForm, type NewCustomerValues } from "@/components/customers/NewCustomerForm";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,9 +21,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { METHOD_LABEL, type PaymentMethod } from "@/lib/estimates";
-import { percentOf, previewTotals, titleFromText, type PreviewLine } from "@/lib/intake";
+import { focusFirstMissingField } from "@/lib/form";
+import { previewTotals, titleFromText, type PreviewLine } from "@/lib/intake";
 import {
   type CatalogItem,
   discountActiveOn,
@@ -49,31 +55,60 @@ import { cn } from "@/lib/utils";
 import { CustomFieldInput } from "./CustomFieldInput";
 import { PickupCalendar } from "./PickupCalendar";
 
-// Intake (spec §7.2, UX plan v2 PR 6, decision 69): the most frequent action.
-// Only the customer and the description are required; pricing, a pick-up
-// date and a payment are optional, because the point is to take the order and
-// keep the customer informed. Everything is saved in one database call
-// (create_ticket_full), which checks it all again: custom lines and discounts
-// are Admin-only there too, and the database computes the real totals.
+// New-ticket flow, PR 6b refinements (15 Oct): customer list opens on focus,
+// services are typed or picked with a combobox (Admin-typed ones are saved to
+// the catalog), payment is a single dropdown, and the pick-up date opens a
+// popover calendar.
 
-type Found = { id: string; label: string; since?: string };
-type Discount = { type: DiscountType; value: string };
+type Found = { id: string; label: string; since?: string; phone?: string; email?: string };
+type Discount = { type: DiscountType; value: string; confirmed: boolean };
 type DraftLine = {
   key: string;
-  /** Set for a catalog line; a custom (one-off) line has none. */
   item: CatalogItem | null;
   name: string;
   qty: string;
   price: string;
-  /** Custom lines only: null until "+ Add tax" is clicked. */
+  /** null until "+ Add tax" is clicked; only for new (non-catalog) services. */
   taxIds: string[] | null;
-  /** A manual discount (Admins). Catalog discounts apply on their own. */
+  /** The per-line discount (Admins only); counts only when confirmed. */
   discount: Discount | null;
 };
 type PayMode = "later" | "full" | "deposit";
 
-const EMPTY_CUSTOMER = { name: "", phone: "", email: "", channel: "sms" as "sms" | "email" };
 let lineSeq = 0;
+
+const EMPTY_CUSTOMER = { name: "", phone: "", email: "", channel: "sms" as "sms" | "email" };
+
+const RATE_RE = /^\d{1,2}(\.\d{1,3})?$|^100(\.0{1,3})?$/;
+
+function toDiscount(d: Discount): { type: DiscountType; value: number } | null {
+  if (d.type === "fixed") {
+    const cents = parseMoney(d.value);
+    return cents ? { type: "fixed", value: cents / 100 } : null;
+  }
+  const pct = Number(d.value);
+  return d.value.trim() && pct > 0 && pct <= 100 ? { type: "percent", value: pct } : null;
+}
+
+function lineTotalOf(l: PreviewLine): number {
+  return previewTotals([{ ...l, taxRateIds: [] }], []).subtotalCents;
+}
+
+function linePayload(l: DraftLine) {
+  const qty = parseQuantity(l.qty) ?? 1;
+  const discount =
+    l.discount?.confirmed && l.discount.value.trim() ? toDiscount(l.discount) : null;
+  const d = discount ? { discount_type: discount.type, discount_value: discount.value } : {};
+  return l.item
+    ? { catalog_item_id: l.item.id, quantity: qty, ...d }
+    : {
+        name: l.name.trim(),
+        quantity: qty,
+        price_cents: parseMoney(l.price) ?? 0,
+        tax_rate_ids: l.taxIds ?? [],
+        ...d,
+      };
+}
 
 export function NewTicketDialog({
   open,
@@ -99,7 +134,6 @@ export function NewTicketDialog({
   const [found, setFound] = useState<Found[]>([]);
   const [customer, setCustomer] = useState<Found | null>(null);
   const [creating, setCreating] = useState(false);
-  const [newCust, setNewCust] = useState(EMPTY_CUSTOMER);
 
   const [issue, setIssue] = useState("");
   const [title, setTitle] = useState("");
@@ -108,16 +142,14 @@ export function NewTicketDialog({
   const [custom, setCustom] = useState<Record<string, string | number | undefined>>({});
 
   const [lines, setLines] = useState<DraftLine[]>([]);
-  const [catQuery, setCatQuery] = useState("");
-  const [catOpen, setCatOpen] = useState(false);
+  const [svcQuery, setSvcQuery] = useState("");
+  const [svcOpen, setSvcOpen] = useState(false);
 
   const [promised, setPromised] = useState("");
+  const [pickOpen, setPickOpen] = useState(false);
   const [assignee, setAssignee] = useState("");
   const [payMode, setPayMode] = useState<PayMode>("later");
-  const [depositBy, setDepositBy] = useState<"amount" | "percent">("amount");
   const [depositAmount, setDepositAmount] = useState("");
-  const [depositPercent, setDepositPercent] = useState("");
-  const [method, setMethod] = useState<PaymentMethod>("card");
   const [passcode, setPasscode] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [terms, setTerms] = useState(false);
@@ -142,27 +174,52 @@ export function NewTicketDialog({
   }, [open, shop.id]);
 
   useEffect(() => {
+    // Customer picker: on focus, show recent customers; typing filters via
+    // search_shop RPC (same behaviour as before).
     const q = query.trim();
-    if (q.length < 2 || customer) return setFound([]);
+    if (customer) return setFound([]);
     const seq = ++searchSeq.current;
-    const timer = setTimeout(async () => {
-      const { data } = await getSupabase().rpc("search_shop", { p_shop_id: shop.id, p_query: q });
-      if (seq !== searchSeq.current) return;
-      const rows = ((data ?? []) as { kind: string; id: string; label: string }[]).filter(
-        (r) => r.kind === "customer",
-      );
-      setFound(
-        rows
-          .filter((r, i) => rows.findIndex((x) => x.id === r.id) === i)
-          .map((r) => ({ id: r.id, label: r.label })),
-      );
-    }, 200);
-    return () => clearTimeout(timer);
+    if (q.length >= 2) {
+      // typed query — the existing search_shop RPC.
+      const timer = setTimeout(async () => {
+        const { data } = await getSupabase().rpc("search_shop", {
+          p_shop_id: shop.id,
+          p_query: q,
+        });
+        if (seq !== searchSeq.current) return;
+        const rows = (
+          (data ?? []) as { kind: string; id: string; label: string }[]
+        ).filter((r) => r.kind === "customer");
+        setFound(
+          rows
+            .filter((r, i) => rows.findIndex((x) => x.id === r.id) === i)
+            .map((r) => ({ id: r.id, label: r.label })),
+        );
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+    // Empty query: show most recent customers (PR 6b: list opens on click).
+    void getSupabase()
+      .from("customers")
+      .select("id, name, created_at")
+      .eq("shop_id", shop.id)
+      .is("archived_at", null)
+      .order("created_at", { ascending: false })
+      .limit(10)
+      .then(({ data }) => {
+        if (seq !== searchSeq.current) return;
+        setFound(
+          ((data ?? []) as { id: string; name: string; created_at: string }[]).map((c) => ({
+            id: c.id,
+            label: c.name,
+          })),
+        );
+      });
   }, [query, customer, shop.id]);
 
   async function chooseCustomer(f: Found) {
     setCustomer(f);
-    // "Customer since": read straight from the row (RLS: shop members only).
+    setQuery("");
     const { data } = await getSupabase()
       .from("customers")
       .select("created_at")
@@ -183,45 +240,35 @@ export function NewTicketDialog({
     setFound([]);
     setCustomer(null);
     setCreating(false);
-    setNewCust(EMPTY_CUSTOMER);
     setIssue("");
     setTitle("");
     setTitleEdited(false);
     setShownFields([]);
     setCustom({});
     setLines([]);
-    setCatQuery("");
+    setSvcQuery("");
     setPromised("");
     setAssignee("");
     setPayMode("later");
-    setDepositBy("amount");
     setDepositAmount("");
-    setDepositPercent("");
-    setMethod("card");
     setPasscode("");
     setPhotos([]);
     setTerms(false);
     setError(null);
   }
 
-  // The title follows the description until someone types their own.
   const shownTitle = titleEdited ? title : titleFromText(issue);
-
-  // Details: required custom fields always show; optional ones are added from
-  // the "+ Add detail" menu.
   const detailFields = fields.filter((f) => f.required || shownFields.includes(f.id));
   const moreFields = fields.filter((f) => !f.required && !shownFields.includes(f.id));
 
-  const catalogMatches = useMemo(() => {
-    const q = catQuery.trim().toLowerCase();
+  const svcMatches = useMemo(() => {
+    const q = svcQuery.trim().toLowerCase();
     return catalog.filter((i) => !q || i.name.toLowerCase().includes(q)).slice(0, 8);
-  }, [catalog, catQuery]);
+  }, [catalog, svcQuery]);
 
-  // What each line will cost, for the preview only (the database saves the
-  // real numbers with the same math).
   function previewLine(l: DraftLine): PreviewLine {
     const qty = parseQuantity(l.qty) ?? 0;
-    const manual = l.discount ? toDiscount(l.discount) : null;
+    const manual = l.discount?.confirmed ? toDiscount(l.discount) : null;
     if (l.item) {
       const catalogDiscount =
         l.item.discount_type && discountActiveOn(l.item, today)
@@ -230,7 +277,7 @@ export function NewTicketDialog({
       return {
         quantity: qty,
         unitPriceCents: l.item.price_cents,
-        discount: l.discount ? manual : catalogDiscount,
+        discount: manual ?? catalogDiscount,
         taxRateIds: l.item.tax_rate_ids,
       };
     }
@@ -243,81 +290,112 @@ export function NewTicketDialog({
   }
   const totals = previewTotals(lines.map(previewLine), taxes);
   const hasTotal = totals.totalCents > 0;
-  const depositCents =
-    depositBy === "percent" && hasTotal
-      ? percentOf(totals.totalCents, Number(depositPercent) || 0)
-      : (parseMoney(depositAmount) ?? 0);
+  const depositCents = parseMoney(depositAmount) ?? 0;
 
   function updateLine(key: string, patch: Partial<DraftLine>) {
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
-  function addCatalogLine(item: CatalogItem) {
+
+  function addServiceLine(item?: CatalogItem) {
     setLines((ls) => [
       ...ls,
       {
         key: `l${++lineSeq}`,
-        item,
-        name: item.name,
+        item: item ?? null,
+        name: item?.name ?? "",
         qty: "1",
         price: "",
         taxIds: null,
         discount: null,
       },
     ]);
-    setCatQuery("");
-    setCatOpen(false);
-  }
-  function addCustomLine() {
-    setLines((ls) => [
-      ...ls,
-      {
-        key: `l${++lineSeq}`,
-        item: null,
-        name: "",
-        qty: "1",
-        price: "",
-        taxIds: null,
-        discount: null,
-      },
-    ]);
+    setSvcQuery("");
+    setSvcOpen(false);
   }
 
-  // A problem with the lines or payment, in plain words, or null.
-  function pricingProblem(): string | null {
-    for (const [i, l] of lines.entries()) {
-      const label = l.item?.name || l.name.trim() || `Line ${i + 1}`;
-      if (!parseQuantity(l.qty)) return `${label}: enter a quantity, for example 1 or 1.5.`;
-      if (!l.item) {
-        if (!l.name.trim()) return `Line ${i + 1}: enter what it's for.`;
-        if (parseMoney(l.price) === null) return `${label}: enter a price.`;
-      }
-      if (l.discount && !toDiscount(l.discount)) return `${label}: enter the discount.`;
-    }
-    if (payMode === "full" && !hasTotal) return "Add a price before marking it paid in full.";
-    if (payMode === "deposit") {
-      if (depositCents <= 0) return "Enter the deposit amount.";
-      if (hasTotal && depositCents > totals.totalCents)
-        return `The deposit can't be more than the total (${money(totals.totalCents)}).`;
-    }
-    return null;
-  }
+  const isElectronics = shop.vertical === "electronics";
+  const sectionTitle = "text-base font-semibold";
+
+  const promisedDisplay = promised
+    ? new Intl.DateTimeFormat("en-CA", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(`${promised}T00:00:00Z`))
+    : "";
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!customer && !creating) return setError("Choose a customer or add a new one.");
-    if (creating && !customer) {
-      if (!newCust.name.trim()) return setError("Enter the customer's name.");
-      if (!newCust.phone.trim() && !newCust.email.trim())
-        return setError("Enter a phone number or an email so you can reach the customer.");
+    // Use the shared helper for required fields, one at a time.
+    const missing = focusFirstMissingField([
+      {
+        id: customer && !creating ? "cust-selected" : "cust-search",
+        ok: !!(customer || creating),
+        message: "Choose a customer or add a new one.",
+      },
+      { id: "issue", ok: !!issue.trim(), message: "Describe what needs doing." },
+    ]);
+    if (missing) {
+      setError(missing.message);
+      return;
     }
-    if (!issue.trim()) return setError("Describe what needs doing.");
-    for (const f of detailFields)
-      if (f.required && (custom[f.id] === undefined || custom[f.id] === ""))
-        return setError(`${f.label} is required.`);
-    const problem = pricingProblem();
-    if (problem) return setError(problem);
-    if (shop.terms_text && !terms) return setError("The customer needs to accept the terms.");
+    if (creating && !customer) {
+      // NewCustomerForm validates itself; this guard shouldn't be reached.
+      return;
+    }
+    for (const f of detailFields) {
+      if (f.required && (custom[f.id] === undefined || custom[f.id] === "")) {
+        setError(`${f.label} is required.`);
+        document.getElementById(`cf-${f.id}`)?.focus();
+        return;
+      }
+    }
+    // Check lines: unconfirmed discounts count as unfinished.
+    for (const [i, l] of lines.entries()) {
+      const label = l.item?.name || l.name.trim() || `Line ${i + 1}`;
+      if (!parseQuantity(l.qty)) {
+        setError(`${label}: enter a quantity, for example 1 or 1.5.`);
+        return;
+      }
+      if (!l.item) {
+        if (!l.name.trim()) {
+          setError(`Line ${i + 1}: enter what it's for.`);
+          return;
+        }
+        if (parseMoney(l.price) === null) {
+          setError(`${label}: enter a price.`);
+          return;
+        }
+      }
+      if (l.discount && !l.discount.value.trim()) {
+        // Discount opened but value empty — not confirmed, skip validation.
+      } else if (l.discount && !l.discount.confirmed && l.discount.value.trim()) {
+        setError(`${label}: confirm the discount with ✓.`);
+        return;
+      }
+    }
+    if (payMode === "full" && !hasTotal) {
+      setError("Add a price before marking it paid.");
+      return;
+    }
+    if (payMode === "deposit") {
+      if (depositCents <= 0) {
+        setError("Enter the deposit amount.");
+        return;
+      }
+      if (hasTotal && depositCents > totals.totalCents) {
+        setError(
+          `The deposit can't be more than the total (${money(totals.totalCents)}).`,
+        );
+        return;
+      }
+    }
+    if (shop.terms_text && !terms) {
+      setError("The customer needs to accept the terms.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -327,22 +405,21 @@ export function NewTicketDialog({
         const { data, error } = await sb.rpc("save_customer", {
           p_shop_id: shop.id,
           p_customer_id: null,
-          p_name: newCust.name,
-          p_phone: newCust.phone || null,
-          p_email: newCust.email || null,
-          p_preferred_channel: newCust.channel,
+          p_name: showNewCust.name,
+          p_phone: showNewCust.phone || null,
+          p_email: showNewCust.email || null,
+          p_preferred_channel: showNewCust.channel,
           p_notes: null,
         });
         if (error) throw error;
         customerId = data as string;
-        // If the ticket fails below, trying again reuses this customer
-        // instead of creating a duplicate.
-        setCustomer({ id: customerId, label: newCust.name });
+        setCustomer({ id: customerId, label: showNewCust.name });
         setCreating(false);
       }
       const cleanCustom = Object.fromEntries(
         Object.entries(custom).filter(
-          ([id, v]) => v !== undefined && v !== "" && detailFields.some((f) => f.id === id),
+          ([id, v]) =>
+            v !== undefined && v !== "" && detailFields.some((f) => f.id === id),
         ),
       );
       const { data, error } = await sb.rpc("create_ticket_full", {
@@ -358,18 +435,19 @@ export function NewTicketDialog({
         p_lines: lines.map(linePayload),
         p_payment:
           payMode === "full"
-            ? { full: true, method }
+            ? { full: true }
             : payMode === "deposit"
-              ? { amount_cents: depositCents, method }
+              ? { amount_cents: depositCents }
               : null,
       });
       if (error) throw error;
       const created = (data as { ticket_id: string; ticket_number: number }[])[0];
       if (!created) throw new Error("no ticket");
-      const problems = photos.length ? await uploadPhotos(shop.id, created.ticket_id, photos) : [];
+      const problems = photos.length
+        ? await uploadPhotos(shop.id, created.ticket_id, photos)
+        : [];
       reset();
       onOpenChange(false);
-      // Back to the board (not the ticket) with a short confirmation.
       await navigate({
         to: "/app/board",
         search: {
@@ -385,15 +463,18 @@ export function NewTicketDialog({
     }
   }
 
-  const isElectronics = shop.vertical === "electronics";
-  const sectionTitle = "text-base font-semibold";
+  // Inline new-customer state: a single object kept next to the form.
+  const [newCust, setNewCust] = useState(EMPTY_CUSTOMER);
+  const showNewCust = creating ? newCust : EMPTY_CUSTOMER;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">New ticket</DialogTitle>
-          <DialogDescription>Only the customer and the description are required.</DialogDescription>
+          <DialogDescription>
+            Only the customer and the description are required.
+          </DialogDescription>
         </DialogHeader>
         <form method="post" onSubmit={save} noValidate className="flex min-w-0 flex-col gap-6">
           {/* Customer */}
@@ -424,7 +505,6 @@ export function NewTicketDialog({
                 </div>
               </div>
             ) : creating ? (
-              // A tinted panel so a new customer stands out from the search.
               <div className="grid gap-4 rounded-md border border-input bg-surface-1 p-4 sm:grid-cols-2">
                 <div className="flex items-center justify-between sm:col-span-2">
                   <h3 className={sectionTitle}>New customer</h3>
@@ -442,7 +522,9 @@ export function NewTicketDialog({
                     <Input
                       id="nc-name"
                       value={newCust.name}
-                      onChange={(e) => setNewCust({ ...newCust, name: e.target.value })}
+                      onChange={(e) =>
+                        setNewCust({ ...newCust, name: e.target.value })
+                      }
                       maxLength={120}
                       autoFocus
                     />
@@ -452,7 +534,9 @@ export function NewTicketDialog({
                   <PhoneInput
                     id="nc-phone"
                     value={newCust.phone}
-                    onValueChange={(phone) => setNewCust({ ...newCust, phone })}
+                    onValueChange={(phone) =>
+                      setNewCust({ ...newCust, phone })
+                    }
                   />
                 </Field>
                 <Field id="nc-email" label="Email *">
@@ -460,7 +544,9 @@ export function NewTicketDialog({
                     id="nc-email"
                     type="email"
                     value={newCust.email}
-                    onChange={(e) => setNewCust({ ...newCust, email: e.target.value })}
+                    onChange={(e) =>
+                      setNewCust({ ...newCust, email: e.target.value })
+                    }
                   />
                 </Field>
                 <p className="-mt-2 text-sm text-muted-foreground sm:col-span-2">
@@ -472,7 +558,10 @@ export function NewTicketDialog({
                     className={selectClass}
                     value={newCust.channel}
                     onChange={(e) =>
-                      setNewCust({ ...newCust, channel: e.target.value as "sms" | "email" })
+                      setNewCust({
+                        ...newCust,
+                        channel: e.target.value as "sms" | "email",
+                      })
                     }
                   >
                     <option value="sms">Text message</option>
@@ -486,15 +575,35 @@ export function NewTicketDialog({
                   Customer *
                 </label>
                 <div className="flex gap-2">
-                  <Input
-                    id="cust-search"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Name, phone or email"
-                    autoFocus
-                    autoComplete="off"
-                    className="min-w-0 flex-1"
-                  />
+                  <div className="relative min-w-0 flex-1">
+                    <Input
+                      id="cust-search"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onFocus={() => searchSeq.current++}
+                      placeholder="Name, phone or email"
+                      autoFocus
+                      autoComplete="off"
+                    />
+                    {found.length && !customer ? (
+                      <ul className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-border bg-background shadow-md">
+                        {found.map((f) => (
+                          <li key={f.id}>
+                            <button
+                              type="button"
+                              className="flex min-h-11 w-full items-center px-4 text-left hover:bg-accent"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                void chooseCustomer(f);
+                              }}
+                            >
+                              {f.label}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
                   <Button
                     type="button"
                     variant="outline"
@@ -512,26 +621,11 @@ export function NewTicketDialog({
                     <Plus /> Customer
                   </Button>
                 </div>
-                {found.length ? (
-                  <ul className="divide-y divide-border rounded-md border border-border bg-surface-2">
-                    {found.map((f) => (
-                      <li key={f.id}>
-                        <button
-                          type="button"
-                          className="flex min-h-11 w-full items-center px-4 text-left hover:bg-accent"
-                          onClick={() => void chooseCustomer(f)}
-                        >
-                          {f.label}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
               </div>
             )}
           </section>
 
-          {/* What needs doing */}
+          {/* Description & details */}
           <section className="flex flex-col gap-4">
             <Field id="issue" label="Description *">
               <Textarea
@@ -547,7 +641,9 @@ export function NewTicketDialog({
             <Field
               id="title"
               label="Title"
-              hint={titleEdited ? undefined : "Filled in from the description. You can change it."}
+              hint={
+                titleEdited ? undefined : "Filled in from the description. You can change it."
+              }
             >
               <Input
                 id="title"
@@ -613,74 +709,87 @@ export function NewTicketDialog({
             ) : null}
           </section>
 
-          {/* Items and price (optional) */}
+          {/* Service (optional) */}
           <section className="flex flex-col gap-3">
             <h3 className={sectionTitle}>
-              Items and price <span className="font-normal text-muted-foreground">(optional)</span>
+              Service{" "}
+              <span className="font-normal text-muted-foreground">(optional)</span>
             </h3>
             {lines.length ? (
               <ul className="flex flex-col gap-3">
                 {lines.map((l) => (
-                  <LineRow
+                  <ServiceLine
                     key={l.key}
                     line={l}
                     isAdmin={isAdmin}
                     taxes={taxes}
                     today={today}
-                    lineTotal={money(lineTotalOf(previewLine(l)))}
                     currency={shop.currency}
                     onChange={(patch) => updateLine(l.key, patch)}
-                    onRemove={() => setLines(lines.filter((x) => x.key !== l.key))}
+                    onRemove={() =>
+                      setLines(lines.filter((x) => x.key !== l.key))
+                    }
                   />
                 ))}
               </ul>
             ) : null}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-              <div className="relative min-w-0 flex-1">
-                <Input
-                  aria-label="Search the catalog"
-                  value={catQuery}
-                  onChange={(e) => {
-                    setCatQuery(e.target.value);
-                    setCatOpen(true);
-                  }}
-                  onFocus={() => setCatOpen(true)}
-                  onBlur={() => setCatOpen(false)}
-                  placeholder={catalog.length ? "Search the catalog" : "The catalog is empty"}
-                  disabled={!catalog.length}
-                  autoComplete="off"
-                />
-                {catOpen && catalogMatches.length ? (
-                  <ul className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-border bg-background shadow-md">
-                    {catalogMatches.map((i) => (
-                      <li key={i.id}>
-                        <button
-                          type="button"
-                          // mousedown, not click: the input's blur would close
-                          // the list before a click lands.
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            addCatalogLine(i);
-                          }}
-                          className="flex min-h-11 w-full items-center justify-between gap-3 px-4 text-left hover:bg-accent"
-                        >
-                          <span className="truncate">{i.name}</span>
-                          <span className="shrink-0 tabular-nums text-muted-foreground">
-                            {money(i.price_cents)}
-                            {i.unit === "hour" ? "/h" : ""}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-              {isAdmin ? (
-                <Button type="button" variant="outline" className="w-fit" onClick={addCustomLine}>
-                  <Plus /> Custom line
-                </Button>
+            <div className="relative">
+              <Input
+                aria-label="Add a service"
+                value={svcQuery}
+                onChange={(e) => {
+                  setSvcQuery(e.target.value);
+                  setSvcOpen(true);
+                }}
+                onFocus={() => setSvcOpen(true)}
+                onBlur={() => setSvcOpen(false)}
+                placeholder={
+                  catalog.length ? "Search the catalog or type a new name" : "The catalog is empty"
+                }
+                disabled={!catalog.length && !isAdmin}
+                autoComplete="off"
+              />
+              {svcOpen && svcMatches.length ? (
+                <ul className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-border bg-background shadow-md">
+                  {svcMatches.map((i) => (
+                    <li key={i.id}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          addServiceLine(i);
+                        }}
+                        className="flex min-h-11 w-full items-center justify-between gap-3 px-4 text-left hover:bg-accent"
+                      >
+                        <span className="truncate">{i.name}</span>
+                        <span className="shrink-0 tabular-nums text-muted-foreground">
+                          {money(i.price_cents)}
+                          {i.unit === "hour" ? "/h" : ""}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               ) : null}
             </div>
+            {isAdmin && svcQuery.trim() ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-fit"
+                onClick={() => addServiceLine()}
+              >
+                <Plus /> New service &ldquo;{svcQuery.trim()}&rdquo;
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-fit"
+              onClick={() => addServiceLine()}
+            >
+              <Plus /> Service
+            </Button>
             {lines.length ? (
               <dl className="ml-auto grid w-full max-w-xs grid-cols-[1fr_auto] gap-x-6 gap-y-1 text-sm tabular-nums">
                 <dt className="text-muted-foreground">Subtotal</dt>
@@ -688,7 +797,9 @@ export function NewTicketDialog({
                 {totals.savingsCents ? (
                   <>
                     <dt className="text-muted-foreground">Discounts</dt>
-                    <dd className="text-right">−{money(totals.savingsCents)}</dd>
+                    <dd className="text-right">
+                      −{money(totals.savingsCents)}
+                    </dd>
                   </>
                 ) : null}
                 {totals.taxes.map((t) => (
@@ -699,7 +810,9 @@ export function NewTicketDialog({
                     <dd className="text-right">{money(t.taxCents)}</dd>
                   </div>
                 ))}
-                <dt className="border-t border-border pt-1 text-base font-semibold">Total</dt>
+                <dt className="border-t border-border pt-1 text-base font-semibold">
+                  Total
+                </dt>
                 <dd className="border-t border-border pt-1 text-right text-base font-semibold">
                   {money(totals.totalCents)}
                 </dd>
@@ -710,127 +823,87 @@ export function NewTicketDialog({
           {/* Payment (optional) */}
           <section className="flex flex-col gap-3">
             <h3 className={sectionTitle}>Payment</h3>
-            <div role="radiogroup" aria-label="Payment" className="flex flex-wrap gap-2">
-              {(
-                [
-                  ["later", "Pay at pick-up"],
-                  ...(hasTotal ? [["full", "Paid in full"] as const] : []),
-                  ["deposit", hasTotal ? "Partial (deposit)" : "Deposit"],
-                ] as const
-              ).map(([mode, label]) => (
-                <button
-                  key={mode}
-                  type="button"
-                  role="radio"
-                  aria-checked={payMode === mode}
-                  onClick={() => setPayMode(mode)}
-                  className={cn(
-                    "min-h-11 rounded-md border px-4 text-sm font-medium",
-                    payMode === mode
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-input bg-surface-2 hover:bg-accent",
-                  )}
+            <div className="flex flex-col gap-3">
+              <Field id="pay-mode" label="Payment">
+                <select
+                  id="pay-mode"
+                  className={selectClass}
+                  value={payMode}
+                  onChange={(e) => setPayMode(e.target.value as PayMode)}
                 >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {payMode === "full" && !hasTotal ? (
-              <p className="text-sm text-muted-foreground">Add a price to mark it paid in full.</p>
-            ) : null}
-            {payMode !== "later" ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {payMode === "deposit" ? (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <label htmlFor="deposit" className="text-sm font-medium">
-                        Deposit *
-                      </label>
-                      {hasTotal ? (
-                        <button
-                          type="button"
-                          className="text-sm font-medium underline"
-                          onClick={() =>
-                            setDepositBy(depositBy === "amount" ? "percent" : "amount")
-                          }
-                        >
-                          {depositBy === "amount" ? "Use %" : "Use amount"}
-                        </button>
-                      ) : null}
-                    </div>
-                    {depositBy === "percent" && hasTotal ? (
-                      <>
-                        <Input
-                          id="deposit"
-                          inputMode="decimal"
-                          value={depositPercent}
-                          onChange={(e) =>
-                            setDepositPercent(e.target.value.replace(/[^\d.]/g, "").slice(0, 6))
-                          }
-                          placeholder="50"
-                          aria-describedby="deposit-hint"
-                        />
-                        <p id="deposit-hint" className="text-sm text-muted-foreground">
-                          % of {money(totals.totalCents)} = {money(depositCents)}
-                        </p>
-                      </>
-                    ) : (
-                      <MoneyInput
-                        id="deposit"
-                        value={depositAmount}
-                        onValueChange={setDepositAmount}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium">Amount</span>
-                    <p className="flex h-11 items-center tabular-nums">
-                      {money(totals.totalCents)}
-                    </p>
-                  </div>
-                )}
-                <Field id="pay-method" label="Paid by">
-                  <select
-                    id="pay-method"
-                    className={selectClass}
-                    value={method}
-                    onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                  >
-                    {(Object.keys(METHOD_LABEL) as PaymentMethod[]).map((m) => (
-                      <option key={m} value={m}>
-                        {METHOD_LABEL[m]}
-                      </option>
-                    ))}
-                  </select>
+                  <option value="later">Pay at pick-up</option>
+                  {hasTotal ? (
+                    <option value="full">Paid</option>
+                  ) : null}
+                  <option value="deposit">Deposit</option>
+                </select>
+              </Field>
+              {payMode === "deposit" ? (
+                <Field
+                  id="deposit"
+                  label="Deposit *"
+                  hint={
+                    hasTotal
+                      ? `At most ${money(totals.totalCents)}`
+                      : undefined
+                  }
+                >
+                  <MoneyInput
+                    id="deposit"
+                    value={depositAmount}
+                    onValueChange={setDepositAmount}
+                  />
                 </Field>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </section>
 
-          {/* Pick-up date and who's on it (optional) */}
+          {/* Pick-up date (optional) */}
           <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-3">
               <h3 className={sectionTitle}>
-                Pick-up date <span className="font-normal text-muted-foreground">(optional)</span>
+                Pick-up date{" "}
+                <span className="font-normal text-muted-foreground">(optional)</span>
               </h3>
               {promised ? (
-                <Button type="button" variant="ghost" size="sm" onClick={() => setPromised("")}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPromised("")}
+                >
                   <X /> Clear
                 </Button>
               ) : null}
             </div>
             <p className="text-sm text-muted-foreground">
               {promised
-                ? `Ready by ${new Intl.DateTimeFormat("en-CA", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(`${promised}T00:00:00Z`))}.`
+                ? `Ready by ${promisedDisplay}.`
                 : "The number on a day is how many open tickets are already due then."}
             </p>
-            <PickupCalendar
-              shopId={shop.id}
-              today={today}
-              value={promised}
-              onChange={setPromised}
-            />
+            <Popover open={pickOpen} onOpenChange={setPickOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="justify-start gap-2 font-normal"
+                >
+                  <CalendarDays />{" "}
+                  {promised ? promisedDisplay : "Choose a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <PickupCalendar
+                  shopId={shop.id}
+                  today={today}
+                  value={promised}
+                  onChange={(iso) => {
+                    setPromised(iso);
+                    if (iso) setPickOpen(false);
+                  }}
+                  className="rounded-none border-0"
+                />
+              </PopoverContent>
+            </Popover>
             <Field id="assignee" label="Assigned to">
               <select
                 id="assignee"
@@ -879,12 +952,14 @@ export function NewTicketDialog({
               capture="environment"
               multiple
               className="sr-only"
-              onChange={(e) => setPhotos([...photos, ...Array.from(e.target.files ?? [])])}
+              onChange={(e) =>
+                setPhotos([...photos, ...Array.from(e.target.files ?? [])])
+              }
             />
             {photos.length ? (
               <p className="text-sm text-muted-foreground">
-                {photos.length} photo{photos.length > 1 ? "s" : ""} ready to upload (10 MB max
-                each).
+                {photos.length} photo{photos.length > 1 ? "s" : ""} ready to
+                upload (10 MB max each).
               </p>
             ) : null}
           </section>
@@ -909,7 +984,11 @@ export function NewTicketDialog({
 
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
           <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" size="lg" disabled={saving}>
@@ -922,42 +1001,11 @@ export function NewTicketDialog({
   );
 }
 
-/** A typed discount as numbers, or null if it isn't a valid amount yet. */
-function toDiscount(d: Discount): { type: DiscountType; value: number } | null {
-  if (d.type === "fixed") {
-    const cents = parseMoney(d.value);
-    return cents ? { type: "fixed", value: cents / 100 } : null;
-  }
-  const pct = Number(d.value);
-  return d.value.trim() && pct > 0 && pct <= 100 ? { type: "percent", value: pct } : null;
-}
-
-function lineTotalOf(l: PreviewLine): number {
-  return previewTotals([{ ...l, taxRateIds: [] }], []).subtotalCents;
-}
-
-/** The JSON create_ticket_full expects for one line. */
-function linePayload(l: DraftLine) {
-  const qty = parseQuantity(l.qty) ?? 1;
-  const discount = l.discount ? toDiscount(l.discount) : null;
-  const d = discount ? { discount_type: discount.type, discount_value: discount.value } : {};
-  return l.item
-    ? { catalog_item_id: l.item.id, quantity: qty, ...d }
-    : {
-        name: l.name.trim(),
-        quantity: qty,
-        price_cents: parseMoney(l.price) ?? 0,
-        tax_rate_ids: l.taxIds ?? [],
-        ...d,
-      };
-}
-
-function LineRow({
+function ServiceLine({
   line: l,
   isAdmin,
   taxes,
   today,
-  lineTotal,
   currency,
   onChange,
   onRemove,
@@ -966,14 +1014,16 @@ function LineRow({
   isAdmin: boolean;
   taxes: TaxRate[];
   today: string;
-  lineTotal: string;
   currency: string;
   onChange: (patch: Partial<DraftLine>) => void;
   onRemove: () => void;
 }) {
   const id = `line-${l.key}`;
+  const money = (c: number) => formatMoney(c, currency);
   const catalogDiscount =
-    l.item?.discount_type && !l.discount && discountActiveOn(l.item, today)
+    l.item?.discount_type &&
+    !l.discount &&
+    discountActiveOn(l.item, today)
       ? discountLabel(l.item.discount_type, l.item.discount_value ?? 0, currency)
       : null;
   const taxNames = (ids: string[]) =>
@@ -984,20 +1034,24 @@ function LineRow({
 
   return (
     <li className="flex flex-col gap-3 rounded-md border border-border bg-surface-2 p-3">
-      <div className="flex items-start gap-2">
+      <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1">
           {l.item ? (
             <>
-              <p className="font-medium">{l.item.name}</p>
+              <p className="text-sm font-medium">
+                {l.item.name}
+              </p>
               <p className="text-sm text-muted-foreground">
-                {formatMoney(l.item.price_cents, currency)}
+                {money(l.item.price_cents)}
                 {l.item.unit === "hour" ? " per hour" : " each"}
-                {l.item.tax_rate_ids.length ? ` · ${taxNames(l.item.tax_rate_ids)}` : ""}
+                {l.item.tax_rate_ids.length
+                  ? ` · ${taxNames(l.item.tax_rate_ids)}`
+                  : ""}
                 {catalogDiscount ? ` · ${catalogDiscount}` : ""}
               </p>
             </>
           ) : (
-            <Field id={`${id}-name`} label="Custom line *">
+            <Field id={`${id}-name`} label="Service *">
               <Input
                 id={`${id}-name`}
                 value={l.name}
@@ -1028,11 +1082,15 @@ function LineRow({
               id={`${id}-qty`}
               inputMode="decimal"
               value={l.qty}
-              onChange={(e) => onChange({ qty: e.target.value.replace(/[^\d.]/g, "").slice(0, 8) })}
+              onChange={(e) =>
+                onChange({
+                  qty: e.target.value.replace(/[^\d.]/g, "").slice(0, 8),
+                })
+              }
             />
           </Field>
         </div>
-        {l.item ? null : (
+        {!l.item ? (
           <div className="w-32">
             <Field id={`${id}-price`} label="Price *">
               <MoneyInput
@@ -1042,11 +1100,11 @@ function LineRow({
               />
             </Field>
           </div>
-        )}
-        <p className="ml-auto flex h-11 items-center font-medium tabular-nums">{lineTotal}</p>
+        ) : null}
       </div>
 
-      {l.discount ? (
+      {/* Inline discount (Admins only, per line) */}
+      {isAdmin && l.discount ? (
         <div className="flex flex-wrap items-end gap-3">
           <div className="w-28">
             <Field id={`${id}-dtype`} label="Discount">
@@ -1055,7 +1113,13 @@ function LineRow({
                 className={selectClass}
                 value={l.discount.type}
                 onChange={(e) =>
-                  onChange({ discount: { type: e.target.value as DiscountType, value: "" } })
+                  onChange({
+                    discount: {
+                      type: e.target.value as DiscountType,
+                      value: l.discount?.value ?? "",
+                      confirmed: false,
+                    },
+                  })
                 }
               >
                 <option value="percent">%</option>
@@ -1068,7 +1132,9 @@ function LineRow({
               <MoneyInput
                 aria-label="Discount amount"
                 value={l.discount.value}
-                onValueChange={(value) => onChange({ discount: { type: "fixed", value } })}
+                onValueChange={(value) =>
+                  onChange({ discount: { ...l.discount!, value, confirmed: false } })
+                }
               />
             ) : (
               <Input
@@ -1081,12 +1147,25 @@ function LineRow({
                     discount: {
                       type: "percent",
                       value: e.target.value.replace(/[^\d.]/g, "").slice(0, 6),
+                      confirmed: false,
                     },
                   })
                 }
               />
             )}
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Confirm discount"
+            disabled={!l.discount.value.trim()}
+            onClick={() =>
+              onChange({ discount: { ...l.discount!, confirmed: true } })
+            }
+          >
+            <Check />
+          </Button>
           <Button
             type="button"
             variant="ghost"
@@ -1100,48 +1179,95 @@ function LineRow({
         </div>
       ) : null}
 
-      {!l.item && l.taxIds !== null ? (
-        <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <legend className="sr-only">Taxes on this line</legend>
-          <span className="text-sm font-medium">Tax</span>
-          {taxes.map((t) => (
-            <label key={t.id} className="flex min-h-11 items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="size-5"
-                checked={l.taxIds?.includes(t.id) ?? false}
-                onChange={(e) =>
+      {/* Inline tax (Admins only, new services only) */}
+      {isAdmin && !l.item && l.taxIds !== null ? (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">Tax</span>
+            {l.taxIds.length
+              ? l.taxIds.map((tid) => {
+                  const t = taxes.find((x) => x.id === tid);
+                  if (!t) return null;
+                  return (
+                    <span
+                      key={tid}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 px-2 py-0.5 text-sm"
+                    >
+                      {t.name} ({t.rate}%)
+                      <button
+                        type="button"
+                        aria-label={`Remove ${t.name}`}
+                        className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+                        onClick={() =>
+                          onChange({
+                            taxIds: l.taxIds!.filter((id) => id !== tid),
+                          })
+                        }
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  );
+                })
+              : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-11"
+              aria-label="Remove tax"
+              onClick={() => onChange({ taxIds: null })}
+            >
+              <X />
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="w-44">
+              <select
+                aria-label="Pick a tax"
+                className={selectClass}
+                value=""
+                onChange={(e) => {
+                  if (!e.target.value) return;
                   onChange({
-                    taxIds: e.target.checked
-                      ? [...(l.taxIds ?? []), t.id]
-                      : (l.taxIds ?? []).filter((x) => x !== t.id),
-                  })
-                }
-              />
-              {t.name} ({t.rate}%)
-            </label>
-          ))}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-11"
-            aria-label="Remove tax"
-            onClick={() => onChange({ taxIds: null })}
-          >
-            <X />
-          </Button>
-        </fieldset>
+                    taxIds: [...(l.taxIds ?? []), e.target.value],
+                  });
+                }}
+              >
+                <option value="">Pick a tax…</option>
+                {taxes
+                  .filter((t) => !(l.taxIds ?? []).includes(t.id))
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.rate}%)
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <InlineTaxCreator
+              shopId={l.item?.id ?? ""}
+              taxes={taxes}
+              onCreated={(rate) =>
+                onChange({ taxIds: [...(l.taxIds ?? []), rate.id] })
+              }
+            />
+          </div>
+        </div>
       ) : null}
 
-      {(isAdmin && !l.discount) || (!l.item && l.taxIds === null && taxes.length) ? (
+      {/* Add buttons: discount on any line (Admin), tax on new services (Admin) */}
+      {isAdmin ? (
         <div className="flex flex-wrap gap-2">
-          {isAdmin && !l.discount ? (
+          {!l.discount ? (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => onChange({ discount: { type: "percent", value: "" } })}
+              onClick={() =>
+                onChange({
+                  discount: { type: "percent", value: "", confirmed: false },
+                })
+              }
             >
               <Plus /> Add discount
             </Button>
@@ -1151,8 +1277,7 @@ function LineRow({
               type="button"
               variant="outline"
               size="sm"
-              // Revealed with every active rate ticked: the usual case.
-              onClick={() => onChange({ taxIds: taxes.map((t) => t.id) })}
+              onClick={() => onChange({ taxIds: [] })}
             >
               <Plus /> Add tax
             </Button>
@@ -1160,5 +1285,69 @@ function LineRow({
         </div>
       ) : null}
     </li>
+  );
+}
+
+/** Inline tax creator reused from the catalog form (PR 4): name + rate + ✓. */
+function InlineTaxCreator({
+  shopId,
+  taxes,
+  onCreated,
+}: {
+  shopId: string;
+  taxes: TaxRate[];
+  onCreated: (rate: TaxRate) => void;
+}) {
+  const [name, setName] = useState("");
+  const [rate, setRate] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  async function confirm() {
+    if (!name.trim()) return;
+    if (!RATE_RE.test(rate.trim())) return;
+    setCreating(true);
+    const { data, error } = await getSupabase()
+      .from("tax_rates")
+      .insert({ shop_id: shopId, name: name.trim(), rate: Number(rate) })
+      .select("id, name, rate, active")
+      .single();
+    setCreating(false);
+    if (error || !data) return;
+    onCreated(data as TaxRate);
+    setName("");
+    setRate("");
+  }
+
+  return (
+    <>
+      <div className="w-28">
+        <Input
+          aria-label="New tax name"
+          value={name}
+          maxLength={40}
+          placeholder="HST"
+          onChange={(e) => setName(e.target.value)}
+        />
+      </div>
+      <div className="w-20">
+        <Input
+          aria-label="New tax rate"
+          inputMode="decimal"
+          value={rate}
+          placeholder="13"
+          onChange={(e) => setRate(e.target.value)}
+        />
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        aria-label="Confirm tax"
+        disabled={creating || !name.trim()}
+        onClick={() => void confirm()}
+      >
+        <Check />
+      </Button>
+    </>
   );
 }

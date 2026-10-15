@@ -11,6 +11,8 @@ new-ticket flow (15 Oct).
 
 ## How to work
 
+- Follow the **Hard rules for every PR** in `docs/librechat-agent.md` (CI must
+  be green before you report; small files; one commit at a time).
 - Read `CLAUDE.md`, `docs/spec.md`, `docs/decisions.md` and
   `docs/environments.md` before starting.
 - One pull request at a time, in the order below. Each from a new

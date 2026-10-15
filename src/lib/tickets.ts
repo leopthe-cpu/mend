@@ -49,13 +49,14 @@ export type Ticket = {
   customer_notes: string | null;
   terms_accepted_at: string | null;
   picked_up_at: string | null;
+  created_by: string | null;
   created_at: string;
   customer?: { id: string; name: string } | null;
 };
 export type Member = { user_id: string; role: string; name: string; email: string };
 
 const TICKET_COLUMNS =
-  "id, shop_id, ticket_number, customer_id, item_name, item_description, issue_description, status_id, status_changed_at, assigned_to, promised_date, custom_fields, has_passcode, internal_notes, customer_notes, terms_accepted_at, picked_up_at, created_at, customer:customers(id, name)";
+  "id, shop_id, ticket_number, customer_id, item_name, item_description, issue_description, status_id, status_changed_at, assigned_to, promised_date, custom_fields, has_passcode, internal_notes, customer_notes, terms_accepted_at, picked_up_at, created_by, created_at, customer:customers(id, name)";
 
 export async function fetchStatuses(shopId: string): Promise<Status[]> {
   const { data, error } = await getSupabase()

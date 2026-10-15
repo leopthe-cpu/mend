@@ -1,10 +1,8 @@
 -- PR 8: three message templates (Ticket created / Ticket ready / Reminder)
--- and an automatic "ticket created" message.  We reuse message_templates
--- (RLS, audit and export already cover it) and add a `kind` column instead of
--- a new table.  Existing status templates (kind 'status') keep working.
+-- and an automatic "ticket created" message.  Reuse message_templates (RLS,
+-- audit and export already cover it) and add a `kind` column; existing status
+-- templates (kind 'status') keep working.
 
--- 1) messages.kind gains 'created'; queue_message accepts it (same signature
---    and defaults, every existing check kept).
 alter table public.messages drop constraint messages_kind_check;
 alter table public.messages add constraint messages_kind_check
   check (kind in ('status', 'reminder', 'manual', 'created'));
@@ -92,8 +90,6 @@ begin
 end;
 $$;
 
--- 2) message_templates gains `kind`; status_id becomes nullable and the two
---    shapes are mutually exclusive; the old unique becomes two partial ones.
 alter table public.message_templates
   add column kind text not null default 'status'
     check (kind in ('status', 'created', 'reminder'));
@@ -106,7 +102,6 @@ create unique index message_templates_status_id_channel_key
 create unique index message_templates_shop_kind_channel_key
   on public.message_templates (shop_id, kind, channel) where kind <> 'status';
 
--- 3) Default text bodies shared by seeding and the UI.
 create function private.pr8_default_body(p_kind text, p_channel public.message_channel)
 returns text
 language sql
@@ -130,7 +125,6 @@ as $$
   end;
 $$;
 
--- 4) Seed created + reminder templates for existing shops (only if absent).
 insert into public.message_templates (shop_id, kind, channel, subject, body)
 select s.id, k.kind, c.channel,
        case when c.channel = 'email' then private.pr8_default_subject(k.kind) end,
@@ -140,12 +134,10 @@ select s.id, k.kind, c.channel,
   cross join (values ('sms'::public.message_channel), ('email'::public.message_channel)) c(channel)
 on conflict do nothing;
 
--- 5) Store messaging consent on the ticket (CASL).
 alter table public.tickets add column updates_consent boolean not null default false;
 alter table public.tickets add column updates_consent_at timestamptz;
 alter table public.tickets add column updates_consent_by uuid references auth.users (id) on delete set null;
 
--- 6) Shared SQL renderer and money formatter (private).
 create function private.render_message_template(p_body text, p_vars jsonb)
 returns text
 language plpgsql
@@ -174,10 +166,8 @@ begin
 end;
 $$;
 
--- 7) Best-effort automatic "Ticket created" message.  The preferred channel is
---    used; the other only when the preferred contact is MISSING (never when
---    opted out — queue_message re-checks that).
-create function private.queue_created_message(p_ticket_id uuid, p_paid_full boolean, p_total bigint)
+-- Best-effort automatic "Ticket created" message.
+create function private.queue_created_message(p_ticket_id uuid, p_paid_full boolean, p_amount_due bigint)
 returns void
 language plpgsql
 security definer
@@ -198,7 +188,7 @@ begin
   select * into s from public.shops where id = t.shop_id;
   select * into c from public.customers where id = t.customer_id;
 
-  ch := c.preferred_channel;
+  ch := c.preferred_channel::text::public.message_channel;
   if ch = 'sms' and c.phone_encrypted is null and c.email_encrypted is not null then
     ch := 'email';
   elsif ch = 'email' and c.email_encrypted is null and c.phone_encrypted is not null then
@@ -213,20 +203,20 @@ begin
     return;
   end if;
 
-  v_promised := coalesce(t.promised_date::text, 'a date to be confirmed');
+  v_promised := coalesce(to_char(t.promised_date, 'Dy, Mon DD'), 'a date to be confirmed');
   v_payment_line := case when p_paid_full then 'It''s paid in full.'
-                         else 'Payment of ' || private.money_text(p_total, s.currency) || ' is due at pick-up.' end;
+                         else 'Payment of ' || private.money_text(p_amount_due, s.currency) || ' is due at pick-up.' end;
   v_vars := jsonb_build_object(
     'customer_first_name', split_part(btrim(c.name), ' ', 1),
-    'customer_name', split_part(btrim(c.name), ' ', 1),
+    'customer_name', btrim(c.name),
     'shop_name', s.name,
     'ticket_title', t.item_name,
     'item_name', t.item_name,
-    'ticket_number', '#' || t.ticket_number,
+    'ticket_number', t.ticket_number,
     'promised_date', v_promised,
     'shop_hours', coalesce(s.business_hours ->> 'text', ''),
     'pickup_hours', coalesce(s.business_hours ->> 'text', ''),
-    'amount_due', private.money_text(p_total, s.currency),
+    'amount_due', private.money_text(p_amount_due, s.currency),
     'payment_line', v_payment_line
   );
   v_body := private.render_message_template(tpl.body, v_vars);
@@ -234,9 +224,6 @@ begin
 end;
 $$;
 
--- 8) New shops get created + reminder templates (kind-based).  insert_trade_seed
---    also runs on a trade change, so use on conflict do nothing against the
---    (shop_id, kind, channel) partial unique index.
 create or replace function private.insert_trade_seed(p_shop_id uuid, p_vertical public.shop_vertical, p_skip_final boolean)
 returns void
 language plpgsql
@@ -290,8 +277,6 @@ begin
 end;
 $$;
 
--- 9) create_ticket_full gains p_updates_consent (default FALSE).  Store it,
---    then best-effort queue the "created" message (audited on skip).
 drop function public.create_ticket_full(uuid, uuid, text, text, date, uuid, jsonb, text, boolean, jsonb, jsonb);
 create function public.create_ticket_full(
   p_shop_id uuid,
@@ -319,6 +304,7 @@ declare
   v_number integer;
   v_estimate uuid;
   v_total bigint := 0;
+  v_amount_due bigint := 0;
   v_line jsonb;
   v_line_id uuid;
   v_name text;
@@ -390,12 +376,14 @@ begin
     select e.total_cents into v_total
       from public.estimates e where e.id = v_estimate;
   end if;
+  v_amount_due := v_total;
 
   if p_payment is not null and jsonb_typeof(p_payment) = 'object' then
     if coalesce((p_payment->>'full')::boolean, false) then
       v_kind := 'payment';
       v_amount := v_total;
       v_paid_full := true;
+      v_amount_due := 0;
       if v_amount <= 0 then
         raise exception 'add a price before marking it paid'
           using errcode = '22023';
@@ -411,6 +399,7 @@ begin
         raise exception 'the deposit is more than the total'
           using errcode = '22023';
       end if;
+      v_amount_due := v_total - v_amount;
     end if;
     perform public.record_payment(
       v_ticket, v_kind, 'other', v_amount, null, null);
@@ -423,7 +412,7 @@ begin
       updates_consent_by = (select auth.uid())
     where id = v_ticket;
     begin
-      perform private.queue_created_message(v_ticket, v_paid_full, v_total);
+      perform private.queue_created_message(v_ticket, v_paid_full, v_amount_due);
     exception when others then
       perform private.audit(p_shop_id, 'message.created_skipped', 'tickets', v_ticket, null,
         jsonb_build_object('reason', sqlerrm));

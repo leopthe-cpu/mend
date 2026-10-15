@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, Pencil, Plus, Search, Tag, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Pencil, Plus, Search, Tag, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/app/EmptyState";
@@ -39,7 +39,6 @@ export const Route = createFileRoute("/app/catalog")({
 const TYPES = [
   { value: "service", label: "Service" },
   { value: "part", label: "Part" },
-  { value: "labor", label: "Labour" },
 ] as const;
 
 type Msg = { tone: "error" | "info"; text: string } | null;
@@ -81,12 +80,7 @@ function CatalogPage() {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (items ?? []).filter(
-      (i) =>
-        (showArchived || !i.archived_at) &&
-        (!q ||
-          i.name.toLowerCase().includes(q) ||
-          (i.category ?? "").toLowerCase().includes(q) ||
-          (i.sku ?? "").toLowerCase().includes(q)),
+      (i) => (showArchived || !i.archived_at) && (!q || i.name.toLowerCase().includes(q)),
     );
   }, [items, query, showArchived]);
 
@@ -128,7 +122,7 @@ function CatalogPage() {
       <PageHeader title="Catalog">
         {isAdmin ? (
           <Button variant="outline" onClick={() => setEditing("new")}>
-            <Plus /> Item
+            <Plus /> Catalog item
           </Button>
         ) : null}
       </PageHeader>
@@ -148,7 +142,7 @@ function CatalogPage() {
             />
             <Input
               aria-label="Search the catalog"
-              placeholder="Search by name, category or SKU"
+              placeholder="Search by name"
               className="pl-10"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -202,10 +196,8 @@ function CatalogPage() {
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {[
-                        i.category,
                         TYPES.find((t) => t.value === i.item_type)?.label,
                         i.unit === "hour" ? "per hour" : null,
-                        i.sku ? `SKU ${i.sku}` : null,
                         taxNames || "No tax",
                       ]
                         .filter(Boolean)
@@ -319,51 +311,139 @@ function ItemDialog({
 }) {
   const [form, setForm] = useState({
     name: item?.name ?? "",
-    category: item?.category ?? "",
-    item_type: item?.item_type ?? "service",
-    unit: item?.unit ?? "each",
+    item_type: (item?.item_type ?? "service") as "service" | "part",
     price: item ? centsToInput(item.price_cents) : "",
-    sku: item?.sku ?? "",
+  });
+  const [allTaxes, setAllTaxes] = useState<TaxRate[]>(taxes);
+  const [taxIds, setTaxIds] = useState<string[]>(item ? item.tax_rate_ids : []);
+  const [showTax, setShowTax] = useState(item ? item.tax_rate_ids.length > 0 : false);
+  const [showDiscount, setShowDiscount] = useState(!!item?.discount_type);
+  const [discount, setDiscount] = useState({
     discount_type: (item?.discount_type ?? "") as DiscountType | "",
     discount_value: item?.discount_value?.toString() ?? "",
     starts: item?.discount_starts_on ?? "",
     ends: item?.discount_ends_on ?? "",
-    // New items get every active rate ticked; most shops tax everything.
-    taxIds: item ? item.tax_rate_ids : taxes.filter((t) => t.active).map((t) => t.id),
   });
+  const [newTaxName, setNewTaxName] = useState("");
+  const [newTaxRate, setNewTaxRate] = useState("");
+  const [pickTaxId, setPickTaxId] = useState("");
+  const [errors, setErrors] = useState<{
+    name?: string | undefined;
+    price?: string | undefined;
+    tax?: string | undefined;
+    discount?: string | undefined;
+  }>({});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [creatingTax, setCreatingTax] = useState(false);
+
   const expired = !!item?.discount_ends_on && item.discount_ends_on < today;
+  const perHour = item?.unit === "hour";
+  const RATE_RE = /^\d{1,2}(\.\d{1,3})?$|^100(\.0{1,3})?$/;
+
+  function focus(id: string) {
+    requestAnimationFrame(() => document.getElementById(id)?.focus());
+  }
+
+  async function confirmNewTax() {
+    const name = newTaxName.trim();
+    const rate = newTaxRate.trim();
+    if (!name) {
+      setErrors((e) => ({ ...e, tax: "Name the tax, e.g. HST." }));
+      focus("ci-tax-name");
+      return;
+    }
+    if (!RATE_RE.test(rate)) {
+      setErrors((e) => ({ ...e, tax: "Enter the rate in percent, e.g. 13." }));
+      focus("ci-tax-rate");
+      return;
+    }
+    setCreatingTax(true);
+    setErrors((e) => ({ ...e, tax: undefined }));
+    const { data, error } = await getSupabase()
+      .from("tax_rates")
+      .insert({ shop_id: shopId, name, rate: Number(rate) })
+      .select("id, name, rate, active")
+      .single();
+    setCreatingTax(false);
+    if (error || !data) {
+      setErrors({
+        ...errors,
+        tax: error ? friendlyDbError(error) : "Only Admins can add taxes.",
+      });
+      return;
+    }
+    const created = data as TaxRate;
+    setAllTaxes((t) => [...t, created]);
+    setTaxIds((ids) => [...ids, created.id]);
+    setNewTaxName("");
+    setNewTaxRate("");
+  }
+
+  function addExistingTax() {
+    if (!pickTaxId) return;
+    setTaxIds((ids) => (ids.includes(pickTaxId) ? ids : [...ids, pickTaxId]));
+    setPickTaxId("");
+    setErrors((e) => ({ ...e, tax: undefined }));
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    const price = parseMoney(form.price || "0");
-    if (!form.name.trim()) return setError("Give the item a name.");
-    if (price === null) return setError("Enter the price as a number, like 89.99.");
+    setErrors({});
+    setError(null);
+    if (!form.name.trim()) {
+      setErrors({ name: "Give the item a name." });
+      focus("ci-name");
+      return;
+    }
+    if (!form.price.trim()) {
+      setErrors({ price: "Enter a price." });
+      focus("ci-price");
+      return;
+    }
+    const price = parseMoney(form.price);
+    if (price === null) {
+      setErrors({ price: "Enter the price as a number, like 89.99." });
+      focus("ci-price");
+      return;
+    }
+    // An inline value that hasn't been confirmed with ✓ counts as unfinished.
+    if (newTaxName.trim() || newTaxRate.trim()) {
+      setErrors({ tax: "Confirm the new tax with ✓, or clear it." });
+      focus("ci-tax-name");
+      return;
+    }
     let dValue: number | null = null;
-    if (form.discount_type) {
-      if (!/^\d+(\.\d{1,2})?$/.test(form.discount_value.trim()))
-        return setError("Enter the discount as a number, like 10 or 15.50.");
-      dValue = Number(form.discount_value);
-      if (form.discount_type === "percent" && dValue > 100)
-        return setError("A percent discount is 0 to 100.");
+    if (showDiscount && discount.discount_type) {
+      if (!/^\d+(\.\d{1,2})?$/.test(discount.discount_value.trim())) {
+        setErrors({ discount: "Enter the discount as a number, like 10 or 15.50." });
+        focus("ci-dvalue");
+        return;
+      }
+      dValue = Number(discount.discount_value);
+      if (discount.discount_type === "percent" && dValue > 100) {
+        setErrors({ discount: "A percent discount is 0 to 100." });
+        focus("ci-dvalue");
+        return;
+      }
     }
     setSaving(true);
-    setError(null);
     const { error } = await getSupabase().rpc("save_catalog_item", {
       p_shop_id: shopId,
       p_item_id: item?.id ?? null,
       p_name: form.name,
-      p_category: form.category,
+      p_category: item?.category ?? "",
       p_item_type: form.item_type,
-      p_unit: form.unit,
+      p_unit: item?.unit ?? "each",
       p_price_cents: price,
-      p_sku: form.sku,
-      p_discount_type: form.discount_type || null,
-      p_discount_value: form.discount_type ? dValue : null,
-      p_discount_starts_on: form.discount_type && form.starts ? form.starts : null,
-      p_discount_ends_on: form.discount_type && form.ends ? form.ends : null,
-      p_tax_rate_ids: form.taxIds,
+      p_sku: item?.sku ?? "",
+      p_discount_type: showDiscount && discount.discount_type ? discount.discount_type : null,
+      p_discount_value: showDiscount && discount.discount_type ? dValue : null,
+      p_discount_starts_on:
+        showDiscount && discount.discount_type && discount.starts ? discount.starts : null,
+      p_discount_ends_on:
+        showDiscount && discount.discount_type && discount.ends ? discount.ends : null,
+      p_tax_rate_ids: taxIds,
     });
     setSaving(false);
     if (error) return setError(friendlyDbError(error));
@@ -381,24 +461,29 @@ function ItemDialog({
         </DialogHeader>
         <form method="post" onSubmit={save} className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Field id="ci-name" label="Name">
+            <Field id="ci-name" label="Name *">
               <Input
                 id="ci-name"
                 value={form.name}
                 maxLength={120}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, name: e.target.value });
+                  setErrors((err) => ({ ...err, name: undefined }));
+                }}
               />
+              {errors.name ? <p className="text-sm text-danger">{errors.name}</p> : null}
             </Field>
           </div>
-          <Field
-            id="ci-price"
-            label={form.unit === "hour" ? `Price per hour (${currency})` : `Price (${currency})`}
-          >
+          <Field id="ci-price" label={`${perHour ? "Price per hour" : "Price"} (${currency}) *`}>
             <MoneyInput
               id="ci-price"
               value={form.price}
-              onValueChange={(price) => setForm({ ...form, price })}
+              onValueChange={(price) => {
+                setForm({ ...form, price });
+                setErrors((err) => ({ ...err, price: undefined }));
+              }}
             />
+            {errors.price ? <p className="text-sm text-danger">{errors.price}</p> : null}
           </Field>
           <Field id="ci-type" label="Type">
             <select
@@ -406,7 +491,7 @@ function ItemDialog({
               className={selectClass}
               value={form.item_type}
               onChange={(e) =>
-                setForm({ ...form, item_type: e.target.value as CatalogItem["item_type"] })
+                setForm({ ...form, item_type: e.target.value as "service" | "part" })
               }
             >
               {TYPES.map((t) => (
@@ -416,124 +501,218 @@ function ItemDialog({
               ))}
             </select>
           </Field>
-          <Field id="ci-unit" label="Sold by">
-            <select
-              id="ci-unit"
-              className={selectClass}
-              value={form.unit}
-              onChange={(e) => setForm({ ...form, unit: e.target.value as CatalogItem["unit"] })}
-            >
-              <option value="each">Each</option>
-              <option value="hour">Hour</option>
-            </select>
-          </Field>
-          <Field id="ci-cat" label="Category (optional)">
-            <Input
-              id="ci-cat"
-              value={form.category}
-              maxLength={60}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-            />
-          </Field>
-          <Field id="ci-sku" label="SKU (optional)">
-            <Input
-              id="ci-sku"
-              value={form.sku}
-              maxLength={60}
-              onChange={(e) => setForm({ ...form, sku: e.target.value })}
-            />
-          </Field>
 
-          <fieldset className="flex flex-col gap-2 sm:col-span-2">
-            <legend className="mb-1 text-sm font-medium">Taxes</legend>
-            {taxes.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No tax rates yet. Add them in Settings → Taxes.
-              </p>
-            ) : (
-              taxes.map((t) => (
-                <label key={t.id} className="flex min-h-11 items-center gap-3">
-                  <input
-                    type="checkbox"
-                    className="size-5"
-                    checked={form.taxIds.includes(t.id)}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        taxIds: e.target.checked
-                          ? [...form.taxIds, t.id]
-                          : form.taxIds.filter((x) => x !== t.id),
-                      })
-                    }
-                  />
-                  {t.name} ({t.rate}%){t.active ? "" : " · inactive"}
-                </label>
-              ))
-            )}
-          </fieldset>
-
-          <fieldset className="grid gap-4 rounded-md border border-border p-4 sm:col-span-2 sm:grid-cols-2">
-            <legend className="px-1 text-sm font-medium">Catalog discount (optional)</legend>
-            {expired ? (
-              <p className="text-sm text-muted-foreground sm:col-span-2">
-                This discount ended on {item?.discount_ends_on}. Change the dates or remove it.
-              </p>
-            ) : null}
-            <Field id="ci-dtype" label="Discount">
-              <select
-                id="ci-dtype"
-                className={selectClass}
-                value={form.discount_type}
-                onChange={(e) =>
-                  setForm({ ...form, discount_type: e.target.value as DiscountType | "" })
-                }
+          {!showDiscount ? (
+            <div className="sm:col-span-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDiscount((d) => ({ ...d, discount_type: d.discount_type || "percent" }));
+                  setShowDiscount(true);
+                }}
               >
-                <option value="">None</option>
-                <option value="percent">Percent off</option>
-                <option value="fixed">Amount off</option>
-              </select>
-            </Field>
-            {form.discount_type ? (
-              <>
-                <Field
-                  id="ci-dvalue"
-                  label={form.discount_type === "percent" ? "Percent" : `Amount (${currency})`}
-                  hint={form.discount_type === "fixed" ? "Comes off the whole line." : undefined}
+                <Plus /> Add discount
+              </Button>
+            </div>
+          ) : (
+            <fieldset className="grid gap-4 rounded-md border border-border p-4 sm:col-span-2 sm:grid-cols-2">
+              <legend className="px-1 text-sm font-medium">Discount</legend>
+              {expired ? (
+                <p className="text-sm text-muted-foreground sm:col-span-2">
+                  This discount ended on {item?.discount_ends_on}. Change the dates or remove it.
+                </p>
+              ) : null}
+              <Field id="ci-dtype" label="Discount">
+                <select
+                  id="ci-dtype"
+                  className={selectClass}
+                  value={discount.discount_type}
+                  onChange={(e) =>
+                    setDiscount({
+                      ...discount,
+                      discount_type: e.target.value as DiscountType | "",
+                      discount_value: "",
+                    })
+                  }
                 >
-                  {form.discount_type === "fixed" ? (
-                    <MoneyInput
-                      id="ci-dvalue"
-                      value={form.discount_value}
-                      onValueChange={(discount_value) => setForm({ ...form, discount_value })}
-                    />
-                  ) : (
+                  <option value="percent">Percent off</option>
+                  <option value="fixed">Amount off</option>
+                </select>
+              </Field>
+              <Field
+                id="ci-dvalue"
+                label={discount.discount_type === "percent" ? "Percent" : `Amount (${currency})`}
+                hint={discount.discount_type === "fixed" ? "Comes off the whole line." : undefined}
+              >
+                {discount.discount_type === "fixed" ? (
+                  <MoneyInput
+                    id="ci-dvalue"
+                    value={discount.discount_value}
+                    onValueChange={(discount_value) => {
+                      setDiscount({ ...discount, discount_value });
+                      setErrors((err) => ({ ...err, discount: undefined }));
+                    }}
+                  />
+                ) : (
+                  <Input
+                    id="ci-dvalue"
+                    inputMode="decimal"
+                    value={discount.discount_value}
+                    onChange={(e) => {
+                      setDiscount({ ...discount, discount_value: e.target.value });
+                      setErrors((err) => ({ ...err, discount: undefined }));
+                    }}
+                  />
+                )}
+              </Field>
+              <Field id="ci-start" label="Starts (optional)">
+                <Input
+                  id="ci-start"
+                  type="date"
+                  value={discount.starts}
+                  onChange={(e) => setDiscount({ ...discount, starts: e.target.value })}
+                />
+              </Field>
+              <Field id="ci-end" label="Ends (optional)" hint="Includes this day, shop time.">
+                <Input
+                  id="ci-end"
+                  type="date"
+                  value={discount.ends}
+                  onChange={(e) => setDiscount({ ...discount, ends: e.target.value })}
+                />
+              </Field>
+              {errors.discount ? (
+                <p className="text-sm text-danger sm:col-span-2">{errors.discount}</p>
+              ) : null}
+              <div className="flex justify-end sm:col-span-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowDiscount(false);
+                    setDiscount({
+                      discount_type: "",
+                      discount_value: "",
+                      starts: "",
+                      ends: "",
+                    });
+                    setErrors((err) => ({ ...err, discount: undefined }));
+                  }}
+                >
+                  <X /> Remove discount
+                </Button>
+              </div>
+            </fieldset>
+          )}
+
+          {!showTax ? (
+            <div className="sm:col-span-2">
+              <Button type="button" variant="outline" onClick={() => setShowTax(true)}>
+                <Plus /> Add tax
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 rounded-md border border-border p-4 sm:col-span-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {allTaxes
+                  .filter((t) => taxIds.includes(t.id))
+                  .map((t) => (
+                    <span
+                      key={t.id}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 px-3 py-1 text-sm"
+                    >
+                      {t.name} ({t.rate}%)
+                      <button
+                        type="button"
+                        aria-label={`Remove ${t.name}`}
+                        className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+                        onClick={() => setTaxIds((ids) => ids.filter((id) => id !== t.id))}
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </span>
+                  ))}
+                {taxIds.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No tax on this item yet.</p>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="flex-1">
+                  <Field id="ci-pick-tax" label="Existing tax">
+                    <select
+                      id="ci-pick-tax"
+                      className={selectClass}
+                      value={pickTaxId}
+                      onChange={(e) => setPickTaxId(e.target.value)}
+                    >
+                      <option value="">Choose a tax…</option>
+                      {allTaxes
+                        .filter((t) => !taxIds.includes(t.id))
+                        .map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name} ({t.rate}%){t.active ? "" : " · inactive"}
+                          </option>
+                        ))}
+                    </select>
+                  </Field>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  aria-label="Add the chosen tax"
+                  disabled={!pickTaxId}
+                  onClick={addExistingTax}
+                >
+                  <Check />
+                </Button>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="flex-1">
+                  <Field id="ci-tax-name" label="New tax name">
                     <Input
-                      id="ci-dvalue"
-                      inputMode="decimal"
-                      value={form.discount_value}
-                      onChange={(e) => setForm({ ...form, discount_value: e.target.value })}
+                      id="ci-tax-name"
+                      value={newTaxName}
+                      maxLength={40}
+                      placeholder="HST"
+                      onChange={(e) => {
+                        setNewTaxName(e.target.value);
+                        setErrors((err) => ({ ...err, tax: undefined }));
+                      }}
                     />
-                  )}
-                </Field>
-                <Field id="ci-start" label="Starts (optional)">
-                  <Input
-                    id="ci-start"
-                    type="date"
-                    value={form.starts}
-                    onChange={(e) => setForm({ ...form, starts: e.target.value })}
-                  />
-                </Field>
-                <Field id="ci-end" label="Ends (optional)" hint="Includes this day, shop time.">
-                  <Input
-                    id="ci-end"
-                    type="date"
-                    value={form.ends}
-                    onChange={(e) => setForm({ ...form, ends: e.target.value })}
-                  />
-                </Field>
-              </>
-            ) : null}
-          </fieldset>
+                  </Field>
+                </div>
+                <div className="sm:w-32">
+                  <Field id="ci-tax-rate" label="Rate (%)">
+                    <Input
+                      id="ci-tax-rate"
+                      inputMode="decimal"
+                      value={newTaxRate}
+                      placeholder="13"
+                      onChange={(e) => {
+                        setNewTaxRate(e.target.value);
+                        setErrors((err) => ({ ...err, tax: undefined }));
+                      }}
+                    />
+                  </Field>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  aria-label="Confirm new tax"
+                  disabled={creatingTax}
+                  onClick={() => void confirmNewTax()}
+                >
+                  <Check />
+                </Button>
+              </div>
+              {errors.tax ? <p className="text-sm text-danger">{errors.tax}</p> : null}
+            </div>
+          )}
 
           {error ? (
             <div className="sm:col-span-2">

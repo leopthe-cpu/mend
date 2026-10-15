@@ -391,12 +391,17 @@ function ItemDialog({
     e.preventDefault();
     setErrors({});
     setError(null);
-    const price = parseMoney(form.price || "0");
     if (!form.name.trim()) {
       setErrors({ name: "Give the item a name." });
       focus("ci-name");
       return;
     }
+    if (!form.price.trim()) {
+      setErrors({ price: "Enter a price." });
+      focus("ci-price");
+      return;
+    }
+    const price = parseMoney(form.price);
     if (price === null) {
       setErrors({ price: "Enter the price as a number, like 89.99." });
       focus("ci-price");

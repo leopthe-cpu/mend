@@ -328,10 +328,10 @@ function ItemDialog({
   const [newTaxRate, setNewTaxRate] = useState("");
   const [pickTaxId, setPickTaxId] = useState("");
   const [errors, setErrors] = useState<{
-    name?: string;
-    price?: string;
-    tax?: string;
-    discount?: string;
+    name?: string | undefined;
+    price?: string | undefined;
+    tax?: string | undefined;
+    discount?: string | undefined;
   }>({});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

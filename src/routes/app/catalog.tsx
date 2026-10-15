@@ -529,7 +529,11 @@ function ItemDialog({
                   className={selectClass}
                   value={discount.discount_type}
                   onChange={(e) =>
-                    setDiscount({ ...discount, discount_type: e.target.value as DiscountType | "" })
+                    setDiscount({
+                      ...discount,
+                      discount_type: e.target.value as DiscountType | "",
+                      discount_value: "",
+                    })
                   }
                 >
                   <option value="percent">Percent off</option>

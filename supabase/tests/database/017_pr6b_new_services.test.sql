@@ -23,9 +23,10 @@ with x as (insert into public.catalog_items (shop_id, name, item_type, unit, pri
   values (pg_temp.v('shop'), 'Polish', 'service', 'each', 3000) returning id)
 insert into t select 'polish', id::text from x;
 insert into t values ('cust', public.save_customer(pg_temp.v('shop'), null, 'Tom', '4165550200')::text);
+reset role;
+-- Team members are added by the superuser here (invites are tested elsewhere).
 insert into public.memberships (shop_id, user_id, role) values
   (pg_temp.v('shop'), 'a7000000-0000-0000-0000-000000000003', 'staff');
-reset role;
 
 -- ===== Atomicity: a failure after save_catalog_item rolls everything back ===
 select set_config('request.jwt.claims', '{"sub":"a7000000-0000-0000-0000-000000000001","role":"authenticated"}', true);

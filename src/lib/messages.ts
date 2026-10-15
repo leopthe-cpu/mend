@@ -3,15 +3,19 @@ import { getSupabase } from "@/lib/supabase";
 // Customer messages (spec §7.10). The browser renders templates for the
 // preview; the member can edit the text, and what they confirm is what the
 // database queues (queue_message enforces opt-outs, limits and quiet hours).
+// PR 8: three templates per shop — Ticket created, Ticket ready, Reminder —
+// plus an automatic "created" message.  The SQL renderer in the migration and
+// renderTemplate below keep the same variables and substitution rules.
 
 export type Channel = "sms" | "email";
 export type MessageStatus = "queued" | "sending" | "sent" | "delivered" | "failed" | "canceled";
+export type MessageKind = "status" | "created" | "reminder";
 export type Message = {
   id: string;
   ticket_id: string;
   customer_id: string;
   channel: Channel;
-  kind: "status" | "reminder" | "manual";
+  kind: MessageKind;
   subject: string | null;
   body: string;
   status: MessageStatus;
@@ -25,7 +29,8 @@ export type Message = {
 };
 export type Template = {
   id: string;
-  status_id: string;
+  kind: MessageKind;
+  status_id: string | null;
   channel: Channel;
   subject: string | null;
   body: string;
@@ -41,35 +46,73 @@ export const STATUS_TEXT: Record<MessageStatus, string> = {
 };
 
 export const VARIABLES = [
+  "{customer_first_name}",
   "{customer_name}",
+  "{ticket_title}",
   "{item_name}",
   "{shop_name}",
   "{ticket_number}",
+  "{promised_date}",
+  "{shop_hours}",
   "{pickup_hours}",
+  "{amount_due}",
+  "{payment_line}",
 ] as const;
 
 export type TemplateVars = {
+  customer_first_name: string;
   customer_name: string;
   item_name: string;
+  ticket_title: string;
   shop_name: string;
   ticket_number: number;
   pickup_hours: string;
+  shop_hours: string;
+  promised_date: string;
+  amount_due: string;
+  payment_line: string;
 };
 
-/** Replace the five spec variables; unknown {words} are left as typed. */
-export function renderTemplate(text: string, v: TemplateVars): string {
-  return text
-    .replaceAll("{customer_name}", v.customer_name.split(" ")[0] || v.customer_name)
-    .replaceAll("{item_name}", v.item_name)
-    .replaceAll("{shop_name}", v.shop_name)
-    .replaceAll("{ticket_number}", `#${v.ticket_number}`)
-    .replaceAll("{pickup_hours}", v.pickup_hours)
-    .replace(/[ \t]+$/gm, "")
-    .trim();
+/** Pure substitution: replace every {key} in vars with its value, then trim. */
+export function renderTemplate(
+  text: string,
+  vars: Partial<TemplateVars>,
+): string {
+  let out = text;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.split(`{${k}}`).join(v === undefined || v === null ? "" : String(v));
+  }
+  return out.trim();
 }
 
-export const REMINDER_TEMPLATE =
-  "Hi {customer_name}, a reminder that your {item_name} is ready for pickup at {shop_name}. {pickup_hours}";
+export const DEFAULT_TEMPLATES: Record<
+  "created" | "reminder",
+  Record<Channel, { subject: string; body: string }>
+> = {
+  created: {
+    sms: {
+      subject: "",
+      body: "Hi {customer_first_name}, thanks for visiting {shop_name}. Your order {ticket_title} (#{ticket_number}) will be ready on {promised_date}. {payment_line}",
+    },
+    email: {
+      subject: "Your {ticket_title} at {shop_name}",
+      body: "Hi {customer_first_name}, thanks for visiting {shop_name}. Your order {ticket_title} (#{ticket_number}) will be ready on {promised_date}. {payment_line}",
+    },
+  },
+  reminder: {
+    sms: {
+      subject: "",
+      body: "Hi {customer_first_name}, a reminder that your {ticket_title} is ready for pickup at {shop_name}. {shop_hours}",
+    },
+    email: {
+      subject: "Reminder: your {ticket_title} is ready for pickup",
+      body: "Hi {customer_first_name}, a reminder that your {ticket_title} is ready for pickup at {shop_name}. {shop_hours}",
+    },
+  },
+};
+
+/** Legacy reminder default, kept for the NotifyDialog fallback. */
+export const REMINDER_TEMPLATE = DEFAULT_TEMPLATES.reminder.sms.body;
 
 // GSM 03.38 default alphabet and extension table (extension characters take
 // two septets). Anything else forces UCS-2: 70 characters per single SMS,
@@ -98,7 +141,6 @@ export function smsSegments(text: string): {
     const segments = septets <= 160 ? 1 : Math.ceil(septets / 153);
     return { encoding: "GSM-7", units: septets, segments, perSegment: septets <= 160 ? 160 : 153 };
   }
-  // UCS-2 counts UTF-16 code units (emoji take two).
   const units = text.length;
   const segments = units <= 70 ? 1 : Math.ceil(units / 67);
   return { encoding: "UCS-2", units, segments, perSegment: units <= 70 ? 70 : 67 };
@@ -107,7 +149,7 @@ export function smsSegments(text: string): {
 export async function fetchTemplates(shopId: string): Promise<Template[]> {
   const { data, error } = await getSupabase()
     .from("message_templates")
-    .select("id, status_id, channel, subject, body")
+    .select("id, kind, status_id, channel, subject, body")
     .eq("shop_id", shopId);
   if (error) throw error;
   return (data ?? []) as Template[];
@@ -123,17 +165,12 @@ export async function fetchTicketMessages(ticketId: string): Promise<Message[]> 
   return (data ?? []) as Message[];
 }
 
-/**
- * Ask the sender to go now. Fire and forget: if this call fails, the
- * every-minute job still sends the message.
- */
 export function kickSender(): void {
   void getSupabase()
     .functions.invoke("send-messages", { body: {} })
     .catch(() => undefined);
 }
 
-/** "8:00 AM" style time in the shop's zone. */
 export function shopTime(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone,

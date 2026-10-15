@@ -35,7 +35,7 @@ select is_empty(
           'public.accept_invite', 'public.revoke_invite', 'public.change_member_role',
           'public.remove_member', 'public.transfer_ownership',
           'public.save_customer', 'public.customer_contacts', 'public.search_shop',
-          'public.create_ticket', 'public.set_ticket_status', 'public.set_ticket_passcode',
+          'public.create_ticket', 'public.create_ticket_full', 'public.promised_date_counts', 'public.set_ticket_status', 'public.set_ticket_passcode',
           'public.reveal_passcode', 'public.add_ticket_note', 'public.delete_ticket',
           'public.start_estimate', 'public.revise_estimate', 'public.add_estimate_line',
           'public.add_custom_line', 'public.update_estimate_line', 'public.set_line_discount',

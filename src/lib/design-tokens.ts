@@ -42,6 +42,12 @@ export const contrastPairs: ContrastPair[] = [
     use: "Large text on terracotta badges",
   },
   { fg: "--mend-primary-foreground", bg: "--danger", min: 4.5, use: "Text on destructive buttons" },
+  {
+    fg: "--mend-primary-foreground",
+    bg: "--count-badge",
+    min: 4.5,
+    use: "Day count on the pick-up calendar",
+  },
   ...textOn("--success", "Success message text"),
   ...textOn("--warning", "Warning message text"),
   ...textOn("--danger", "Error message text"),

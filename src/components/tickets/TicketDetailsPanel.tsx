@@ -73,6 +73,8 @@ export function TicketDetailsPanel({
       await onSaved(form);
       setEditing(false);
       setSaved(true);
+    } catch {
+      // The parent already shows the error message; stay in edit mode.
     } finally {
       setSaving(false);
     }
@@ -196,6 +198,12 @@ export function TicketDetailsPanel({
           <dt className="text-sm text-muted-foreground">Item</dt>
           <dd>{dash(ticket.item_name)}</dd>
         </div>
+        {ticket.item_description?.trim() ? (
+          <div className="sm:col-span-2">
+            <dt className="text-sm text-muted-foreground">Item details</dt>
+            <dd className="whitespace-pre-wrap">{ticket.item_description}</dd>
+          </div>
+        ) : null}
         <div className="sm:col-span-2">
           <dt className="text-sm text-muted-foreground">What needs doing</dt>
           <dd className="whitespace-pre-wrap">{dash(ticket.issue_description)}</dd>

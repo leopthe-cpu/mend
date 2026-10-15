@@ -9,10 +9,9 @@ import { getSupabase } from "@/lib/supabase";
 // calendar where each day shows how many open tickets are already promised
 // for it, as a white number on a grey circle (--count-badge, AA-checked in
 // design-tokens.ts). Counts come from promised_date_counts (staff+).
+// PR 6b (15 Oct): accepts an optional className so it can be embedded inside
+// a Popover (the caller removes the border).
 
-// The day button is a component react-day-picker renders, so the counts reach
-// it through context; a component defined inside PickupCalendar would be a
-// new type on every render and remount every day (losing keyboard focus).
 const CountsContext = createContext<Map<string, number>>(new Map());
 
 function CountDayButton(props: ComponentProps<typeof DayButton>) {
@@ -45,12 +44,14 @@ export function PickupCalendar({
   today,
   value,
   onChange,
+  className,
 }: {
   shopId: string;
   /** The shop's local date (YYYY-MM-DD); earlier days can't be picked. */
   today: string;
   value: string;
   onChange: (iso: string) => void;
+  className?: string;
 }) {
   const [month, setMonth] = useState(() => dateFromIso(value || today));
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
@@ -88,7 +89,7 @@ export function PickupCalendar({
         onMonthChange={setMonth}
         disabled={{ before: dateFromIso(today) }}
         components={COMPONENTS}
-        className="rounded-md border border-input bg-surface-2 p-2 [--cell-size:2.5rem]"
+        className={className}
       />
     </CountsContext.Provider>
   );

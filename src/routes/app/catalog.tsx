@@ -1,15 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Archive,
-  ArchiveRestore,
-  Check,
-  Pencil,
-  Plus,
-  Search,
-  Tag,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Archive, ArchiveRestore, Check, Pencil, Plus, Search, Tag, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/app/EmptyState";
@@ -90,8 +80,7 @@ function CatalogPage() {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (items ?? []).filter(
-      (i) =>
-        (showArchived || !i.archived_at) && (!q || i.name.toLowerCase().includes(q)),
+      (i) => (showArchived || !i.archived_at) && (!q || i.name.toLowerCase().includes(q)),
     );
   }, [items, query, showArchived]);
 
@@ -445,8 +434,10 @@ function ItemDialog({
       p_sku: item?.sku ?? "",
       p_discount_type: showDiscount && discount.discount_type ? discount.discount_type : null,
       p_discount_value: showDiscount && discount.discount_type ? dValue : null,
-      p_discount_starts_on: showDiscount && discount.discount_type && discount.starts ? discount.starts : null,
-      p_discount_ends_on: showDiscount && discount.discount_type && discount.ends ? discount.ends : null,
+      p_discount_starts_on:
+        showDiscount && discount.discount_type && discount.starts ? discount.starts : null,
+      p_discount_ends_on:
+        showDiscount && discount.discount_type && discount.ends ? discount.ends : null,
       p_tax_rate_ids: taxIds,
     });
     setSaving(false);
@@ -478,10 +469,7 @@ function ItemDialog({
               {errors.name ? <p className="text-sm text-danger">{errors.name}</p> : null}
             </Field>
           </div>
-          <Field
-            id="ci-price"
-            label={`${perHour ? "Price per hour" : "Price"} (${currency}) *`}
-          >
+          <Field id="ci-price" label={`${perHour ? "Price per hour" : "Price"} (${currency}) *`}>
             <MoneyInput
               id="ci-price"
               value={form.price}

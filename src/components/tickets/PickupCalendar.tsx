@@ -21,7 +21,6 @@ function CountDayButton(props: ComponentProps<typeof DayButton>) {
       {props.children}
       {count ? (
         <>
-          {/* opacity-100! beats the "[&>span]:opacity-70" on the shared day button. */}
           <span
             aria-hidden
             className="absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-count-badge px-1 text-[10px] leading-none font-semibold text-white opacity-100!"
@@ -47,7 +46,6 @@ export function PickupCalendar({
   className,
 }: {
   shopId: string;
-  /** The shop's local date (YYYY-MM-DD); earlier days can't be picked. */
   today: string;
   value: string;
   onChange: (iso: string) => void;
@@ -57,8 +55,6 @@ export function PickupCalendar({
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
-    // The visible grid, including the outside days of the weeks around it
-    // (at most 6 + 31 + 6 days, under the function's two-month cap).
     const from = new Date(month.getFullYear(), month.getMonth(), 1 - 6);
     const to = new Date(month.getFullYear(), month.getMonth() + 1, 6);
     let stale = false;
@@ -71,7 +67,6 @@ export function PickupCalendar({
       .then(({ data }) => {
         if (stale) return;
         const rows = (data ?? []) as { day: string; open_tickets: number }[];
-        // Counts are a hint; if they fail to load the calendar still works.
         setCounts(new Map(rows.map((r) => [r.day, Number(r.open_tickets)])));
       });
     return () => {
@@ -89,7 +84,7 @@ export function PickupCalendar({
         onMonthChange={setMonth}
         disabled={{ before: dateFromIso(today) }}
         components={COMPONENTS}
-        className={className}
+        {...(className ? { className } : {})}
       />
     </CountsContext.Provider>
   );

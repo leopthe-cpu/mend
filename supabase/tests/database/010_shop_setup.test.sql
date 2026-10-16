@@ -35,7 +35,9 @@ select is((select count(*)::int from public.catalog_items where shop_id = pg_tem
 select is((select count(*)::int from public.statuses where shop_id = pg_temp.v('watch')), 8, 'watch: 8 statuses');
 select is((select count(*)::int from public.custom_field_definitions where shop_id = pg_temp.v('watch')), 4, 'watch: 4 fields');
 select is((select count(*)::int from public.catalog_items where shop_id = pg_temp.v('watch')), 7, 'watch: 7 starter items');
-select is((select count(*)::int from public.message_templates where shop_id = pg_temp.v('watch')), 2, 'watch: Ready has SMS and email templates');
+select is((select count(*)::int from public.message_templates where shop_id = pg_temp.v('watch') and kind = 'status'), 2, 'watch: Ready has SMS and email templates');
+select is((select count(*)::int from public.message_templates where shop_id = pg_temp.v('watch') and kind = 'created'), 2, 'watch: created templates seeded for each channel');
+select is((select count(*)::int from public.message_templates where shop_id = pg_temp.v('watch') and kind = 'reminder'), 2, 'watch: reminder templates seeded for each channel');
 
 -- ===== Default shop, then setup inside the app ==========================
 select set_config('request.jwt.claims', '{"sub":"d1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);

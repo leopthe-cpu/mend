@@ -55,7 +55,9 @@ select is((select count(*)::int from public.statuses where shop_id = (select v::
 select is((select count(*)::int from public.custom_field_definitions where shop_id = (select v::uuid from t where k = 'shop_a')), 2, 'electronics: 2 custom fields');
 select is((select count(*)::int from public.catalog_items where shop_id = (select v::uuid from t where k = 'shop_a')), 5, 'electronics: 5 starter catalog items');
 select is((select count(*)::int from public.catalog_item_tax_rates where shop_id = (select v::uuid from t where k = 'shop_a')), 5, 'starter items carry the HST rate');
-select is((select count(*)::int from public.message_templates where shop_id = (select v::uuid from t where k = 'shop_a')), 2, 'Ready has SMS and email templates');
+select is((select count(*)::int from public.message_templates where shop_id = (select v::uuid from t where k = 'shop_a') and kind = 'status'), 2, 'Ready has SMS and email templates');
+select is((select count(*)::int from public.message_templates where shop_id = (select v::uuid from t where k = 'shop_a') and kind = 'created'), 2, 'created templates seeded for each channel');
+select is((select count(*)::int from public.message_templates where shop_id = (select v::uuid from t where k = 'shop_a') and kind = 'reminder'), 2, 'reminder templates seeded for each channel');
 select is((select count(*)::int from public.statuses where shop_id = (select v::uuid from t where k = 'shop_b')), 4, 'ski: 4 statuses seeded');
 select is((select full_name from public.profiles where user_id = 'a0000000-0000-0000-0000-000000000001'), 'Alice Owner', 'owner name saved to profile');
 select is((select role::text from public.memberships where user_id = 'a0000000-0000-0000-0000-000000000001'), 'owner', 'creator is the Owner');

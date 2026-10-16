@@ -216,6 +216,10 @@ export function TicketDetailsPanel({
           <dt className="text-sm text-muted-foreground">Assigned to</dt>
           <dd>{assignedName(members, ticket.assigned_to)}</dd>
         </div>
+        <div>
+          <dt className="text-sm text-muted-foreground">Send updates</dt>
+          <dd>{ticket.updates_consent ? "Yes" : "No"}</dd>
+        </div>
         {fields.map((f) => {
           const raw = ticket.custom_fields?.[f.id];
           const val = raw === undefined || raw === "" ? "—" : String(raw);

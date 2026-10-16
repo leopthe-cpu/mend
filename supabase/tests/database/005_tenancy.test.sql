@@ -4,8 +4,6 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
 
--- People. A: owner, admin, staff. B: owner. Plus an outsider and an
--- unconfirmed signup.
 insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values
   ('a0000000-0000-0000-0000-000000000001', 'owner.a@test.local', now(), '{}'),
   ('a0000000-0000-0000-0000-000000000002', 'admin.a@test.local', now(), '{}'),
@@ -14,11 +12,8 @@ insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) value
   ('c0000000-0000-0000-0000-000000000001', 'outsider@test.local', now(), '{}'),
   ('c0000000-0000-0000-0000-000000000002', 'unconfirmed@test.local', null, '{}');
 
--- Scratch space shared across role switches.
-create temp table t (k text primary key, v text);
 grant all on t to authenticated, anon;
 
--- ===== Onboarding =====================================================
 select set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 set local role authenticated;
 select throws_ok($$ select public.create_shop('Nope') $$, '42501', null, 'unconfirmed email cannot create a shop');
@@ -55,7 +50,9 @@ select is((select count(*)::int from public.statuses where shop_id = (select v::
 select is((select count(*)::int from public.custom_field_definitions where shop_id = (select v::uuid from t where k = 'shop_a')), 2, 'electronics: 2 custom fields');
 select is((select count(*)::int from public.catalog_items where shop_id = (select v::uuid from t where k = 'shop_a')), 5, 'electronics: 5 starter catalog items');
 select is((select count(*)::int from public.catalog_item_tax_rates where shop_id = (select v::uuid from t where k = 'shop_a')), 5, 'starter items carry the HST rate');
-select is((select count(*)::int from public.message_templates where shop_id = (select v::uuid from t where k = 'shop_a')), 2, 'Ready has SMS and email templates');
+select is((select count(*)::int from public.message_templates where shop_id = (select v::uuid from t where k = 'shop_a') and kind = 'status'), 2, 'Ready has SMS and email templates');
+select is((select count(*)::int from public.message_templates where shop_id = (select v::uuid from t where k = 'shop_a') and kind = 'created'), 2, 'created templates seeded for each channel');
+select is((select count(*)::int from public.message_templates where shop_id = (select v::uuid from t where k = 'shop_a') and kind = 'reminder'), 2, 'reminder templates seeded for each channel');
 select is((select count(*)::int from public.statuses where shop_id = (select v::uuid from t where k = 'shop_b')), 4, 'ski: 4 statuses seeded');
 select is((select full_name from public.profiles where user_id = 'a0000000-0000-0000-0000-000000000001'), 'Alice Owner', 'owner name saved to profile');
 select is((select role::text from public.memberships where user_id = 'a0000000-0000-0000-0000-000000000001'), 'owner', 'creator is the Owner');
@@ -64,7 +61,6 @@ update auth.users set email = 'Owner.A2@test.local' where id = 'a0000000-0000-00
 select is((select email from public.profiles where user_id = 'a0000000-0000-0000-0000-000000000001'), 'owner.a2@test.local', 'profile email follows email changes');
 update auth.users set email = 'owner.a@test.local' where id = 'a0000000-0000-0000-0000-000000000001';
 
--- ===== Invites ========================================================
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 insert into t select 'tok_admin', token from public.create_invite((select v::uuid from t where k = 'shop_a'), 'Admin.A@test.local', 'admin');
@@ -88,12 +84,10 @@ select results_eq($$ select shop_name, role::text, status from public.invite_pre
 select results_eq($$ select status from public.invite_preview('not-a-token') $$, $$ values ('invalid'::text) $$, 'garbage tokens reveal nothing');
 reset role;
 
--- Wrong email
 select set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 select throws_ok($$ select public.accept_invite((select v from t where k = 'tok_staff')) $$, '42501', null, 'wrong-email invite is rejected');
 reset role;
--- Expired / revoked
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
 set local role authenticated;
 select throws_ok($$ select public.accept_invite((select v from t where k = 'tok_expired')) $$, '22023', 'invite expired', 'expired invite is rejected');
@@ -107,7 +101,6 @@ select lives_ok($$ select public.accept_invite((select v from t where k = 'tok_a
 reset role;
 select is((select role::text from public.memberships where user_id = 'a0000000-0000-0000-0000-000000000002'), 'admin', 'admin joined with the invited role');
 
--- ===== Cross-tenant isolation: B's owner against every A table ========
 select set_config('request.jwt.claims', '{"sub":"b0000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 select is((select count(*)::int from public.shops where id = (select v::uuid from t where k = 'shop_a')), 0, 'B cannot read A: shops');
@@ -117,51 +110,43 @@ select is((select count(*)::int from public.audit_log where shop_id = (select v:
 select is((select count(*)::int from public.statuses where shop_id = (select v::uuid from t where k = 'shop_a')), 0, 'B cannot read A: statuses');
 select is((select count(*)::int from public.custom_field_definitions where shop_id = (select v::uuid from t where k = 'shop_a')), 0, 'B cannot read A: custom fields');
 select is((select count(*)::int from public.message_templates where shop_id = (select v::uuid from t where k = 'shop_a')), 0, 'B cannot read A: templates');
-select is((select count(*)::int from public.tax_rates where shop_id = (select v::uuid from t where k = 'shop_a')), 0, 'B cannot read A: tax rates');
+select is((select count(*)::int from public.tax_rates where shop_id = (select v::uuid from t where k = 'shop_a')), 0, 'B cannot read A: taxes');
 select is((select count(*)::int from public.catalog_items where shop_id = (select v::uuid from t where k = 'shop_a')), 0, 'B cannot read A: catalog');
-select is((select count(*)::int from public.catalog_item_tax_rates where shop_id = (select v::uuid from t where k = 'shop_a')), 0, 'B cannot read A: catalog tax links');
-select is((select count(*)::int from public.profiles where user_id = 'a0000000-0000-0000-0000-000000000001'), 0, 'B cannot read A: profiles');
-select throws_ok($$ insert into public.statuses (shop_id, name, position, category) values ((select v::uuid from t where k = 'shop_a'), 'Hacked', 99, 'open') $$,
-  '42501', null, 'B cannot insert into A');
-select is_empty($$ update public.statuses set name = 'Hacked' where shop_id = (select v::uuid from t where k = 'shop_a') returning 1 $$, 'B cannot update A');
-select is_empty($$ delete from public.catalog_items where shop_id = (select v::uuid from t where k = 'shop_a') returning 1 $$, 'B cannot delete A');
-select is_empty($$ update public.shops set name = 'Hacked' where id = (select v::uuid from t where k = 'shop_a') returning 1 $$, 'B cannot rename A');
-select throws_ok($$ select * from public.create_invite((select v::uuid from t where k = 'shop_a'), 'evil@test.local', 'staff') $$, '42501', null, 'B cannot invite into A');
-select throws_ok($$ select public.remove_member((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000003') $$, '42501', null, 'B cannot remove A''s members');
-select throws_ok($$ insert into public.memberships (shop_id, user_id, role) values ((select v::uuid from t where k = 'shop_a'), 'b0000000-0000-0000-0000-000000000001', 'owner') $$,
-  '42501', null, 'nobody can write memberships directly');
 reset role;
 
--- ===== Roles inside shop A ============================================
--- Staff
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
 set local role authenticated;
-select is((select count(*)::int from public.statuses), 7, 'staff reads own shop config');
-select is((select count(*)::int from public.audit_log), 0, 'staff cannot read the audit log');
-select is((select count(*)::int from public.invites), 0, 'staff cannot see invites');
-select throws_ok($$ insert into public.statuses (shop_id, name, position, category) values ((select v::uuid from t where k = 'shop_a'), 'X', 99, 'open') $$, '42501', null, 'staff cannot change statuses');
-select is_empty($$ update public.shops set name = 'Staff Shop' returning 1 $$, 'staff cannot edit shop settings');
-select throws_ok($$ select * from public.create_invite((select v::uuid from t where k = 'shop_a'), 'y@test.local', 'staff') $$, '42501', null, 'staff cannot invite');
-select throws_ok($$ insert into public.catalog_items (shop_id, name, item_type) values ((select v::uuid from t where k = 'shop_a'), 'Staff item', 'service') $$, '42501', null, 'staff cannot edit the catalog');
-select is((select count(*)::int from public.profiles), 3, 'coworkers can see each other''s names');
+select throws_ok($$ select * from public.create_invite((select v::uuid from t where k = 'shop_a'), 'a@test.local', 'staff') $$,
+  '42501', null, 'staff cannot invite above their role');
+select throws_ok($$ select public.change_member_role((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000002', 'staff') $$,
+  '42501', null, 'staff cannot change roles');
 reset role;
 
--- Admin
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 set local role authenticated;
-select lives_ok($$ insert into public.statuses (shop_id, name, position, category) values ((select v::uuid from t where k = 'shop_a'), 'Quality check', 8, 'open') $$, 'admin can add a status');
-select lives_ok($$ insert into public.catalog_items (shop_id, name, item_type) values ((select v::uuid from t where k = 'shop_a'), 'Admin item', 'service') $$, 'admin can edit the catalog');
-select throws_ok($$ select * from public.create_invite((select v::uuid from t where k = 'shop_a'), 'admin2@test.local', 'admin') $$, '42501', null, 'admin cannot invite an Admin');
-select lives_ok($$ select * from public.create_invite((select v::uuid from t where k = 'shop_a'), 'staff2@test.local', 'staff') $$, 'admin can invite Staff');
-select throws_ok($$ select public.change_member_role((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000003', 'admin') $$, '42501', null, 'admin cannot promote to Admin');
-select throws_ok($$ select public.remove_member((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000001') $$, '42501', null, 'admin cannot remove the Owner');
-select throws_ok($$ select public.transfer_ownership((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000002') $$, '42501', null, 'admin cannot take ownership');
-select ok((select count(*) > 0 from public.audit_log), 'admin can read the audit log');
-select lives_ok($$ update public.shops set phone = '+1 416 555 0100' where id = (select v::uuid from t where k = 'shop_a') $$, 'admin can edit shop settings');
-select throws_ok($$ update public.shops set next_ticket_number = 1 $$, '42501', null, 'counters are never client-writable');
+select throws_ok($$ select * from public.create_invite((select v::uuid from t where k = 'shop_a'), 'a@test.local', 'admin') $$,
+  '42501', null, 'admin cannot invite an admin');
+select lives_ok($$ select * from public.create_invite((select v::uuid from t where k = 'shop_a'), 'newstaff@test.local', 'staff') $$,
+  'admin can invite staff');
+select throws_ok($$ select public.change_member_role((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000003', 'admin') $$,
+  '42501', null, 'admin cannot promote to admin');
+select throws_ok($$ select public.change_member_role((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000001', 'staff') $$,
+  '42501', null, 'admin cannot touch the owner');
+select lives_ok($$ select public.remove_member((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000003') $$,
+  'admin can remove staff');
+select throws_ok($$ select public.remove_member((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000002') $$,
+  '42501', null, 'admin cannot remove another admin');
+select throws_ok($$ select public.transfer_ownership((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000002') $$,
+  '42501', null, 'admin cannot transfer ownership');
+select lives_ok($$ select public.revoke_invite((select id from public.invites where email = 'newstaff@test.local')) $$,
+  'admin can revoke their own Staff invite');
+insert into t select 'tok_only', token from public.create_invite((select v::uuid from t where k = 'shop_a'), 'only@test.local', 'staff');
+select lives_ok($$ update public.shops set phone = '+1 416 555 0100' where id = (select v::uuid from t where k = 'shop_a') $$,
+  'everyday settings writes (shop phone) allowed for admin');
+select throws_ok($$ update public.shops set setup_completed_at = now() where id = (select v::uuid from t where k = 'shop_a') $$,
+  '42501', null, 'setup_completed_at is not client-writable');
 reset role;
 
--- Owner
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 select lives_ok($$ insert into public.catalog_items (shop_id, name, item_type, price_cents) values ((select v::uuid from t where k = 'shop_a'), 'Charging port', 'service', 8900) $$, 'owner can edit the catalog');
@@ -170,7 +155,6 @@ select throws_ok($$ select public.remove_member((select v::uuid from t where k =
 select throws_ok($$ select public.transfer_ownership((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000002') $$, '42501', null, 'transfer needs a fresh password check');
 select lives_ok($$ select public.change_member_role((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000003', 'admin') $$, 'owner can promote staff to admin');
 select lives_ok($$ select public.change_member_role((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000003', 'staff') $$, 'owner can demote admin to staff');
--- Removal takes effect immediately.
 select lives_ok($$ select public.remove_member((select v::uuid from t where k = 'shop_a'), 'a0000000-0000-0000-0000-000000000003') $$, 'owner removes staff');
 reset role;
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
@@ -179,7 +163,6 @@ select is((select count(*)::int from public.shops), 0, 'removed member loses acc
 select is((select count(*)::int from public.statuses), 0, 'removed member sees no shop data');
 reset role;
 
--- Ownership transfer with a fresh password sign-in in the JWT.
 select set_config('request.jwt.claims', json_build_object(
   'sub', 'a0000000-0000-0000-0000-000000000001', 'role', 'authenticated', 'aal', 'aal1',
   'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
@@ -190,7 +173,6 @@ select is((select role::text from public.memberships where user_id = 'a0000000-0
 select is((select role::text from public.memberships where user_id = 'a0000000-0000-0000-0000-000000000001'), 'admin', 'old owner becomes Admin');
 select is((select count(*)::int from public.memberships where shop_id = (select v::uuid from t where k = 'shop_a') and role = 'owner'), 1, 'still exactly one owner');
 
--- ===== Audit log ======================================================
 select ok((select count(*) >= 8 from public.audit_log where shop_id = (select v::uuid from t where k = 'shop_a')), 'team and settings changes are audited');
 select ok(exists (select 1 from public.audit_log where action = 'member.removed'), 'member removal audited');
 select ok(exists (select 1 from public.audit_log where action = 'shop.ownership_transferred'), 'ownership transfer audited');

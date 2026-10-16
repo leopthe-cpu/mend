@@ -1,6 +1,7 @@
 import { Plus, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { Field } from "@/components/app/Field";
 import { PhoneInput } from "@/components/app/MaskedInputs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -183,31 +184,32 @@ export function CustomerPicker({
                 Back to search
               </Button>
             </div>
-            <Input
-              id="nc-name"
-              aria-label="Name"
-              placeholder="Name"
-              value={newCust.name}
-              onChange={(e) => setNewCust({ ...newCust, name: e.target.value })}
-              maxLength={120}
-              autoFocus
-            />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <PhoneInput
-                id="nc-phone"
-                aria-label="Mobile phone"
-                placeholder="Mobile phone"
-                value={newCust.phone}
-                onValueChange={(phone) => setNewCust({ ...newCust, phone })}
-              />
+            <Field id="nc-name" label="Name">
               <Input
-                id="nc-email"
-                aria-label="Email"
-                type="email"
-                placeholder="Email"
-                value={newCust.email}
-                onChange={(e) => setNewCust({ ...newCust, email: e.target.value })}
+                id="nc-name"
+                value={newCust.name}
+                onChange={(e) => setNewCust({ ...newCust, name: e.target.value })}
+                maxLength={120}
+                autoFocus
               />
+            </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field id="nc-phone" label="Mobile phone">
+                <PhoneInput
+                  id="nc-phone"
+                  value={newCust.phone}
+                  onValueChange={(phone) => setNewCust({ ...newCust, phone })}
+                />
+              </Field>
+              <Field id="nc-email" label="Email">
+                <Input
+                  id="nc-email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={newCust.email}
+                  onChange={(e) => setNewCust({ ...newCust, email: e.target.value })}
+                />
+              </Field>
             </div>
             <p className="text-sm text-muted-foreground">
               Saved with the ticket. A phone number, an email, or both.

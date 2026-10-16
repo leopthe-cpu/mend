@@ -6,6 +6,7 @@ import {
   nextOpenDays,
   pickupHoursText,
   promisedDateText,
+  stillOpenToday,
   scheduleToText,
   type DaySchedule,
   type WeeklySchedule,
@@ -184,6 +185,13 @@ describe("shop days (same cases as 024_shop_days)", () => {
     expect(promisedDateText("2026-10-19", week)).toBe("Mon, Oct 19 (open 9am–5pm)");
     expect(promisedDateText("2026-11-07", week)).toBe("Sat, Nov 7 (open 10am–4pm)");
     expect(promisedDateText("2026-10-19", undefined)).toBe("Mon, Oct 19");
+  });
+
+  it("offers today only until closing time", () => {
+    expect(stillOpenToday(week, tz, new Date("2026-10-16T20:59:00Z"))).toBe(true); // Fri 4:59pm
+    expect(stillOpenToday(week, tz, new Date("2026-10-16T21:00:00Z"))).toBe(false); // Fri 5pm
+    expect(stillOpenToday(week, tz, new Date("2026-10-18T15:00:00Z"))).toBe(false); // Sunday
+    expect(stillOpenToday(undefined, tz)).toBe(true);
   });
 
   it("says when the customer can come next", () => {

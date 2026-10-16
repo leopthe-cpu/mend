@@ -166,6 +166,37 @@ export function promisedDateText(iso: string, schedule: WeeklySchedule | undefin
     : text;
 }
 
+/** The shop's local date ("YYYY-MM-DD") and time ("HH:MM") right now. */
+function shopNow(timeZone: string, now: Date): { today: string; time: string } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return {
+    today: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}`,
+  };
+}
+
+/** Can a ticket still be ready today? Not once today's closing time has
+ *  passed (or the shop is closed today). Without a schedule, yes. */
+export function stillOpenToday(
+  schedule: WeeklySchedule | undefined,
+  timeZone: string,
+  now = new Date(),
+): boolean {
+  if (!schedule?.some((s) => s.open)) return true;
+  const { today, time } = shopNow(timeZone, now);
+  const d = dayFor(schedule, today);
+  return !!d?.open && time < d.closes;
+}
+
 /**
  * {pickup_hours}: when the customer can come, from the moment the message is
  * written. "Open today until 5pm.", "Open today 9am–5pm." or "Next open: Mon
@@ -179,18 +210,7 @@ export function pickupHoursText(
   now = new Date(),
 ): string {
   if (!schedule?.some((s) => s.open)) return fallback;
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(now);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  const today = `${get("year")}-${get("month")}-${get("day")}`;
-  const time = `${get("hour")}:${get("minute")}`;
+  const { today, time } = shopNow(timeZone, now);
   const t = dayFor(schedule, today);
   if (t?.open && time < t.closes)
     return time < t.opens

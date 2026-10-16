@@ -62,6 +62,8 @@ export function ServiceLine({
       ? discountLabel(l.item.discount_type, l.item.discount_value ?? 0, currency)
       : null;
   const label = l.item?.name || l.name || "service";
+  // Catalog items seeded at $0 (like "Labor") are priced here by Admins.
+  const priceHere = !l.item || (isAdmin && l.item.price_cents === 0);
 
   return (
     <li className="flex flex-col gap-2 px-3 py-2">
@@ -72,7 +74,7 @@ export function ServiceLine({
             <>
               <p className="truncate">{l.item.name}</p>
               <p className="text-sm text-muted-foreground">
-                {money(l.item.price_cents)}
+                {priceHere ? "Price" : money(l.item.price_cents)}
                 {l.item.unit === "hour" ? " per hour" : " each"}
                 {catalogDiscount ? (
                   <span className="text-brand-text"> · {catalogDiscount}</span>
@@ -92,7 +94,7 @@ export function ServiceLine({
           )}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          {!l.item ? (
+          {priceHere ? (
             <MoneyInput
               id={`${id}-price`}
               aria-label={`Price for ${label}`}

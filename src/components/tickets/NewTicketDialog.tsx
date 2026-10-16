@@ -55,8 +55,15 @@ let lineSeq = 0;
 
 function linePayload(l: DraftLine) {
   const qty = parseQuantity(l.qty) ?? 1;
+  // A $0 catalog item (like the seeded "Labor") can be priced on the ticket by
+  // an Admin; the database checks the role (decision 80).
+  const price = parseMoney(l.price);
   return l.item
-    ? { catalog_item_id: l.item.id, quantity: qty }
+    ? {
+        catalog_item_id: l.item.id,
+        quantity: qty,
+        ...(l.item.price_cents === 0 && price ? { price_cents: price } : {}),
+      }
     : {
         name: l.name.trim(),
         quantity: qty,
@@ -177,7 +184,7 @@ export function NewTicketDialog({
           : null;
       return {
         quantity: qty,
-        unitPriceCents: l.item.price_cents,
+        unitPriceCents: l.item.price_cents === 0 ? (parseMoney(l.price) ?? 0) : l.item.price_cents,
         discount: catalogDiscount,
         taxRateIds: l.item.tax_rate_ids,
       };
@@ -203,6 +210,7 @@ export function NewTicketDialog({
 
   function updateLine(key: string, patch: Partial<DraftLine>) {
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+    setError(null);
   }
 
   function addServiceLine(item?: CatalogItem) {
@@ -282,6 +290,13 @@ export function NewTicketDialog({
     ]);
     if (missing) {
       setError(missing.message);
+      return;
+    }
+    if (parsedDiscount?.ok && totals.subtotalBeforeCents - lineSavings === 0) {
+      setError(
+        "The services have no price yet, so there's nothing to discount. Add a price or remove the discount.",
+      );
+      document.getElementById("ticket-discount")?.focus();
       return;
     }
     if (
@@ -451,27 +466,6 @@ export function NewTicketDialog({
             {/* Services */}
             <section className="flex flex-col gap-3">
               <h3 className="text-sm font-semibold">Services</h3>
-              {lines.length ? (
-                <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
-                  {lines.map((l) => (
-                    <ServiceLine
-                      key={l.key}
-                      line={l}
-                      isAdmin={isAdmin}
-                      shopId={shop.id}
-                      taxes={taxes}
-                      today={today}
-                      currency={shop.currency}
-                      totalCents={
-                        previewTotals([{ ...previewLine(l), taxRateIds: [] }], []).subtotalCents
-                      }
-                      onChange={(patch) => updateLine(l.key, patch)}
-                      onRemove={() => setLines(lines.filter((x) => x.key !== l.key))}
-                      onTaxCreated={(rate) => setTaxes((ts) => [...ts, rate])}
-                    />
-                  ))}
-                </ul>
-              ) : null}
               <div className="relative">
                 <Plus
                   aria-hidden
@@ -511,7 +505,7 @@ export function NewTicketDialog({
                   disabled={!catalog.length && !isAdmin}
                   autoComplete="off"
                 />
-                {svcOpen && (svcMatches.length || (isAdmin && svcQuery.trim() && !svcExact)) ? (
+                {svcOpen && (svcMatches.length || isAdmin) ? (
                   <ul
                     data-picker-list
                     className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-border bg-background shadow-md"
@@ -534,7 +528,7 @@ export function NewTicketDialog({
                         </button>
                       </li>
                     ))}
-                    {isAdmin && svcQuery.trim() && !svcExact ? (
+                    {isAdmin && !svcExact ? (
                       <li>
                         <button
                           type="button"
@@ -545,13 +539,39 @@ export function NewTicketDialog({
                           className="flex min-h-11 w-full items-center gap-2 px-4 text-left font-semibold hover:bg-accent"
                         >
                           <Plus aria-hidden className="size-4" />
-                          New service &ldquo;{svcQuery.trim()}&rdquo;
+                          {svcQuery.trim() ? (
+                            <>New service &ldquo;{svcQuery.trim()}&rdquo;</>
+                          ) : (
+                            "New service (not in the catalog)"
+                          )}
                         </button>
                       </li>
                     ) : null}
                   </ul>
                 ) : null}
               </div>
+
+              {lines.length ? (
+                <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+                  {lines.map((l) => (
+                    <ServiceLine
+                      key={l.key}
+                      line={l}
+                      isAdmin={isAdmin}
+                      shopId={shop.id}
+                      taxes={taxes}
+                      today={today}
+                      currency={shop.currency}
+                      totalCents={
+                        previewTotals([{ ...previewLine(l), taxRateIds: [] }], []).subtotalCents
+                      }
+                      onChange={(patch) => updateLine(l.key, patch)}
+                      onRemove={() => setLines(lines.filter((x) => x.key !== l.key))}
+                      onTaxCreated={(rate) => setTaxes((ts) => [...ts, rate])}
+                    />
+                  ))}
+                </ul>
+              ) : null}
 
               {/* Whole-ticket discount (decision 78): Owner/Admin. */}
               {isAdmin && lines.length ? (
@@ -639,6 +659,7 @@ export function NewTicketDialog({
             <ReadyByField
               shopId={shop.id}
               today={today}
+              timeZone={shop.time_zone}
               schedule={shop.business_hours?.schedule}
               value={promised}
               onChange={setPromised}

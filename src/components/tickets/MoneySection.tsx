@@ -49,12 +49,9 @@ import { logoUrl } from "@/lib/logo";
 import { friendlyDbError, roleAtLeast, type Membership } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import { shopToday, type Ticket } from "@/lib/tickets";
+import { parseTicketDiscount, type TicketDiscountDraft } from "@/lib/ticketDiscount";
 import { cn } from "@/lib/utils";
-import {
-  parseTicketDiscount,
-  TicketDiscountInput,
-  type TicketDiscountDraft,
-} from "./TicketDiscountInput";
+import { TicketDiscountInput } from "./TicketDiscountInput";
 
 type Msg = { tone: "error" | "info"; text: string } | null;
 
@@ -905,7 +902,10 @@ function TicketDiscountRow({
     return est.discount_type ? (
       <div className="flex flex-wrap items-center gap-2">
         <span>
-          Ticket discount: {ticketDiscountLabel(est, money)} (−{money(est.discount_cents)})
+          Ticket discount:{" "}
+          {est.discount_type === "percent"
+            ? `${ticketDiscountLabel(est, money)} (−${money(est.discount_cents)})`
+            : `${money(est.discount_cents)} off`}
         </span>
         <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(true)}>
           Change
@@ -927,12 +927,7 @@ function TicketDiscountRow({
         </Button>
       </div>
     ) : (
-      <Button
-        type="button"
-        variant="ghost"
-        className="self-start"
-        onClick={() => setEditing(true)}
-      >
+      <Button type="button" variant="ghost" className="self-start" onClick={() => setEditing(true)}>
         <Plus /> Discount on the whole ticket
       </Button>
     );

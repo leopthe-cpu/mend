@@ -1,7 +1,7 @@
 import { Check, Plus, X } from "lucide-react";
 import { useState } from "react";
 
-import { Field, selectClass } from "@/components/app/Field";
+import { selectClass } from "@/components/app/Field";
 import { MoneyInput } from "@/components/app/MaskedInputs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,14 +9,12 @@ import {
   type CatalogItem,
   discountActiveOn,
   discountLabel,
-  type DiscountType,
   formatMoney,
   type TaxRate,
 } from "@/lib/money";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 
-export type Discount = { type: DiscountType; value: string; confirmed: boolean };
 export type DraftLine = {
   key: string;
   item: CatalogItem | null;
@@ -24,13 +22,14 @@ export type DraftLine = {
   qty: string;
   price: string;
   taxIds: string[] | null;
-  discount: Discount | null;
 };
 
 const RATE_RE = /^\d{1,2}(\.\d{1,3})?$|^100(\.0{1,3})?$/;
 
-/** One service row in the new-ticket flow (PR 6b): combobox line, qty, price,
- *  plus inline discount (Admin, ✓ confirmed) and tax (Admin, new services). */
+/** One service row in the new-ticket form (decision 78 redesign): a single
+ *  compact line with the name, quantity, line total and remove. Catalog
+ *  discounts show under the name; manual discounts are for the whole ticket
+ *  only. A new service (Admins) adds name and price inputs, and "Add tax". */
 export function ServiceLine({
   line: l,
   isAdmin,
@@ -38,6 +37,7 @@ export function ServiceLine({
   taxes,
   today,
   currency,
+  totalCents,
   onChange,
   onRemove,
   onTaxCreated,
@@ -48,6 +48,8 @@ export function ServiceLine({
   taxes: TaxRate[];
   today: string;
   currency: string;
+  /** The line's total after its catalog discount, from the dialog's preview. */
+  totalCents: number;
   onChange: (patch: Partial<DraftLine>) => void;
   onRemove: () => void;
   /** A tax created inline is added to the shop's list, so it shows and counts. */
@@ -56,189 +58,112 @@ export function ServiceLine({
   const id = `line-${l.key}`;
   const money = (c: number) => formatMoney(c, currency);
   const catalogDiscount =
-    l.item?.discount_type && !l.discount && discountActiveOn(l.item, today)
+    l.item?.discount_type && discountActiveOn(l.item, today)
       ? discountLabel(l.item.discount_type, l.item.discount_value ?? 0, currency)
       : null;
-  const taxNames = (ids: string[]) =>
-    taxes
-      .filter((t) => ids.includes(t.id))
-      .map((t) => t.name)
-      .join(" + ");
+  const label = l.item?.name || l.name || "service";
 
   return (
-    <li className="flex flex-col gap-3 rounded-md border border-border bg-surface-2 p-3">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-0 flex-1">
+    <li className="flex flex-col gap-2 px-3 py-2">
+      {/* On phones the name gets its own line; the numbers sit below it. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
           {l.item ? (
             <>
-              <p className="text-sm font-medium">{l.item.name}</p>
+              <p className="truncate">{l.item.name}</p>
               <p className="text-sm text-muted-foreground">
                 {money(l.item.price_cents)}
                 {l.item.unit === "hour" ? " per hour" : " each"}
-                {l.item.tax_rate_ids.length ? ` · ${taxNames(l.item.tax_rate_ids)}` : ""}
-                {catalogDiscount ? ` · ${catalogDiscount}` : ""}
+                {catalogDiscount ? (
+                  <span className="text-brand-text"> · {catalogDiscount}</span>
+                ) : null}
               </p>
             </>
           ) : (
-            <Field id={`${id}-name`} label="Service *">
-              <Input
-                id={`${id}-name`}
-                value={l.name}
-                onChange={(e) => onChange({ name: e.target.value })}
-                maxLength={200}
-                placeholder="What it's for"
-                autoFocus
-              />
-            </Field>
+            <Input
+              id={`${id}-name`}
+              aria-label="New service name"
+              value={l.name}
+              onChange={(e) => onChange({ name: e.target.value })}
+              maxLength={200}
+              placeholder="New service"
+              autoFocus
+            />
           )}
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-11 shrink-0"
-          aria-label={`Remove ${l.item?.name || l.name || "line"}`}
-          onClick={onRemove}
-        >
-          <X />
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-20">
-          <Field id={`${id}-qty`} label={l.item?.unit === "hour" ? "Hours" : "Qty"}>
-            <Input
-              id={`${id}-qty`}
-              inputMode="decimal"
-              value={l.qty}
-              onChange={(e) =>
-                onChange({
-                  qty: e.target.value.replace(/[^\d.]/g, "").slice(0, 8),
-                })
-              }
+        <div className="ml-auto flex items-center gap-2">
+          {!l.item ? (
+            <MoneyInput
+              id={`${id}-price`}
+              aria-label={`Price for ${label}`}
+              className="w-24 text-right"
+              value={l.price}
+              onValueChange={(price) => onChange({ price })}
             />
-          </Field>
-        </div>
-        {!l.item ? (
-          <div className="w-32">
-            <Field id={`${id}-price`} label="Price *">
-              <MoneyInput
-                id={`${id}-price`}
-                value={l.price}
-                onValueChange={(price) => onChange({ price })}
-              />
-            </Field>
-          </div>
-        ) : null}
-      </div>
-
-      {/* Inline discount (Admins only, per line) */}
-      {isAdmin && l.discount ? (
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="w-28">
-            <Field id={`${id}-dtype`} label="Discount">
-              <select
-                id={`${id}-dtype`}
-                className={selectClass}
-                value={l.discount.type}
-                onChange={(e) =>
-                  onChange({
-                    discount: {
-                      type: e.target.value as DiscountType,
-                      value: l.discount?.value ?? "",
-                      confirmed: false,
-                    },
-                  })
-                }
-              >
-                <option value="percent">%</option>
-                <option value="fixed">$ off</option>
-              </select>
-            </Field>
-          </div>
-          <div className="w-32">
-            {l.discount.type === "fixed" ? (
-              <MoneyInput
-                aria-label="Discount amount"
-                value={l.discount.value}
-                onValueChange={(value) =>
-                  onChange({
-                    discount: { ...l.discount!, value, confirmed: false },
-                  })
-                }
-              />
-            ) : (
-              <Input
-                aria-label="Discount percent"
-                inputMode="decimal"
-                placeholder="10"
-                value={l.discount.value}
-                onChange={(e) =>
-                  onChange({
-                    discount: {
-                      type: "percent",
-                      value: e.target.value.replace(/[^\d.]/g, "").slice(0, 6),
-                      confirmed: false,
-                    },
-                  })
-                }
-              />
-            )}
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Confirm discount"
-            disabled={!l.discount.value.trim()}
-            onClick={() => onChange({ discount: { ...l.discount!, confirmed: true } })}
-          >
-            <Check />
-          </Button>
+          ) : null}
+          <span className="text-sm text-muted-foreground" aria-hidden>
+            ×
+          </span>
+          <Input
+            id={`${id}-qty`}
+            aria-label={l.item?.unit === "hour" ? `Hours for ${label}` : `Quantity of ${label}`}
+            inputMode="decimal"
+            className="w-14 text-center"
+            value={l.qty}
+            onChange={(e) => onChange({ qty: e.target.value.replace(/[^\d.]/g, "").slice(0, 8) })}
+          />
+          {l.item ? (
+            <span className="w-20 text-right tabular-nums">{money(totalCents)}</span>
+          ) : null}
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="size-11"
-            aria-label="Remove discount"
-            onClick={() => onChange({ discount: null })}
+            className="size-11 shrink-0"
+            aria-label={`Remove ${label}`}
+            onClick={onRemove}
           >
             <X />
           </Button>
         </div>
-      ) : null}
+      </div>
 
-      {/* Inline tax (Admins only, new services only) */}
+      {/* Tax for a new service (Admins only) */}
+      {isAdmin && !l.item && l.taxIds === null && taxes.length ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="self-start underline underline-offset-4"
+          onClick={() => onChange({ taxIds: [] })}
+        >
+          <Plus /> Add tax
+        </Button>
+      ) : null}
       {isAdmin && !l.item && l.taxIds !== null ? (
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium">Tax</span>
-            {l.taxIds.length
-              ? l.taxIds.map((tid) => {
-                  const t = taxes.find((x) => x.id === tid);
-                  if (!t) return null;
-                  return (
-                    <span
-                      key={tid}
-                      className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 px-2 py-0.5 text-sm"
-                    >
-                      {t.name} ({t.rate}%)
-                      <button
-                        type="button"
-                        aria-label={`Remove ${t.name}`}
-                        className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
-                        onClick={() =>
-                          onChange({
-                            taxIds: l.taxIds!.filter((id) => id !== tid),
-                          })
-                        }
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </span>
-                  );
-                })
-              : null}
+            {l.taxIds.map((tid) => {
+              const t = taxes.find((x) => x.id === tid);
+              if (!t) return null;
+              return (
+                <span
+                  key={tid}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 px-2 py-0.5 text-sm"
+                >
+                  {t.name} ({t.rate}%)
+                  <button
+                    type="button"
+                    aria-label={`Remove ${t.name}`}
+                    className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+                    onClick={() => onChange({ taxIds: l.taxIds!.filter((x) => x !== tid) })}
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              );
+            })}
             <Button
               type="button"
               variant="ghost"
@@ -258,9 +183,7 @@ export function ServiceLine({
                 value=""
                 onChange={(e) => {
                   if (!e.target.value) return;
-                  onChange({
-                    taxIds: [...(l.taxIds ?? []), e.target.value],
-                  });
+                  onChange({ taxIds: [...(l.taxIds ?? []), e.target.value] });
                 }}
               >
                 <option value="">Pick a tax…</option>
@@ -282,36 +205,6 @@ export function ServiceLine({
               }}
             />
           </div>
-        </div>
-      ) : null}
-
-      {/* Add buttons */}
-      {isAdmin ? (
-        <div className="flex flex-wrap gap-2">
-          {!l.discount ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                onChange({
-                  discount: { type: "percent", value: "", confirmed: false },
-                })
-              }
-            >
-              <Plus /> Add discount
-            </Button>
-          ) : null}
-          {!l.item && l.taxIds === null && taxes.length ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onChange({ taxIds: [] })}
-            >
-              <Plus /> Add tax
-            </Button>
-          ) : null}
         </div>
       ) : null}
     </li>

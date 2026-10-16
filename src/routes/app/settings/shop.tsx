@@ -48,6 +48,13 @@ function ShopSettings() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) return setStatus({ tone: "error", text: "The shop needs a name." });
+    // Decision 76: texts identify the shop (CASL); the database refuses texts
+    // without both.
+    if (!form.address.trim() || form.phone.replace(/\D/g, "").length < 10)
+      return setStatus({
+        tone: "error",
+        text: "Add the shop's address and phone. They identify your shop in the texts you send.",
+      });
     const days = Number(form.unclaimed_reminder_days);
     if (!Number.isInteger(days) || days < 1 || days > 365)
       return setStatus({
@@ -102,7 +109,24 @@ function ShopSettings() {
                 </Field>
               </div>
               <div className="sm:col-span-2">
-                <Field id="address" label="Address">
+                <Field
+                  id="address"
+                  label="Address *"
+                  hint={
+                    <>
+                      Shown with your phone on your public contact page,{" "}
+                      <a
+                        href={`/s/${shop.public_code}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline underline-offset-4"
+                      >
+                        /s/{shop.public_code}
+                      </a>
+                      , linked from your first text to each customer.
+                    </>
+                  }
+                >
                   <Input
                     id="address"
                     value={form.address}
@@ -111,7 +135,7 @@ function ShopSettings() {
                   />
                 </Field>
               </div>
-              <Field id="phone" label="Phone">
+              <Field id="phone" label="Phone *">
                 <PhoneInput
                   id="phone"
                   value={form.phone}

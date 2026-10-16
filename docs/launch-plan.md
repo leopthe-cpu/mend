@@ -73,6 +73,9 @@ For example `app.mendshops.com` on Railway. Update the Supabase redirect URLs
 and the legal page URLs submitted to Twilio. Moving them after verification
 may need a resubmission (verify with Twilio).
 
+Also update the link base URL used in texts (decision 76): a migration that sets
+`private.app_settings` `public_base_url` to the new domain.
+
 ## L6. Website wording
 
 Decision 72: say that a "ticket created" confirmation goes out automatically

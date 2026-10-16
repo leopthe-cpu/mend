@@ -20,6 +20,13 @@ insert into t select 'ta', ticket_id::text from public.create_ticket_full(pg_tem
   'Zip repair', null, null, null, '{}', null, false, '[]', null, false);
 insert into t select 'tb', ticket_id::text from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('ben'),
   'Hem', null, null, null, '{}', null, false, '[]', null, false);
+reset role;
+-- Texts need the shop's address and phone (decision 76).
+update public.shops set address = '1 Main St, Toronto ON', phone = '416 555 0000';
+create function pg_temp.notice() returns text language sql as $$
+  select 'Reply STOP to opt out. Shop info: https://mend-production-2e99.up.railway.app/s/' || public_code
+    from public.shops where id = pg_temp.v('shop') $$;
+set local role authenticated;
 
 -- First text to Ana gets the notice; the second doesn't.
 insert into t select 'a1', message_id::text from public.queue_message(pg_temp.v('ta'), 'sms', 'Your zip is ready.');
@@ -28,7 +35,7 @@ insert into t select 'a2', message_id::text from public.queue_message(pg_temp.v(
 insert into t select 'ae', message_id::text from public.queue_message(pg_temp.v('ta'), 'email', 'Your zip is ready.', 'Ready');
 reset role;
 
-select is(pg_temp.body(pg_temp.v('a1')), 'Your zip is ready. Reply STOP to opt out.', 'first text gets the opt-out notice');
+select is(pg_temp.body(pg_temp.v('a1')), 'Your zip is ready. ' || pg_temp.notice(), 'first text gets the opt-out notice');
 select is(pg_temp.body(pg_temp.v('a2')), 'Reminder: your zip is ready.', 'later texts do not repeat it');
 select is(pg_temp.body(pg_temp.v('ae')), 'Your zip is ready.', 'emails are unchanged');
 
@@ -41,7 +48,7 @@ update public.messages set status = 'canceled' where id = pg_temp.v('b1');
 set local role authenticated;
 insert into t select 'b2', message_id::text from public.queue_message(pg_temp.v('tb'), 'sms', 'Your hem is ready.');
 reset role;
-select is(pg_temp.body(pg_temp.v('b2')), 'Your hem is ready. Reply STOP to opt out.', 'a canceled text does not count as the first');
+select is(pg_temp.body(pg_temp.v('b2')), 'Your hem is ready. ' || pg_temp.notice(), 'a canceled text does not count as the first');
 
 -- A text that already mentions STOP is left alone and counts as the first.
 delete from public.messages where customer_id = pg_temp.v('ben');
@@ -59,7 +66,7 @@ insert into t select 'b5', message_id::text from public.queue_message(pg_temp.v(
 insert into t select 'b6', message_id::text from public.queue_message(pg_temp.v('tb'), 'sms', 'Short one.');
 reset role;
 select is(char_length(pg_temp.body(pg_temp.v('b5'))), 1590, 'a body with no room keeps its length');
-select is(pg_temp.body(pg_temp.v('b6')), 'Short one. Reply STOP to opt out.', 'the next text carries the notice');
+select is(pg_temp.body(pg_temp.v('b6')), 'Short one. ' || pg_temp.notice(), 'the next text carries the notice');
 
 -- Notices are per shop and per customer: Ana already had hers.
 select is((select count(*)::int from public.messages where customer_id = pg_temp.v('ana') and body ~* '\mstop\M'), 1,

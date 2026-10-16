@@ -5,8 +5,9 @@ import type { DiscountType } from "@/lib/money";
 // The database computes and stores every total (create_ticket_full →
 // private.line_math / private.recalc_estimate). previewTotals only shows the
 // same numbers while the ticket is being typed, so it mirrors that math
-// exactly: integer cents, round half away from zero, discount per line, tax
-// per rate on the sum of the lines carrying it, rounded once.
+// exactly: integer cents, round half away from zero, discount per line, then
+// the whole-ticket discount (decision 78), tax per rate on the sum of the lines
+// carrying it minus that rate's share of the ticket discount, rounded once.
 
 /** Same rule as private.title_from_text: the first six words, at most 120 characters. */
 export function titleFromText(text: string): string {
@@ -23,7 +24,9 @@ export type PreviewLine = {
 export type PreviewTax = { id: string; name: string; rate: number };
 export type PreviewTotals = {
   subtotalBeforeCents: number;
+  /** Line discounts plus the ticket discount. */
   savingsCents: number;
+  ticketDiscountCents: number;
   subtotalCents: number;
   taxes: { id: string; name: string; rate: number; taxCents: number }[];
   taxCents: number;
@@ -59,31 +62,46 @@ export function lineAmounts(l: Omit<PreviewLine, "taxRateIds">): {
   };
 }
 
-export function previewTotals(lines: PreviewLine[], taxes: PreviewTax[]): PreviewTotals {
+export function previewTotals(
+  lines: PreviewLine[],
+  taxes: PreviewTax[],
+  ticketDiscount: { type: DiscountType; value: number } | null = null,
+): PreviewTotals {
   let before = 0;
-  let savings = 0;
-  const taxable = new Map<string, number>();
+  let lineSavings = 0;
+  const base = new Map<string, number>();
   for (const l of lines) {
     const a = lineAmounts(l);
     before += a.subtotalCents;
-    savings += a.discountCents;
-    for (const id of new Set(l.taxRateIds)) taxable.set(id, (taxable.get(id) ?? 0) + a.totalCents);
+    lineSavings += a.discountCents;
+    for (const id of new Set(l.taxRateIds)) base.set(id, (base.get(id) ?? 0) + a.totalCents);
   }
+  const linesTotal = BigInt(before - lineSavings);
+  // Same as private.recalc_estimate: a percent of the lines, or a fixed
+  // amount capped at them (the database refuses more when it is set).
+  let disc = 0n;
+  if (ticketDiscount?.type === "percent")
+    disc = divRound(linesTotal * scaled(ticketDiscount.value, 2), 10000n);
+  if (ticketDiscount?.type === "fixed") disc = scaled(ticketDiscount.value, 2);
+  if (disc > linesTotal) disc = linesTotal;
   const taxLines = taxes
-    .filter((t) => taxable.has(t.id))
+    .filter((t) => base.has(t.id))
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map((t) => ({
-      ...t,
-      taxCents: Number(divRound(BigInt(taxable.get(t.id) ?? 0) * scaled(t.rate, 4), 1000000n)),
-    }));
+    .map((t) => {
+      const b = BigInt(base.get(t.id) ?? 0);
+      const taxable = linesTotal > 0n ? b - divRound(b * disc, linesTotal) : b;
+      return { ...t, taxCents: Number(divRound(taxable * scaled(t.rate, 4), 1000000n)) };
+    });
   const tax = taxLines.reduce((s, t) => s + t.taxCents, 0);
+  const after = Number(linesTotal - disc);
   return {
     subtotalBeforeCents: before,
-    savingsCents: savings,
-    subtotalCents: before - savings,
+    savingsCents: lineSavings + Number(disc),
+    ticketDiscountCents: Number(disc),
+    subtotalCents: after,
     taxes: taxLines,
     taxCents: tax,
-    totalCents: before - savings + tax,
+    totalCents: after + tax,
   };
 }
 

@@ -98,6 +98,35 @@ describe("previewTotals", () => {
   it("is all zeros with no lines", () => {
     expect(previewTotals([], [hst]).totalCents).toBe(0);
   });
+
+  describe("ticket discount (same numbers as 023_ticket_discount)", () => {
+    const gst = { id: "gst", name: "GST", rate: 5 };
+    const pst = { id: "pst", name: "PST", rate: 7 };
+    const lines = [
+      { quantity: 1, unitPriceCents: 3000, discount: null, taxRateIds: ["gst", "pst"] },
+      { quantity: 1, unitPriceCents: 1000, discount: null, taxRateIds: ["gst"] },
+    ];
+
+    it("takes a percent off and lowers each rate's tax by its share", () => {
+      const t = previewTotals(lines, [gst, pst], { type: "percent", value: 10 });
+      expect(t).toMatchObject({
+        ticketDiscountCents: 400,
+        savingsCents: 400,
+        subtotalCents: 3600,
+        taxCents: 369,
+        totalCents: 3969,
+      });
+    });
+
+    it("rounds each share half away from zero", () => {
+      expect(previewTotals(lines, [gst, pst], { type: "fixed", value: 5 }).totalCents).toBe(3859);
+    });
+
+    it("caps a fixed amount at the lines", () => {
+      const t = previewTotals([lines[1]!], [gst], { type: "fixed", value: 50 });
+      expect(t).toMatchObject({ ticketDiscountCents: 1000, taxCents: 0, totalCents: 0 });
+    });
+  });
 });
 
 describe("percentOf", () => {

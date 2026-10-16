@@ -28,6 +28,8 @@ export type Shop = {
   logo_path: string | null;
   /** Null until the Owner finishes setup in the app (decision 53). */
   setup_completed_at: string | null;
+  /** Code of the public contact page /s/<code> (decision 76). */
+  public_code: string;
 };
 
 export type Membership = { role: Role; shop: Shop };

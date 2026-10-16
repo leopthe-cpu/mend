@@ -70,8 +70,9 @@ function Page() {
           .
         </li>
         <li>
-          Keep your shop's name, address and contact details up to date; they identify you as the
-          sender.
+          Keep your shop's name, address and phone up to date; they identify you as the sender. They
+          are shown on your shop's public contact page, which Mend links from the first text each
+          customer receives. Texts can't be sent until both are filled in.
         </li>
       </ul>
 

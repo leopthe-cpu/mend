@@ -104,6 +104,11 @@ function Setup() {
       setStep(0);
       return setError("The shop needs a name.");
     }
+    const contactMsg = contactError();
+    if (contactMsg) {
+      setStep(2);
+      return setError(contactMsg);
+    }
     setSaving(true);
     setError(null);
     const { error } = await getSupabase().rpc("finish_shop_setup", {
@@ -149,7 +154,20 @@ function Setup() {
     await navigate({ to: "/app/board", replace: true });
   }
 
-  const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  // Decision 76: texts identify the shop (CASL), so address and phone are
+  // required before leaving the "Location & hours" step.
+  const contactError = () =>
+    !address.trim() || phone.replace(/\D/g, "").length < 10
+      ? "Add your shop's address and phone. Customers see them on your shop's contact page, linked from your texts."
+      : null;
+  const next = () => {
+    if (step === 2) {
+      const msg = contactError();
+      if (msg) return setError(msg);
+      setError(null);
+    }
+    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  };
   const back = () => setStep((s) => Math.max(s - 1, 0));
   const skip = () => {
     setError(null);
@@ -352,7 +370,7 @@ function Setup() {
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="address">Address</Label>
+                <Label htmlFor="address">Address *</Label>
                 <Input
                   id="address"
                   value={address}
@@ -362,7 +380,7 @@ function Setup() {
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="phone">Shop phone</Label>
+                <Label htmlFor="phone">Shop phone *</Label>
                 <PhoneInput id="phone" value={phone} onValueChange={setPhone} />
               </div>
               <div className="flex flex-col gap-2">

@@ -289,7 +289,7 @@ export function NotifyDialog({
               label="Message"
               hint={
                 channel === "sms"
-                  ? `${seg.units} of ${seg.perSegment * seg.segments} characters · ${seg.segments} text${seg.segments > 1 ? "s" : ""}${seg.encoding === "UCS-2" ? " (special characters use more space)" : ""}. A customer's first text adds "Reply STOP to opt out."`
+                  ? `${seg.units} of ${seg.perSegment * seg.segments} characters · ${seg.segments} text${seg.segments > 1 ? "s" : ""}${seg.encoding === "UCS-2" ? " (special characters use more space)" : ""}. A customer's first text adds "Reply STOP to opt out. Shop info:" and a link to your shop's contact page.`
                   : `${body.length} characters`
               }
             >

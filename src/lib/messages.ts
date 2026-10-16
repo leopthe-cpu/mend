@@ -115,11 +115,11 @@ export const DEFAULT_TEMPLATES: Record<
   reminder: {
     sms: {
       subject: "",
-      body: "Hi {customer_first_name}, a reminder that your {ticket_title} is ready for pickup at {shop_name}. {shop_hours}",
+      body: "Hi {customer_first_name}, a reminder that your {ticket_title} is ready for pickup at {shop_name}. {pickup_hours}",
     },
     email: {
       subject: "Reminder: your {ticket_title} is ready for pickup",
-      body: "Hi {customer_first_name}, a reminder that your {ticket_title} is ready for pickup at {shop_name}. {shop_hours}",
+      body: "Hi {customer_first_name}, a reminder that your {ticket_title} is ready for pickup at {shop_name}. {pickup_hours}",
     },
   },
 };

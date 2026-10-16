@@ -41,12 +41,15 @@ const COMPONENTS = { DayButton: CountDayButton };
 export function PickupCalendar({
   shopId,
   today,
+  isClosed,
   value,
   onChange,
   className,
 }: {
   shopId: string;
   today: string;
+  /** Days the shop is closed are disabled (decision 79). */
+  isClosed?: (iso: string) => boolean;
   value: string;
   onChange: (iso: string) => void;
   className?: string;
@@ -82,7 +85,10 @@ export function PickupCalendar({
         onSelect={(d) => onChange(d ? isoFromDate(d) : "")}
         month={month}
         onMonthChange={setMonth}
-        disabled={{ before: dateFromIso(today) }}
+        disabled={[
+          { before: dateFromIso(today) },
+          ...(isClosed ? [(d: Date) => isClosed(isoFromDate(d))] : []),
+        ]}
         components={COMPONENTS}
         {...(className ? { className } : {})}
       />

@@ -636,7 +636,13 @@ export function NewTicketDialog({
               currency={shop.currency}
             />
 
-            <ReadyByField shopId={shop.id} today={today} value={promised} onChange={setPromised} />
+            <ReadyByField
+              shopId={shop.id}
+              today={today}
+              schedule={shop.business_hours?.schedule}
+              value={promised}
+              onChange={setPromised}
+            />
 
             <div className="flex flex-col gap-2 sm:max-w-xs">
               <label htmlFor="assignee" className="text-sm font-semibold">

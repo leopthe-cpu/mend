@@ -2,6 +2,7 @@ import { CalendarDays } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { isOpenOn, nextOpenDays, type WeeklySchedule } from "@/lib/hours";
 import { dateFromIso, isoFromDate } from "@/lib/intake";
 import { getSupabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -11,30 +12,34 @@ const DAYS = 6;
 
 /**
  * "Ready by" for the new-ticket form (decision 78 redesign): the next six days
- * as buttons, each with how many open tickets are already due that day
- * (promised_date_counts), plus "Other date" for the full calendar. Pressing the
- * chosen day again clears it; the date stays optional.
+ * the shop is open (decision 79: closed days from the weekly hours are skipped,
+ * and greyed out in the calendar) as buttons, each with how many open tickets
+ * are already due that day (promised_date_counts), plus "Other date" for the
+ * full calendar. Pressing the chosen day again clears it; the date stays optional.
  */
 export function ReadyByField({
   shopId,
   today,
+  schedule,
   value,
   onChange,
 }: {
   shopId: string;
   today: string;
+  schedule: WeeklySchedule | undefined;
   value: string;
   onChange: (iso: string) => void;
 }) {
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
   const [pickOpen, setPickOpen] = useState(false);
 
-  const days = useMemo(() => {
-    const start = dateFromIso(today);
-    return Array.from({ length: DAYS }, (_, i) => {
-      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
-      return { iso: isoFromDate(d), date: d, i };
-    });
+  const days = useMemo(
+    () => nextOpenDays(schedule, today, DAYS).map((iso) => ({ iso, date: dateFromIso(iso) })),
+    [schedule, today],
+  );
+  const tomorrow = useMemo(() => {
+    const d = dateFromIso(today);
+    return isoFromDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1));
   }, [today]);
 
   useEffect(() => {
@@ -42,8 +47,8 @@ export function ReadyByField({
     void getSupabase()
       .rpc("promised_date_counts", {
         p_shop_id: shopId,
-        p_from: days[0]!.iso,
-        p_to: days[DAYS - 1]!.iso,
+        p_from: days[0]?.iso ?? today,
+        p_to: days.at(-1)?.iso ?? today,
       })
       .then(({ data }) => {
         if (stale) return;
@@ -53,12 +58,12 @@ export function ReadyByField({
     return () => {
       stale = true;
     };
-  }, [shopId, days]);
+  }, [shopId, days, today]);
 
-  const label = (d: Date, i: number) =>
-    i === 0
+  const label = (iso: string, d: Date) =>
+    iso === today
       ? "Today"
-      : i === 1
+      : iso === tomorrow
         ? "Tomorrow"
         : new Intl.DateTimeFormat("en-CA", { weekday: "short", day: "numeric" }).format(d);
   const other = value && !days.some((d) => d.iso === value) ? value : "";
@@ -89,7 +94,7 @@ export function ReadyByField({
               className={chip(on)}
               onClick={() => onChange(on ? "" : d.iso)}
             >
-              <span className="font-semibold whitespace-nowrap">{label(d.date, d.i)}</span>
+              <span className="font-semibold whitespace-nowrap">{label(d.iso, d.date)}</span>
               <span
                 className={cn("text-xs", on ? "text-primary-foreground" : "text-muted-foreground")}
               >
@@ -124,6 +129,7 @@ export function ReadyByField({
             <PickupCalendar
               shopId={shopId}
               today={today}
+              isClosed={(iso) => !isOpenOn(schedule, iso)}
               value={value}
               onChange={(iso) => {
                 onChange(iso);
@@ -135,7 +141,8 @@ export function ReadyByField({
         </Popover>
       </div>
       <p className="text-xs text-muted-foreground">
-        &ldquo;Due&rdquo; is how many open tickets are already promised for that day.
+        &ldquo;Due&rdquo; is how many open tickets are already promised for that day. Days the shop
+        is closed are skipped.
       </p>
     </div>
   );

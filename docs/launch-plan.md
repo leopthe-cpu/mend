@@ -28,7 +28,7 @@ Needs from Oz: legal name, address, contact email (legal-compliance.md §8).
 3. Set the webhook.
 4. Add the 3 secrets in production only.
 
-**L1c. Opt-out wording in texts (Claude).** Add "Reply STOP to opt out" to
+**L1c. Opt-out wording in texts (Claude, done 16 Oct: decision 74).** Add "Reply STOP to opt out" to
 the first text (or every text) and set up the HELP reply
 (legal-compliance.md §7, item 3).
 

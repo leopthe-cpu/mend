@@ -260,7 +260,7 @@ Sources: [verification now requires privacy policy and terms](https://www.twilio
 - Indemnity: the shop covers messages it sends without consent.
 - Governing law (Oz's province).
 - Changes to the terms, with notice.
-- Not offered in Quebec for now (if decided).
+- Not offered in Quebec for now (decision 73).
 - Contact.
 
 **D3 DPA:**
@@ -303,12 +303,14 @@ Each is a separate PR, with tests, after the documents exist.
 ## 8. What I need from Oz
 
 - Legal business name, type (sole proprietor or corporation), mailing
-  address, and **business registration number**. Twilio requires the number
+  address, and **business registration number** (pre-launch to-dos in
+  `oz-todo.md`; to start, sole proprietor under Oz's own name). Twilio requires the number
   for toll-free verification since Feb 2026 unless you're a sole proprietor
   (docs/verification.md T1).
-- Province, for the governing-law clause.
-- Privacy officer: you? A contact email, e.g. privacy@mendshops.com.
-- Quebec at launch: yes or no.
+- ~~Province~~: **Ontario** (decided 16 Oct, decision 73).
+- Privacy officer: Oz. Contact email: to be set up (pre-launch to-do).
+- ~~Quebec at launch~~: **no** (decided 16 Oct, decision 73), so D6 and
+  most of §3.2 are deferred.
 - Retention periods for closed tickets, photos and messages.
 - Pricing, or "free during beta", for the fees section.
 - A lawyer for the final review, and the questions flagged above:

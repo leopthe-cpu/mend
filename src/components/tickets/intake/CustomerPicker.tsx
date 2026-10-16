@@ -3,24 +3,24 @@ import { useEffect, useRef, useState } from "react";
 
 import { Field, selectClass } from "@/components/app/Field";
 import { PhoneInput } from "@/components/app/MaskedInputs";
-import { NewCustomerForm, type NewCustomerValues } from "@/components/customers/NewCustomerForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getSupabase } from "@/lib/supabase";
 
 export type Found = { id: string; label: string; since?: string };
 
-const EMPTY_CUSTOMER = {
-  name: "",
-  phone: "",
-  email: "",
-  channel: "sms" as "sms" | "email",
+export type CustomerDraft = {
+  name: string;
+  phone: string;
+  email: string;
+  channel: "sms" | "email";
 };
+const EMPTY_CUSTOMER: CustomerDraft = { name: "", phone: "", email: "", channel: "sms" };
 
 /**
  * Customer field for the new-ticket dialog (PR 6b): opens recent customers on
  * focus (with "Customer since" dates), filters via search_shop on typing, and
- * includes a "+ Customer" button that opens the NewCustomerForm in a tinted
+ * includes a "+ Customer" button that opens a new-customer panel in a tinted
  * panel.  Escape closes only the list, not the whole dialog.
  */
 export function CustomerPicker({
@@ -28,16 +28,25 @@ export function CustomerPicker({
   timeZone,
   customer,
   onCustomerChange,
+  draft,
+  onDraftChange,
 }: {
   shopId: string;
   timeZone: string;
   customer: Found | null;
   onCustomerChange: (c: Found | null) => void;
+  /** The inline "New customer" panel's values, or null when it is closed.
+   * The dialog saves the customer when the ticket is created (no separate
+   * save step: Oz's test, 16 Oct, typed a customer and it was never saved). */
+  draft: CustomerDraft | null;
+  onDraftChange: (d: CustomerDraft | null) => void;
 }) {
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<Found[]>([]);
-  const [creating, setCreating] = useState(false);
-  const [newCust, setNewCust] = useState(EMPTY_CUSTOMER);
+  const creating = draft !== null;
+  const newCust = draft ?? EMPTY_CUSTOMER;
+  const setNewCust = (d: CustomerDraft) => onDraftChange(d);
+  const setCreating = (on: boolean) => onDraftChange(on ? EMPTY_CUSTOMER : null);
   const searchSeq = useRef(0);
   // Bumped on focus so clicking the field always (re)opens the list.
   const [reload, setReload] = useState(0);
@@ -114,22 +123,6 @@ export function CustomerPicker({
     }
   }
 
-  async function createCustomer(values: NewCustomerValues) {
-    const { data, error } = await getSupabase().rpc("save_customer", {
-      p_shop_id: shopId,
-      p_customer_id: null,
-      p_name: values.name,
-      p_phone: values.phone || null,
-      p_email: values.email || null,
-      p_preferred_channel: values.channel,
-      p_notes: null,
-    });
-    if (error) throw error;
-    const id = data as string;
-    onCustomerChange({ id, label: values.name });
-    setCreating(false);
-  }
-
   const sectionTitle = "text-base font-semibold";
 
   return (
@@ -176,14 +169,14 @@ export function CustomerPicker({
               />
             </Field>
           </div>
-          <Field id="nc-phone" label="Mobile phone *">
+          <Field id="nc-phone" label="Mobile phone">
             <PhoneInput
               id="nc-phone"
               value={newCust.phone}
               onValueChange={(phone) => setNewCust({ ...newCust, phone })}
             />
           </Field>
-          <Field id="nc-email" label="Email *">
+          <Field id="nc-email" label="Email">
             <Input
               id="nc-email"
               type="email"

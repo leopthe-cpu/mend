@@ -89,7 +89,7 @@ export function NewCustomerForm({
         ) : null}
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id={`${idPrefix}-phone`} label="Mobile phone *">
+        <Field id={`${idPrefix}-phone`} label="Mobile phone">
           <PhoneInput
             id={`${idPrefix}-phone`}
             value={values.phone}
@@ -99,7 +99,7 @@ export function NewCustomerForm({
             }}
           />
         </Field>
-        <Field id={`${idPrefix}-email`} label="Email *">
+        <Field id={`${idPrefix}-email`} label="Email">
           <Input
             id={`${idPrefix}-email`}
             type="email"

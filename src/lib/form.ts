@@ -18,6 +18,13 @@ export function firstMissingField(fields: RequiredField[]): RequiredField | null
 /** Focus the first missing field and return it, or null when all are filled. */
 export function focusFirstMissingField(fields: RequiredField[]): RequiredField | null {
   const missing = firstMissingField(fields);
-  if (missing) requestAnimationFrame(() => document.getElementById(missing.id)?.focus());
+  if (missing)
+    requestAnimationFrame(() => {
+      const el = document.getElementById(missing.id);
+      // Scroll first: inside a dialog, focus() alone doesn't always bring the
+      // field into view (Oz's test, 16 Oct).
+      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      el?.focus({ preventScroll: true });
+    });
   return missing;
 }

@@ -51,8 +51,9 @@ select throws_ok($$ select public.queue_message(pg_temp.v('tk'), 'sms', 'Hi', nu
 
 select throws_ok($$ insert into public.message_templates (shop_id, kind, channel, body) values (pg_temp.v('shop'), 'created', 'sms', 'x') $$,
   '42501', null, 'staff cannot insert templates');
-select throws_ok($$ update public.message_templates set body = 'x' where shop_id = pg_temp.v('shop') and kind = 'created' and channel = 'sms' $$,
-  '42501', null, 'staff cannot update templates');
+-- RLS hides the rows from a Staff update (0 rows changed), it doesn't raise.
+select is_empty($$ update public.message_templates set body = 'x' where shop_id = pg_temp.v('shop') and kind = 'created' and channel = 'sms' returning 1 $$,
+  'staff cannot update templates');
 reset role;
 
 -- ===== Consent + automatic created message with a deposit ===================
@@ -85,7 +86,10 @@ select ok(exists (select 1 from public.audit_log where action = 'message.created
 reset role;
 
 -- ===== Trade change keeps exactly one created + one reminder per channel =====
-select set_config('request.jwt.claims', '{"sub":"b8000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+-- A fresh owner: a user can only own one shop.
+insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values
+  ('b8000000-0000-0000-0000-000000000009', 'owner.i@test.local', now(), '{}');
+select set_config('request.jwt.claims', '{"sub":"b8000000-0000-0000-0000-000000000009","role":"authenticated"}', true);
 set local role authenticated;
 insert into t values ('shop_i', public.create_shop('I Repairs', null, 'other', 'CA', null, 'America/Toronto')::text);
 select lives_ok($$ select public.finish_shop_setup(pg_temp.v('shop_i'), 'I Repairs', null, 'shoe_leather', 'CA', 'America/Toronto') $$,

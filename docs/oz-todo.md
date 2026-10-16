@@ -43,6 +43,25 @@ Before step 2, Claude publishes interim privacy and terms pages that pass Twilio
 - Message limits (decision 44): 500 texts per shop per month, 30 messages per 10 minutes, 5 per ticket per hour. Change any of these?
 - Decision 48: I set two public values in Supabase Vault directly (not via a migration) so the scheduled sender works. OK?
 
+## Pre-launch: legal details for the privacy and terms pages
+
+Needed before the Twilio submission (launch-plan.md L1a). Send Claude the
+results; don't put anything private in chat beyond what will be public on
+the pages anyway.
+
+1. **Legal name.** Quickest: operate as a sole proprietor under your own
+   name ("Leonardo Thé, operating as Mend"); no registration needed. To use
+   "Mend" alone as the business name, register it in the Ontario Business
+   Registry (check the current fee). You can incorporate later; the pages
+   and possibly the Twilio verification then need updating.
+2. **Mailing address.** Not your home address: a Canada Post PO box or a
+   UPS Store mailbox. It goes on the privacy policy (privacy officer
+   contact).
+3. **Contact email** on mendshops.com, e.g. `hello@mendshops.com`, forwarding
+   to your inbox. Free forwarding services exist (for example Cloudflare
+   Email Routing or ImprovMX; which one fits depends on where the domain's
+   DNS is). Used for privacy requests, support and the SMS HELP reply.
+
 ## Before real shops use Mend
 
 - Read the security review (private copy, decision 65) §2 (known gaps) and §3 (needs a lawyer).

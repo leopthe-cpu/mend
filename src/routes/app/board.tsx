@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, Bell, Image as ImageIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { StopAlerts } from "@/components/messages/StopAlerts";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { PageHeader } from "@/components/app/EmptyState";
 import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
@@ -125,6 +126,7 @@ function Board() {
   return (
     <>
       <PageHeader title="Board" />
+      <StopAlerts shopId={shop.id} timeZone={shop.time_zone} />
       {error ? (
         <div className="mb-4">
           <FormAlert tone="error">{error}</FormAlert>

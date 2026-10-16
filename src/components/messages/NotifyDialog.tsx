@@ -50,11 +50,6 @@ type Loaded = {
   statusName: string;
 };
 
-/**
- * "Notify Maria by SMS?" (spec §7.10): nothing is sent until the member
- * presses Send. Shows the rendered message (editable for this send), the
- * channel choice with opt-outs explained, and an SMS segment counter.
- */
 export function NotifyDialog({
   request,
   membership,
@@ -87,9 +82,7 @@ export function NotifyDialog({
         const [cust, contacts, templates, statuses] = await Promise.all([
           db
             .from("customers")
-            .select(
-              "id, name, preferred_channel, sms_opted_out, email_opted_out, notes, created_at",
-            )
+            .select("id, name, preferred_channel, sms_opted_out, email_opted_out, notes, created_at")
             .eq("id", ticket.customer_id)
             .single(),
           fetchContacts([ticket.customer_id]),
@@ -141,19 +134,24 @@ export function NotifyDialog({
 
   function fill(d: Loaded, ch: Channel) {
     const vars = {
+      customer_first_name: d.customer.name.split(" ")[0] || d.customer.name,
       customer_name: d.customer.name,
       item_name: d.ticket.item_name,
+      ticket_title: d.ticket.item_name,
       shop_name: shop.name,
       ticket_number: d.ticket.ticket_number,
       pickup_hours: shop.business_hours?.text ?? "",
+      shop_hours: shop.business_hours?.text ?? "",
     };
     const t =
       request?.kind === "status"
-        ? d.templates.find((x) => x.status_id === request.statusId && x.channel === ch)
-        : undefined;
+        ? d.templates.find((x) => x.kind === "status" && x.status_id === request.statusId && x.channel === ch)
+        : request?.kind === "reminder"
+          ? d.templates.find((x) => x.kind === "reminder" && x.channel === ch)
+          : undefined;
     const text =
       request?.kind === "reminder"
-        ? REMINDER_TEMPLATE
+        ? (t?.body ?? REMINDER_TEMPLATE)
         : request?.kind === "manual"
           ? "Hi {customer_name}, "
           : (t?.body ??

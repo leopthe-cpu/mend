@@ -47,7 +47,7 @@ describe("renderTemplate", () => {
     };
     expect(
       renderTemplate(
-        "Hi {customer_first_name}, thanks for visiting {shop_name}. Your order {ticket_title} (#{ticket_number}) will be ready on {promised_date}. {payment_line}",
+        "Hi {customer_first_name}, thanks for visiting {shop_name}. Your order {ticket_title} ({ticket_number}) will be ready on {promised_date}. {payment_line}",
         fixture,
       ),
     ).toBe(

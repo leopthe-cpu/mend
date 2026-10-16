@@ -74,7 +74,7 @@ export function TicketDetailsPanel({
       setEditing(false);
       setSaved(true);
     } catch {
-      // The parent already shows the error; stay in edit mode.
+      // The parent already shows the error message; stay in edit mode.
     } finally {
       setSaving(false);
     }

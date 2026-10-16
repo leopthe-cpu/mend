@@ -36,7 +36,7 @@ insert into t select 'open2', ticket_id::text from public.create_ticket_full(pg_
 reset role;
 
 -- Inbound STOP from the Twilio webhook (service role, no signed-in user).
-select set_config('request.jwt.claims', '{"role":"service_role"}', true);
+select set_config('request.jwt.claims', '{}', true);
 set local role service_role;
 select is(public.record_sms_opt_out('+14165550101', true), 2, 'STOP opts out the phone at both shops');
 reset role;

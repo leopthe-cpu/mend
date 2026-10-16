@@ -11,7 +11,7 @@ grant all on t to authenticated;
 create function pg_temp.v(p text) returns uuid language sql as $$ select v::uuid from t where k = p $$;
 grant execute on function pg_temp.v(text) to authenticated;
 
--- ===== Renderer parity with the same fixture used in src/lib/messages.test.ts =
+-- ===== Renderer parity (same fixture as src/lib/messages.test.ts) ===========
 select is(
   private.render_message_template(
     'Hi {customer_first_name}, thanks for visiting {shop_name}. Your order {ticket_title} (#{ticket_number}) will be ready on {promised_date}. {payment_line}',
@@ -36,7 +36,6 @@ reset role;
 insert into public.memberships (shop_id, user_id, role) values
   (pg_temp.v('shop'), 'h1000000-0000-0000-0000-000000000002', 'staff');
 
--- Existing shops are seeded with created + reminder (one per channel).
 select is((select count(*)::int from public.message_templates where shop_id = pg_temp.v('shop') and kind = 'created'), 2,
   'the migration seeds one created template per channel');
 select is((select count(*)::int from public.message_templates where shop_id = pg_temp.v('shop') and kind = 'reminder'), 2,
@@ -50,7 +49,6 @@ insert into t select 'm1', message_id::text from public.queue_message(pg_temp.v(
 select is((select kind::text from public.messages where id = pg_temp.v('m1')), 'created', 'queue_message accepts the created kind');
 select throws_ok($$ select public.queue_message(pg_temp.v('tk'), 'sms', 'Hi', null, 'bogus') $$, '22023', null, 'an unknown kind is rejected');
 
--- Staff cannot edit templates.
 select throws_ok($$ insert into public.message_templates (shop_id, kind, channel, body) values (pg_temp.v('shop'), 'created', 'sms', 'x') $$,
   '42501', null, 'staff cannot insert templates');
 select throws_ok($$ update public.message_templates set body = 'x' where shop_id = pg_temp.v('shop') and kind = 'created' and channel = 'sms' $$,
@@ -86,18 +84,17 @@ select ok(exists (select 1 from public.audit_log where action = 'message.created
   'the skip is audited');
 reset role;
 
--- ===== Trade change seeds created + reminder exactly once per channel =====
+-- ===== Trade change keeps exactly one created + one reminder per channel =====
 select set_config('request.jwt.claims', '{"sub":"h1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
-select public.create_shop('I Repairs', null, 'other', 'CA', null, 'America/Toronto');
-select id into t from public.shops where name = 'I Repairs';
-insert into t values ('shop_i', (select v from t where k = 'shop_i')) on conflict (k) do nothing;
+insert into t values ('shop_i', public.create_shop('I Repairs', null, 'other', 'CA', null, 'America/Toronto')::text);
+select lives_ok($$ select public.finish_shop_setup(pg_temp.v('shop_i'), 'I Repairs', null, 'shoe_leather', 'CA', 'America/Toronto') $$,
+  'changing the trade reseeds without failing');
 reset role;
-
-select is((select count(*)::int from public.message_templates where shop_id = (select v::uuid from t where k = 'shop_i') and kind = 'created'), 2,
-  'new shops get created templates');
-select is((select count(*)::int from public.message_templates where shop_id = (select v::uuid from t where k = 'shop_i') and kind = 'reminder'), 2,
-  'new shops get reminder templates');
+select is((select count(*)::int from public.message_templates where shop_id = pg_temp.v('shop_i') and kind = 'created'), 2,
+  'still exactly one created template per channel after a trade change');
+select is((select count(*)::int from public.message_templates where shop_id = pg_temp.v('shop_i') and kind = 'reminder'), 2,
+  'still exactly one reminder template per channel after a trade change');
 
 select * from finish();
 rollback;

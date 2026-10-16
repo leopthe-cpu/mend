@@ -109,7 +109,7 @@ immutable
 set search_path = ''
 as $$
   select case p_kind
-    when 'created' then 'Hi {customer_first_name}, thanks for visiting {shop_name}. Your order {ticket_title} (#{ticket_number}) will be ready on {promised_date}. {payment_line}'
+    when 'created' then 'Hi {customer_first_name}, thanks for visiting {shop_name}. Your order {ticket_title} ({ticket_number}) will be ready on {promised_date}. {payment_line}'
     when 'reminder' then 'Hi {customer_first_name}, a reminder that your {ticket_title} is ready for pickup at {shop_name}. {shop_hours}'
   end;
 $$;
@@ -137,6 +137,9 @@ on conflict do nothing;
 alter table public.tickets add column updates_consent boolean not null default false;
 alter table public.tickets add column updates_consent_at timestamptz;
 alter table public.tickets add column updates_consent_by uuid references auth.users (id) on delete set null;
+-- tickets uses column-level grants: make the new consent columns readable.
+grant select (updates_consent, updates_consent_at, updates_consent_by)
+  on public.tickets to authenticated;
 
 create function private.render_message_template(p_body text, p_vars jsonb)
 returns text
@@ -212,7 +215,7 @@ begin
     'shop_name', s.name,
     'ticket_title', t.item_name,
     'item_name', t.item_name,
-    'ticket_number', t.ticket_number,
+    'ticket_number', '#' || t.ticket_number,
     'promised_date', v_promised,
     'shop_hours', coalesce(s.business_hours ->> 'text', ''),
     'pickup_hours', coalesce(s.business_hours ->> 'text', ''),

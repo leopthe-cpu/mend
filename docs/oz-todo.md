@@ -24,6 +24,8 @@ own email provider does (Supabase docs: "Send emails with custom SMTP").
 
 ## To turn on texts (Twilio) — start early, verification takes days
 
+Before step 2, Claude publishes interim privacy and terms pages that pass Twilio's checks (launch-plan.md L1a). Send Claude your legal business name, mailing address and a contact email first. Order of all launch steps: [launch-plan.md](launch-plan.md).
+
 1. Create a Twilio account and buy **one toll-free number** (US/Canada).
 2. Submit **toll-free verification** for it. You'll need your business details (from Feb 2026, a business registration number unless you're a sole proprietor), sample messages (use the Ready text from Settings → Messages), and live **privacy policy and terms URLs** (separate pages). I couldn't open Twilio's pages from here, so follow what Twilio's form asks (docs/verification.md T1, T2).
 3. On the number's messaging settings, set **"A message comes in"** to webhook `https://zasagjabtifpuhayttki.supabase.co/functions/v1/twilio-webhook` (HTTP POST).

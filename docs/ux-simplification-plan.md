@@ -5,9 +5,8 @@ record each one in `docs/decisions.md` when it is implemented. v2 merges Oz's
 first round of feedback from testing staging (14 Oct) with the remaining work
 of v1.
 
-**Status (15 Oct):** PR 1, 2, 3 and 6 are done and released to production
-(release PR #13). Next: PR 4, 5, 6b, 7, 8. PR 6b is Oz's feedback on the
-new-ticket flow (15 Oct).
+**Status (16 Oct):** PRs 1–8 are done and released to production (release
+PR #21). Next: the launch steps in [launch-plan.md](launch-plan.md).
 
 ## How to work
 
@@ -222,6 +221,7 @@ catalog tax field below is reused here).
 
   "Paid" needs a total above 0; if there is no price, hide "Paid" or explain
   why it can't be picked. Remove the old button row and the "%" option.
+
 - **Required fields:** use the shared "Required fields on submit" rule (scroll
   to the first missing field, one at a time, top to bottom), including the
   deposit amount and any unconfirmed discount or tax.
@@ -250,6 +250,7 @@ catalog tax field below is reused here).
   tone (use shop hours, not pickup hours). Admins edit; staff can only send.
   Explain how this maps onto the current per-status templates and migrate
   without losing shops' edits.
+
 - Automatic "ticket created" message: reverses decision 47. Send
   automatically ONLY if the customer agreed at intake (tick box "Send updates
   by text/email" on the new-ticket form, on by default, CASL transactional

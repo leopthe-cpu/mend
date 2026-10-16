@@ -1,12 +1,11 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, LayoutGrid } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ArrowDown, ArrowUp, LayoutGrid, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
+import { DateRangePicker, type DateRangeValue } from "@/components/app/DateRangePicker";
 import { PageHeader } from "@/components/app/EmptyState";
-import { selectClass } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { friendlyDbError } from "@/lib/shop";
 import {
   fetchMembers,
@@ -26,7 +25,31 @@ export const Route = createFileRoute("/app/tickets/")({
   component: TicketList,
 });
 
-type SortKey = "ticket_number" | "customer" | "item" | "status" | "promised_date" | "created_at";
+type SortKey =
+  | "ticket_number"
+  | "customer"
+  | "item"
+  | "status"
+  | "promised_date"
+  | "created_at"
+  | "assigned_to"
+  | "created_by";
+
+function Chip({ children, onClear }: { children: React.ReactNode; onClear: () => void }) {
+  return (
+    <span className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface-2 px-3 text-sm">
+      {children}
+      <button
+        type="button"
+        aria-label="Remove filter"
+        onClick={onClear}
+        className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+      >
+        <X className="size-4" />
+      </button>
+    </span>
+  );
+}
 
 function TicketList() {
   const { membership } = Route.useRouteContext();
@@ -36,11 +59,12 @@ function TicketList() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState("open");
-  const [assignee, setAssignee] = useState("");
-  const [overdueOnly, setOverdueOnly] = useState(false);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
+  const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
+  const [range, setRange] = useState<DateRangeValue>({ from: "", to: "" });
+  const [overdue, setOverdue] = useState(false);
+  const [showClosed, setShowClosed] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({
     key: "ticket_number",
     asc: false,
@@ -64,18 +88,27 @@ function TicketList() {
 
   const today = shopToday(shop.time_zone);
   const byStatus = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
+
+  const memberName = (id: string | null) => {
+    const m = members.find((x) => x.user_id === id);
+    return m ? m.name || m.email : "—";
+  };
+
   const rows = useMemo(() => {
     const list = tickets.filter((t) => {
       const s = byStatus.get(t.status_id);
-      if (statusFilter === "open" && s?.category === "closed") return false;
-      if (statusFilter !== "open" && statusFilter !== "all" && t.status_id !== statusFilter)
-        return false;
-      if (assignee === "none" ? t.assigned_to : assignee && t.assigned_to !== assignee)
-        return false;
-      if (overdueOnly && !isOverdue(t, s, today)) return false;
-      const created = t.created_at.slice(0, 10);
-      if (from && created < from) return false;
-      if (to && created > to) return false;
+      if (statusFilter && t.status_id !== statusFilter) return false;
+      if (assigneeFilter) {
+        if (assigneeFilter === "none" ? t.assigned_to : t.assigned_to !== assigneeFilter)
+          return false;
+      }
+      if (creatorFilter && t.created_by !== creatorFilter) return false;
+      if (overdue && !isOverdue(t, s, today)) return false;
+      if (s?.category === "closed" && !(showClosed || t.status_id === statusFilter)) return false;
+      // Compare in the shop's time zone (not UTC).
+      const created = shopToday(shop.time_zone, new Date(t.created_at));
+      if (range.from && created < range.from) return false;
+      if (range.to && created > range.to) return false;
       return true;
     });
     const val = (t: Ticket): string | number => {
@@ -90,6 +123,10 @@ function TicketList() {
           return t.promised_date ?? "9999";
         case "created_at":
           return t.created_at;
+        case "assigned_to":
+          return memberName(t.assigned_to).toLowerCase();
+        case "created_by":
+          return memberName(t.created_by).toLowerCase();
         default:
           return t.ticket_number;
       }
@@ -97,7 +134,23 @@ function TicketList() {
     return list.sort(
       (a, b) => (val(a) < val(b) ? -1 : val(a) > val(b) ? 1 : 0) * (sort.asc ? 1 : -1),
     );
-  }, [tickets, byStatus, statusFilter, assignee, overdueOnly, from, to, sort, today]);
+  }, [
+    tickets,
+    byStatus,
+    statusFilter,
+    assigneeFilter,
+    creatorFilter,
+    overdue,
+    showClosed,
+    range,
+    sort,
+    today,
+    shop.time_zone,
+    members,
+  ]);
+
+  const openTicket = (id: string) =>
+    void navigate({ to: "/app/tickets/$ticketId", params: { ticketId: id } });
 
   const header = (key: SortKey, label: string) => (
     <th
@@ -139,57 +192,44 @@ function TicketList() {
         </Button>
       </PageHeader>
       {error ? <FormAlert tone="error">{error}</FormAlert> : null}
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <select
-          aria-label="Status"
-          className={selectClass}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <DateRangePicker value={range} onChange={setRange} />
+        <button
+          type="button"
+          onClick={() => setOverdue(!overdue)}
+          className={cn(
+            "min-h-11 rounded-md border px-3 text-sm font-medium",
+            overdue ? "border-primary bg-surface-2 text-foreground" : "border-input",
+          )}
         >
-          <option value="open">All open</option>
-          <option value="all">All, including picked up</option>
-          {statuses.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Assigned to"
-          className={selectClass}
-          value={assignee}
-          onChange={(e) => setAssignee(e.target.value)}
-        >
-          <option value="">Anyone</option>
-          <option value="none">Unassigned</option>
-          {members.map((m) => (
-            <option key={m.user_id} value={m.user_id}>
-              {m.name || m.email}
-            </option>
-          ))}
-        </select>
-        <Input
-          aria-label="Created from"
-          type="date"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-        />
-        <Input
-          aria-label="Created to"
-          type="date"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-        />
-        <label className="flex min-h-11 items-center gap-2">
-          <input
-            type="checkbox"
-            className="size-5"
-            checked={overdueOnly}
-            onChange={(e) => setOverdueOnly(e.target.checked)}
-          />{" "}
           Overdue only
-        </label>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowClosed(!showClosed)}
+          className={cn(
+            "min-h-11 rounded-md border px-3 text-sm font-medium",
+            showClosed ? "border-primary bg-surface-2 text-foreground" : "border-input",
+          )}
+        >
+          Include picked up
+        </button>
+        {statusFilter ? (
+          <Chip onClear={() => setStatusFilter(null)}>
+            {statuses.find((s) => s.id === statusFilter)?.name}
+          </Chip>
+        ) : null}
+        {assigneeFilter ? (
+          <Chip onClear={() => setAssigneeFilter(null)}>
+            {assigneeFilter === "none" ? "Unassigned" : memberName(assigneeFilter)}
+          </Chip>
+        ) : null}
+        {creatorFilter ? (
+          <Chip onClear={() => setCreatorFilter(null)}>Created by {memberName(creatorFilter)}</Chip>
+        ) : null}
       </div>
+
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full text-left">
           <thead className="border-b border-border text-sm text-muted-foreground">
@@ -198,29 +238,42 @@ function TicketList() {
               {header("customer", "Customer")}
               {header("item", "Item")}
               {header("status", "Status")}
+              {header("assigned_to", "Assigned to")}
               {header("promised_date", "Promised")}
               {header("created_at", "Created")}
+              {header("created_by", "Created by")}
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {rows.map((t) => {
               const s = byStatus.get(t.status_id);
-              const overdue = isOverdue(t, s, today);
+              const overdueRow = isOverdue(t, s, today);
               return (
-                <tr key={t.id} className="hover:bg-accent/40">
-                  <td className="px-3 py-3 font-mono">
-                    <Link
-                      to="/app/tickets/$ticketId"
-                      params={{ ticketId: t.id }}
-                      className="underline-offset-4 hover:underline"
-                    >
-                      #{t.ticket_number}
-                    </Link>
-                  </td>
+                <tr
+                  key={t.id}
+                  role="link"
+                  tabIndex={0}
+                  className="cursor-pointer hover:bg-accent/40"
+                  onClick={() => openTicket(t.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openTicket(t.id);
+                    }
+                  }}
+                >
+                  <td className="px-3 py-3 font-mono">#{t.ticket_number}</td>
                   <td className="px-3 py-3">{t.customer?.name}</td>
                   <td className="px-3 py-3">{t.item_name}</td>
                   <td className="px-3 py-3">
-                    <span className="inline-flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="inline-flex min-h-11 items-center gap-2 rounded-md underline-offset-4 hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStatusFilter(statusFilter === t.status_id ? null : t.status_id);
+                      }}
+                    >
                       <span
                         aria-hidden
                         className={cn(
@@ -229,19 +282,50 @@ function TicketList() {
                         )}
                       />
                       {s?.name}
-                    </span>
+                    </button>
                   </td>
-                  <td className={cn("px-3 py-3", overdue && "font-medium text-danger")}>
+                  <td className="px-3 py-3">
+                    <button
+                      type="button"
+                      className="min-h-11 rounded-md underline-offset-4 hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = t.assigned_to ?? "none";
+                        setAssigneeFilter(assigneeFilter === next ? null : next);
+                      }}
+                    >
+                      {memberName(t.assigned_to)}
+                    </button>
+                  </td>
+                  <td className={cn("px-3 py-3", overdueRow && "font-medium text-danger")}>
                     {t.promised_date ?? ""}
-                    {overdue ? " · Overdue" : ""}
+                    {overdueRow ? " · Overdue" : ""}
                   </td>
-                  <td className="px-3 py-3 font-mono text-sm">{t.created_at.slice(0, 10)}</td>
+                  <td className="px-3 py-3 font-mono text-sm">
+                    {shopToday(shop.time_zone, new Date(t.created_at))}
+                  </td>
+                  <td className="px-3 py-3">
+                    {t.created_by ? (
+                      <button
+                        type="button"
+                        className="min-h-11 rounded-md underline-offset-4 hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCreatorFilter(creatorFilter === t.created_by ? null : t.created_by);
+                        }}
+                      >
+                        {memberName(t.created_by)}
+                      </button>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                 </tr>
               );
             })}
             {!rows.length ? (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-muted-foreground">
+                <td colSpan={8} className="px-3 py-6 text-muted-foreground">
                   No tickets match.
                 </td>
               </tr>

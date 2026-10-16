@@ -141,19 +141,26 @@ export function NotifyDialog({
 
   function fill(d: Loaded, ch: Channel) {
     const vars = {
+      customer_first_name: d.customer.name.split(" ")[0] || d.customer.name,
       customer_name: d.customer.name,
       item_name: d.ticket.item_name,
+      ticket_title: d.ticket.item_name,
       shop_name: shop.name,
       ticket_number: d.ticket.ticket_number,
       pickup_hours: shop.business_hours?.text ?? "",
+      shop_hours: shop.business_hours?.text ?? "",
     };
     const t =
       request?.kind === "status"
-        ? d.templates.find((x) => x.status_id === request.statusId && x.channel === ch)
-        : undefined;
+        ? d.templates.find(
+            (x) => x.kind === "status" && x.status_id === request.statusId && x.channel === ch,
+          )
+        : request?.kind === "reminder"
+          ? d.templates.find((x) => x.kind === "reminder" && x.channel === ch)
+          : undefined;
     const text =
       request?.kind === "reminder"
-        ? REMINDER_TEMPLATE
+        ? (t?.body ?? REMINDER_TEMPLATE)
         : request?.kind === "manual"
           ? "Hi {customer_name}, "
           : (t?.body ??

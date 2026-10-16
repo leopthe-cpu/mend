@@ -49,13 +49,17 @@ export type Ticket = {
   customer_notes: string | null;
   terms_accepted_at: string | null;
   picked_up_at: string | null;
+  created_by: string | null;
+  updates_consent: boolean;
+  updates_consent_at: string | null;
+  updates_consent_by: string | null;
   created_at: string;
   customer?: { id: string; name: string } | null;
 };
 export type Member = { user_id: string; role: string; name: string; email: string };
 
 const TICKET_COLUMNS =
-  "id, shop_id, ticket_number, customer_id, item_name, item_description, issue_description, status_id, status_changed_at, assigned_to, promised_date, custom_fields, has_passcode, internal_notes, customer_notes, terms_accepted_at, picked_up_at, created_at, customer:customers(id, name)";
+  "id, shop_id, ticket_number, customer_id, item_name, item_description, issue_description, status_id, status_changed_at, assigned_to, promised_date, custom_fields, has_passcode, internal_notes, customer_notes, terms_accepted_at, picked_up_at, created_by, updates_consent, updates_consent_at, updates_consent_by, created_at, customer:customers(id, name)";
 
 export async function fetchStatuses(shopId: string): Promise<Status[]> {
   const { data, error } = await getSupabase()
@@ -134,7 +138,6 @@ export async function fetchContacts(
   );
 }
 
-/** "Today" in the shop's time zone as YYYY-MM-DD (spec §6: date-only fields use the shop's zone). */
 export function shopToday(timeZone: string, now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone,
@@ -144,7 +147,6 @@ export function shopToday(timeZone: string, now = new Date()): string {
   }).format(now);
 }
 
-/** Overdue: promised date has passed and the ticket isn't ready or closed (spec §7.3). */
 export function isOverdue(
   t: Pick<Ticket, "promised_date">,
   status: Status | undefined,
@@ -155,7 +157,6 @@ export function isOverdue(
   return t.promised_date < today;
 }
 
-/** Unclaimed: in a ready status longer than the shop's reminder days (spec §7.3). */
 export function isUnclaimed(
   t: Pick<Ticket, "status_changed_at">,
   status: Status | undefined,
@@ -166,7 +167,6 @@ export function isUnclaimed(
   return now.getTime() - new Date(t.status_changed_at).getTime() > days * 86_400_000;
 }
 
-/** Closed tickets leave the board after 7 days (spec §7.3 suggestion) but stay in the list. */
 export function onBoard(
   t: Pick<Ticket, "status_changed_at">,
   status: Status | undefined,
@@ -189,7 +189,6 @@ export const STATUS_COLOR_CLASS: Record<Status["color"], string> = {
   closed: "bg-status-closed",
 };
 
-/** Signed, short-lived URLs for private photos (spec §4: 10 minutes). */
 export async function signedPhotoUrls(paths: string[]): Promise<Map<string, string>> {
   if (!paths.length) return new Map();
   const { data, error } = await getSupabase()
@@ -204,7 +203,6 @@ export async function signedPhotoUrls(paths: string[]): Promise<Map<string, stri
 export const PHOTO_MAX_BYTES = 10 * 1024 * 1024;
 export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 
-/** Uploads intake photos to <shop>/<ticket>/<uuid>.<ext> and records them. */
 export async function uploadPhotos(
   shopId: string,
   ticketId: string,

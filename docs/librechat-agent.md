@@ -14,6 +14,47 @@ Sources checked 2026-10-07: LibreChat `mcp_servers` docs (remote
 fine-grained tokens (not usable by repository collaborators) and rulesets
 (bypass "for pull requests only").
 
+## Hard rules for every PR (read before starting one)
+
+Learned from PRs 3 to 6b (Oct 2026). The agent can't run code, build the app
+or open a browser, so these rules turn CI into its compiler and avoid the
+mistakes that cost the most review rounds. The same text is pasted into the
+agent's Instructions in LibreChat (section 6).
+
+1. **CI is your compiler.** After your last commit, wait for CI on the PR
+   head. If anything fails, read the failed job's log (Actions → job → logs),
+   fix the exact error, push, and repeat. Never report a PR as done, and never
+   ask for review, until every check is green.
+2. **Check before every commit.** Re-read the whole file you are writing:
+   every import path exists (relative to that file's folder); every name you
+   use is imported; every prop you pass matches the component's declared
+   props; IDs are the right kind (a shop id is not an item id).
+3. **Small files.** Keep every file under about 400 lines; split into
+   components first if it would be bigger. Never commit a partial or
+   truncated file.
+4. **One file per commit, one commit at a time.** Wait for each commit to
+   succeed before the next. Never write files in parallel (that causes
+   "branch races").
+5. **Formatting** (Prettier, `printWidth` 100): end every file with exactly
+   one newline; if a JSX expression or call fits on one line within 100
+   characters, keep it on one line.
+6. **Start from the right base.** Before a PR, confirm the PRs it depends on
+   are merged into `develop`, then branch from the latest `develop`. If they
+   aren't merged, stop and say so.
+7. **pgTAP tests:** copy the setup pattern from an existing test (e.g.
+   `015_ticket_intake.test.sql`). UUIDs are hex only (0-9, a-f). Insert
+   memberships after `reset role`, as the superuser.
+8. **UI behaviour you can't test:** inside a dialog, Escape closes only an
+   open list or popover (handle it on the input and in the dialog's
+   `onEscapeKeyDown`), never the whole form; a typed value is never silently
+   dropped when focus leaves a field.
+9. **Report:** what changed, the CI result (must be green), and anything you
+   could not verify. Keep it short.
+
+Claude Code still reviews every PR (code, local checks, database tests and a
+browser test at phone and desktop width) before Oz merges, because behaviour
+bugs only show up in a browser.
+
 ## 1. A separate GitHub account for the agent
 
 The agent must not act as Oz: GitHub never lets you approve your own pull

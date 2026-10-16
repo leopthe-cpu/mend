@@ -12,11 +12,12 @@ create temporary view our_functions as
      and not exists (select 1 from pg_depend d
                       where d.objid = p.oid and d.deptype = 'e');
 
--- anon: only the invite preview (the invite page before sign-in).
+-- anon: only the invite preview (the invite page before sign-in) and the
+-- public shop contact page (decision 76).
 select is_empty(
   $$ select nspname || '.' || proname from our_functions
       where has_function_privilege('anon', oid, 'EXECUTE')
-        and nspname || '.' || proname <> all (array['public.invite_preview']) $$,
+        and nspname || '.' || proname <> all (array['public.invite_preview', 'public.shop_contact']) $$,
   'anon can execute only allow-listed functions'
 );
 
@@ -43,7 +44,7 @@ select is_empty(
           'public.record_payment', 'public.update_payment', 'public.delete_payment',
           'public.save_catalog_item', 'public.finish_shop_setup', 'public.onboarding_state', 'public.export_shop', 'public.set_shop_logo', 'public.delete_shop',
           'public.queue_message', 'public.cancel_message', 'public.set_customer_opt_out',
-          'public.accept_terms'
+          'public.accept_terms', 'public.shop_contact'
         ]) $$,
   'authenticated can execute only allow-listed functions'
 );

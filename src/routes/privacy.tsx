@@ -30,6 +30,10 @@ function Page() {
           account. Mend is responsible for this information.
         </li>
         <li>
+          <strong>Shop contact pages.</strong> Each shop's name, address, phone, email and hours are
+          shown on a public page linked from its texts, so customers know who is texting them.
+        </li>
+        <li>
           <strong>Shops' customers.</strong> A shop enters its customers' names, phone numbers,
           email addresses, repair details, photos and messages. Mend stores and processes this
           information for the shop, which decides what to collect and stays responsible for it. To

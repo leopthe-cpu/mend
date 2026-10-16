@@ -2,7 +2,7 @@ import { CalendarDays } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { isOpenOn, nextOpenDays, type WeeklySchedule } from "@/lib/hours";
+import { isOpenOn, nextOpenDays, stillOpenToday, type WeeklySchedule } from "@/lib/hours";
 import { dateFromIso, isoFromDate } from "@/lib/intake";
 import { getSupabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -20,12 +20,14 @@ const DAYS = 6;
 export function ReadyByField({
   shopId,
   today,
+  timeZone,
   schedule,
   value,
   onChange,
 }: {
   shopId: string;
   today: string;
+  timeZone: string;
   schedule: WeeklySchedule | undefined;
   value: string;
   onChange: (iso: string) => void;
@@ -33,14 +35,21 @@ export function ReadyByField({
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
   const [pickOpen, setPickOpen] = useState(false);
 
-  const days = useMemo(
-    () => nextOpenDays(schedule, today, DAYS).map((iso) => ({ iso, date: dateFromIso(iso) })),
-    [schedule, today],
-  );
   const tomorrow = useMemo(() => {
     const d = dateFromIso(today);
     return isoFromDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1));
   }, [today]);
+  // Today only while the shop is still open; "Tomorrow" only when it opens
+  // tomorrow; otherwise the next open days by name (Oz's staging test).
+  const openToday = stillOpenToday(schedule, timeZone);
+  const days = useMemo(
+    () =>
+      nextOpenDays(schedule, openToday ? today : tomorrow, DAYS).map((iso) => ({
+        iso,
+        date: dateFromIso(iso),
+      })),
+    [schedule, today, tomorrow, openToday],
+  );
 
   useEffect(() => {
     let stale = false;
@@ -129,7 +138,7 @@ export function ReadyByField({
             <PickupCalendar
               shopId={shopId}
               today={today}
-              isClosed={(iso) => !isOpenOn(schedule, iso)}
+              isClosed={(iso) => !isOpenOn(schedule, iso) || (iso === today && !openToday)}
               value={value}
               onChange={(iso) => {
                 onChange(iso);

@@ -50,6 +50,11 @@ import { friendlyDbError, roleAtLeast, type Membership } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import { shopToday, type Ticket } from "@/lib/tickets";
 import { cn } from "@/lib/utils";
+import {
+  parseTicketDiscount,
+  TicketDiscountInput,
+  type TicketDiscountDraft,
+} from "./TicketDiscountInput";
 
 type Msg = { tone: "error" | "info"; text: string } | null;
 
@@ -277,6 +282,10 @@ export function MoneySection({
                   money={money}
                   rpc={rpc}
                 />
+              ) : null}
+
+              {editable && isAdmin && lines.length ? (
+                <TicketDiscountRow est={shown} busy={busy} money={money} rpc={rpc} />
               ) : null}
 
               <Totals est={shown} money={money} />
@@ -873,7 +882,106 @@ function AddLine({
   );
 }
 
+// The whole-ticket discount (decision 78): Owner/Admin, draft estimates only.
+function TicketDiscountRow({
+  est,
+  busy,
+  money,
+  rpc,
+}: {
+  est: Estimate;
+  busy: boolean;
+  money: (c: number) => string;
+  rpc: Rpc;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<TicketDiscountDraft>({
+    type: est.discount_type ?? "percent",
+    value: est.discount_value === null ? "" : String(est.discount_value),
+  });
+  const [err, setErr] = useState<string | null>(null);
+
+  if (!editing) {
+    return est.discount_type ? (
+      <div className="flex flex-wrap items-center gap-2">
+        <span>
+          Ticket discount: {ticketDiscountLabel(est, money)} (−{money(est.discount_cents)})
+        </span>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(true)}>
+          Change
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={busy}
+          onClick={() =>
+            void rpc(
+              "set_estimate_discount",
+              { p_estimate_id: est.id, p_type: null, p_value: null },
+              "Discount removed.",
+            )
+          }
+        >
+          Remove
+        </Button>
+      </div>
+    ) : (
+      <Button
+        type="button"
+        variant="ghost"
+        className="self-start"
+        onClick={() => setEditing(true)}
+      >
+        <Plus /> Discount on the whole ticket
+      </Button>
+    );
+  }
+  return (
+    <form
+      method="post"
+      className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const d = parseTicketDiscount(draft);
+        if (!d.ok) return setErr(d.message);
+        setErr(null);
+        void rpc(
+          "set_estimate_discount",
+          { p_estimate_id: est.id, p_type: d.type, p_value: d.value },
+          "Discount saved.",
+        ).then((ok) => ok && setEditing(false));
+      }}
+    >
+      <span className="font-medium">Discount on the whole ticket</span>
+      <TicketDiscountInput id={`td-${est.id}`} draft={draft} onChange={setDraft} />
+      <div className="flex gap-2">
+        <Button type="submit" disabled={busy}>
+          <Check /> Save
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Cancel"
+          onClick={() => setEditing(false)}
+        >
+          <X />
+        </Button>
+      </div>
+      {err ? <p className="w-full text-sm text-danger">{err}</p> : null}
+    </form>
+  );
+}
+
+function ticketDiscountLabel(est: Estimate, money: (c: number) => string): string {
+  return est.discount_type === "percent"
+    ? `${Number(est.discount_value)}%`
+    : money(Math.round(Number(est.discount_value) * 100));
+}
+
 function Totals({ est, money }: { est: Estimate; money: (c: number) => string }) {
+  const lineSavings = est.savings_cents - est.discount_cents;
   return (
     <dl className="ml-auto flex w-full max-w-xs flex-col gap-1">
       {est.savings_cents > 0 ? (
@@ -882,10 +990,18 @@ function Totals({ est, money }: { est: Estimate; money: (c: number) => string })
             <dt>Before discounts</dt>
             <dd>{money(est.subtotal_before_cents)}</dd>
           </div>
-          <div className="flex justify-between font-medium text-success">
-            <dt>Total savings</dt>
-            <dd>-{money(est.savings_cents)}</dd>
-          </div>
+          {lineSavings > 0 ? (
+            <div className="flex justify-between font-medium text-success">
+              <dt>{est.discount_cents > 0 ? "Item discounts" : "Total savings"}</dt>
+              <dd>-{money(lineSavings)}</dd>
+            </div>
+          ) : null}
+          {est.discount_cents > 0 ? (
+            <div className="flex justify-between font-medium text-success">
+              <dt>Ticket discount ({ticketDiscountLabel(est, money)})</dt>
+              <dd>-{money(est.discount_cents)}</dd>
+            </div>
+          ) : null}
         </>
       ) : null}
       <div className="flex justify-between">

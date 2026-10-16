@@ -120,6 +120,9 @@ export function NewTicketDialog({
   const [passcode, setPasscode] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [terms, setTerms] = useState(false);
+  // PR 8 (decision 72): consent to ticket updates, stored on the ticket. When
+  // ticked, the database also sends the "Ticket created" message.
+  const [updates, setUpdates] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -155,6 +158,7 @@ export function NewTicketDialog({
     setPasscode("");
     setPhotos([]);
     setTerms(false);
+    setUpdates(true);
     setError(null);
   }
 
@@ -310,6 +314,7 @@ export function NewTicketDialog({
         p_custom_fields: cleanCustom,
         p_passcode: passcode || null,
         p_terms_accepted: terms,
+        p_updates_consent: updates,
         p_lines: lines.map(linePayload),
         p_payment:
           payMode === "full"
@@ -689,6 +694,17 @@ export function NewTicketDialog({
               </p>
             ) : null}
           </section>
+
+          {/* Updates consent */}
+          <label className="flex min-h-11 items-center gap-3">
+            <input
+              type="checkbox"
+              className="size-5"
+              checked={updates}
+              onChange={(e) => setUpdates(e.target.checked)}
+            />
+            <span>The customer agrees to get updates about this ticket by text or email</span>
+          </label>
 
           {/* Terms */}
           {shop.terms_text ? (

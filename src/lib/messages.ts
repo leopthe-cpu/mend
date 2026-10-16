@@ -87,7 +87,13 @@ export function formatPromisedDate(iso: string): string {
 export function renderTemplate(text: string, vars: Partial<TemplateVars>): string {
   let out = text;
   for (const [k, v] of Object.entries(vars)) {
-    out = out.split(`{${k}}`).join(v === undefined || v === null ? "" : String(v));
+    const value =
+      k === "ticket_number" && typeof v === "number"
+        ? `#${v}`
+        : v === undefined || v === null
+          ? ""
+          : String(v);
+    out = out.split(`{${k}}`).join(value);
   }
   return out.trim();
 }
@@ -99,11 +105,11 @@ export const DEFAULT_TEMPLATES: Record<
   created: {
     sms: {
       subject: "",
-      body: "Hi {customer_first_name}, thanks for visiting {shop_name}. Your order {ticket_title} (#{ticket_number}) will be ready on {promised_date}. {payment_line}",
+      body: "Hi {customer_first_name}, thanks for visiting {shop_name}. Your order {ticket_title} ({ticket_number}) will be ready on {promised_date}. {payment_line}",
     },
     email: {
       subject: "Your {ticket_title} at {shop_name}",
-      body: "Hi {customer_first_name}, thanks for visiting {shop_name}. Your order {ticket_title} (#{ticket_number}) will be ready on {promised_date}. {payment_line}",
+      body: "Hi {customer_first_name}, thanks for visiting {shop_name}. Your order {ticket_title} ({ticket_number}) will be ready on {promised_date}. {payment_line}",
     },
   },
   reminder: {

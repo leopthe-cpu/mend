@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { renderTemplate, smsSegments } from "./messages";
+import { formatPromisedDate, renderTemplate, smsSegments } from "./messages";
 
 const vars = {
   customer_name: "Maria Rossi",
@@ -11,13 +11,15 @@ const vars = {
 };
 
 describe("renderTemplate", () => {
-  it("renders the spec's default Ready template", () => {
+  it("renders the spec's default Ready template (full customer name)", () => {
     expect(
       renderTemplate(
         "Hi {customer_name}, your {item_name} is ready for pickup at {shop_name}. {pickup_hours}",
         vars,
       ),
-    ).toBe("Hi Maria, your winter coat is ready for pickup at Tailor and Cleaners. Mon-Sat 9-6");
+    ).toBe(
+      "Hi Maria Rossi, your winter coat is ready for pickup at Tailor and Cleaners. Mon-Sat 9-6",
+    );
   });
 
   it("handles a missing pickup time and repeated variables", () => {
@@ -27,6 +29,40 @@ describe("renderTemplate", () => {
         pickup_hours: "",
       }),
     ).toBe("Ticket #1042: winter coat (winter coat).");
+  });
+
+  it("matches the SQL renderer on the parity fixture", () => {
+    const fixture = {
+      customer_first_name: "Maria",
+      customer_name: "Maria Rossi",
+      shop_name: "Tailor and Cleaners",
+      ticket_title: "winter coat",
+      item_name: "winter coat",
+      ticket_number: 1042,
+      promised_date: "Tue, Oct 20",
+      shop_hours: "Mon-Sat 9-6",
+      pickup_hours: "Mon-Sat 9-6",
+      amount_due: "$100.00",
+      payment_line: "Payment of $100.00 is due at pick-up.",
+    };
+    expect(
+      renderTemplate(
+        "Hi {customer_first_name}, thanks for visiting {shop_name}. Your order {ticket_title} (#{ticket_number}) will be ready on {promised_date}. {payment_line}",
+        fixture,
+      ),
+    ).toBe(
+      "Hi Maria, thanks for visiting Tailor and Cleaners. Your order winter coat (#1042) will be ready on Tue, Oct 20. Payment of $100.00 is due at pick-up.",
+    );
+  });
+});
+
+describe("formatPromisedDate", () => {
+  it("matches SQL to_char(date, 'Dy, Mon DD')", () => {
+    expect(formatPromisedDate("2026-10-20")).toBe("Tue, Oct 20");
+  });
+
+  it("falls back for an empty date", () => {
+    expect(formatPromisedDate("")).toBe("a date to be confirmed");
   });
 });
 

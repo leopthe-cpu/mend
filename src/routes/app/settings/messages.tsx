@@ -8,10 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   type Channel,
+  type MessageKind,
   fetchTemplates,
   renderTemplate,
   smsSegments,
   type Template,
+  type TemplateVars,
   VARIABLES,
 } from "@/lib/messages";
 import { friendlyDbError, roleAtLeast } from "@/lib/shop";
@@ -45,35 +47,45 @@ function MessageSettings() {
     void load();
   }, [load]);
 
-  const sample = useMemo(
+  const readyStatus = statuses?.find((s) => s.category === "ready");
+  const hours = shop.business_hours?.text?.trim() || "Mon-Fri 9-5";
+  const sample: TemplateVars = useMemo(
     () => ({
+      customer_first_name: "Maria",
       customer_name: "Maria Rossi",
       item_name: "winter coat",
+      ticket_title: "winter coat",
       shop_name: shop.name,
       ticket_number: 1042,
-      pickup_hours: shop.business_hours?.text ?? "",
+      pickup_hours: hours,
+      shop_hours: hours,
+      promised_date: "Tue, Oct 20",
+      amount_due: "$100.00",
+      payment_line: "Payment of $100.00 is due at pick-up.",
     }),
-    [shop.name, shop.business_hours],
+    [shop.name, hours],
   );
+
+  const onSaved = async (text: string) => {
+    setMsg({ tone: "info", text });
+    await load();
+  };
+  const onError = (text: string) => setMsg({ tone: "error", text });
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      {!canEdit ? (
-        <FormAlert tone="info">Only Admins can change message templates.</FormAlert>
-      ) : null}
+      {!canEdit ? <FormAlert tone="info">Only Admins can change message templates.</FormAlert> : null}
       {msg ? <FormAlert tone={msg.tone}>{msg.text}</FormAlert> : null}
       <Panel
         title="How messages work"
         description={
           <>
-            When a ticket moves into a status marked "notify by default" (in{" "}
-            <Link to="/app/settings/board" className="underline">
-              Board &amp; fields
-            </Link>
-            ), Mend shows the message and waits for you to press Send. You can edit it each time.
             Messages confirmed during quiet hours ({shop.quiet_hours_start.slice(0, 5)}–
-            {shop.quiet_hours_end.slice(0, 5)}, set in Shop) go out when quiet hours end. You can
-            use {VARIABLES.join(", ")}.
+            {shop.quiet_hours_end.slice(0, 5)}, set in{" "}
+            <Link to="/app/settings/shop" className="underline">
+              Shop
+            </Link>
+            ) go out when quiet hours end. You can use {VARIABLES.join(", ")}.
           </>
         }
       >
@@ -81,33 +93,68 @@ function MessageSettings() {
           Texts come from Mend's shared number. Customers can reply STOP to opt out.
         </p>
       </Panel>
+
       {statuses === null ? (
         <p className="text-muted-foreground">Loading…</p>
       ) : (
-        statuses.map((s) => (
-          <StatusTemplates
-            key={s.id}
+        <>
+          <TemplateEditor
             shopId={shop.id}
-            status={s}
-            sms={templates.find((t) => t.status_id === s.id && t.channel === "sms")}
-            email={templates.find((t) => t.status_id === s.id && t.channel === "email")}
+            title="Ticket created"
+            description="Sent automatically when someone creates a ticket and the customer agreed to updates."
+            kind="created"
+            statusId={null}
+            sms={templates.find((t) => t.kind === "created" && t.channel === "sms")}
+            email={templates.find((t) => t.kind === "created" && t.channel === "email")}
             sample={sample}
             canEdit={canEdit}
-            onSaved={async (text) => {
-              setMsg({ tone: "info", text });
-              await load();
-            }}
-            onError={(text) => setMsg({ tone: "error", text })}
+            onSaved={onSaved}
+            onError={onError}
           />
-        ))
+
+          {readyStatus ? (
+            <TemplateEditor
+              shopId={shop.id}
+              title="Ticket ready"
+              description="Used when a ticket moves into a status that notifies by default."
+              kind="status"
+              statusId={readyStatus.id}
+              sms={templates.find((t) => t.kind === "status" && t.status_id === readyStatus.id && t.channel === "sms")}
+              email={templates.find((t) => t.kind === "status" && t.status_id === readyStatus.id && t.channel === "email")}
+              sample={sample}
+              canEdit={canEdit}
+              onSaved={onSaved}
+              onError={onError}
+            />
+          ) : (
+            <Panel title="Ticket ready" description="Your shop has no "Ready" status yet — add one in Board & fields." />
+          )}
+
+          <TemplateEditor
+            shopId={shop.id}
+            title="Reminder"
+            description="Sent from a ticket with the Send button."
+            kind="reminder"
+            statusId={null}
+            sms={templates.find((t) => t.kind === "reminder" && t.channel === "sms")}
+            email={templates.find((t) => t.kind === "reminder" && t.channel === "email")}
+            sample={sample}
+            canEdit={canEdit}
+            onSaved={onSaved}
+            onError={onError}
+          />
+        </>
       )}
     </div>
   );
 }
 
-function StatusTemplates({
+function TemplateEditor({
   shopId,
-  status,
+  title,
+  description,
+  kind,
+  statusId,
   sms,
   email,
   sample,
@@ -116,10 +163,13 @@ function StatusTemplates({
   onError,
 }: {
   shopId: string;
-  status: Status;
+  title: string;
+  description?: string;
+  kind: MessageKind;
+  statusId: string | null;
   sms: Template | undefined;
   email: Template | undefined;
-  sample: Parameters<typeof renderTemplate>[1];
+  sample: TemplateVars;
   canEdit: boolean;
   onSaved: (text: string) => Promise<void>;
   onError: (text: string) => void;
@@ -134,15 +184,9 @@ function StatusTemplates({
     emailBody !== (email?.body ?? "");
   const preview = renderTemplate(smsBody, sample);
   const seg = smsSegments(preview);
-  const id = `tpl-${status.id}`;
+  const id = `tpl-${kind}-${statusId ?? "global"}`;
 
-  /** Create, update or (when emptied) delete one channel's template. */
-  async function saveOne(
-    channel: Channel,
-    existing: Template | undefined,
-    body: string,
-    subj: string | null,
-  ) {
+  async function saveOne(channel: Channel, existing: Template | undefined, body: string, subj: string | null) {
     const db = getSupabase().from("message_templates");
     if (!body.trim()) {
       if (!existing) return null;
@@ -151,20 +195,13 @@ function StatusTemplates({
     const row = { body: body.trim(), subject: channel === "email" ? subj?.trim() || null : null };
     const r = existing
       ? await db.update(row).eq("id", existing.id).select("id")
-      : await db.insert({ ...row, shop_id: shopId, status_id: status.id, channel }).select("id");
+      : await db.insert({ ...row, shop_id: shopId, kind, status_id: statusId, channel }).select("id");
     if (!r.error && !r.data?.length) return { message: "permission denied" };
     return r.error;
   }
 
   return (
-    <Panel
-      title={status.name}
-      description={
-        status.notify_by_default
-          ? "Mend offers to send this when a ticket moves here."
-          : "Not offered automatically; staff can still pick it from a ticket."
-      }
-    >
+    <Panel title={title} description={description}>
       <form
         method="post"
         onSubmit={async (e) => {
@@ -177,7 +214,7 @@ function StatusTemplates({
           ].filter(Boolean);
           setSaving(false);
           if (errs.length) return onError(friendlyDbError(errs[0]));
-          await onSaved(`Templates for ${status.name} saved.`);
+          await onSaved(`${title} saved.`);
         }}
       >
         <fieldset disabled={!canEdit} className="grid gap-4">
@@ -200,12 +237,7 @@ function StatusTemplates({
             />
           </Field>
           <Field id={`${id}-subject`} label="Email subject">
-            <Input
-              id={`${id}-subject`}
-              value={subject}
-              maxLength={200}
-              onChange={(e) => setSubject(e.target.value)}
-            />
+            <Input id={`${id}-subject`} value={subject} maxLength={200} onChange={(e) => setSubject(e.target.value)} />
           </Field>
           <Field id={`${id}-email`} label="Email message">
             <Textarea

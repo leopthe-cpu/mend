@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { emailSchema, friendlyAuthError, guard, passwordSchema, safeRedirect } from "@/lib/auth";
+import { LEGAL } from "@/lib/legal";
 import { getSupabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/signup")({
@@ -34,6 +35,9 @@ export const Route = createFileRoute("/signup")({
 const schema = z.object({
   email: emailSchema,
   password: passwordSchema,
+  // An unticked-by-default box the person ticks themselves (clickwrap), so
+  // acceptance is recorded rather than implied (docs/legal-compliance.md §7).
+  terms: z.boolean().refine((v) => v, "Please accept the terms and privacy policy."),
 });
 type Values = z.input<typeof schema>;
 
@@ -48,7 +52,7 @@ function SignupPage() {
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "", terms: false },
   });
 
   async function onSubmit(raw: Values) {
@@ -58,6 +62,9 @@ function SignupPage() {
       email: values.email,
       password: values.password,
       options: {
+        // Copied to profiles.terms_version / terms_accepted_at by the
+        // new-user trigger (migration 20261020090000).
+        data: { terms_version: LEGAL.version },
         emailRedirectTo:
           `${window.location.origin}/auth/confirm` +
           (next ? `?next=${encodeURIComponent(safeRedirect(next))}` : ""),
@@ -221,20 +228,42 @@ function SignupPage() {
               </FormItem>
             )}
           />
+          <FormField
+            control={form.control}
+            name="terms"
+            render={({ field }) => (
+              <FormItem>
+                <label className="flex min-h-11 items-start gap-3 text-sm">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 size-5 shrink-0"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                    />
+                  </FormControl>
+                  <span>
+                    I agree to the{" "}
+                    <Link to="/terms" target="_blank" className="underline underline-offset-4">
+                      terms of service
+                    </Link>{" "}
+                    and the{" "}
+                    <Link to="/privacy" target="_blank" className="underline underline-offset-4">
+                      privacy policy
+                    </Link>
+                    .
+                  </span>
+                </label>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
             {form.formState.isSubmitting ? "Creating account…" : "Create account"}
           </Button>
-          <p className="text-sm text-muted-foreground">
-            By creating an account you agree to the{" "}
-            <Link to="/terms" className="underline underline-offset-4">
-              terms
-            </Link>{" "}
-            and{" "}
-            <Link to="/privacy" className="underline underline-offset-4">
-              privacy policy
-            </Link>
-            .
-          </p>
         </form>
       </Form>
     </AuthLayout>

@@ -42,7 +42,8 @@ select is_empty(
           'public.remove_estimate_line', 'public.set_estimate_status', 'public.issue_invoice',
           'public.record_payment', 'public.update_payment', 'public.delete_payment',
           'public.save_catalog_item', 'public.finish_shop_setup', 'public.onboarding_state', 'public.export_shop', 'public.set_shop_logo', 'public.delete_shop',
-          'public.queue_message', 'public.cancel_message', 'public.set_customer_opt_out'
+          'public.queue_message', 'public.cancel_message', 'public.set_customer_opt_out',
+          'public.accept_terms'
         ]) $$,
   'authenticated can execute only allow-listed functions'
 );

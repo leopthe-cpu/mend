@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { defaultSchedule, scheduleToText, type DaySchedule } from "./hours";
+import {
+  defaultSchedule,
+  isOpenOn,
+  nextOpenDays,
+  pickupHoursText,
+  promisedDateText,
+  scheduleToText,
+  type DaySchedule,
+  type WeeklySchedule,
+} from "./hours";
 
 function s(overrides: Partial<DaySchedule> & { day: DaySchedule["day"] }): DaySchedule {
   return { open: true, opens: "09:00", closes: "17:00", ...overrides };
@@ -139,5 +148,50 @@ describe("scheduleToText", () => {
   it("defaultSchedule has five open weekdays", () => {
     const schedule = defaultSchedule();
     expect(schedule.filter((d) => d.open)).toHaveLength(5);
+  });
+});
+
+describe("shop days (same cases as 024_shop_days)", () => {
+  const week: WeeklySchedule = [
+    ...(["monday", "tuesday", "wednesday", "thursday", "friday"] as const).map((day) => ({
+      day,
+      open: true,
+      opens: "09:00",
+      closes: "17:00",
+    })),
+    { day: "saturday", open: true, opens: "10:00", closes: "16:00" },
+    { day: "sunday", open: false, opens: "09:00", closes: "17:00" },
+  ];
+  const tz = "America/Toronto";
+
+  it("knows open and closed days", () => {
+    expect(isOpenOn(week, "2026-10-19")).toBe(true);
+    expect(isOpenOn(week, "2026-10-18")).toBe(false);
+    expect(isOpenOn(undefined, "2026-10-18")).toBe(true);
+    expect(
+      isOpenOn(
+        week.map((d) => ({ ...d, open: false })),
+        "2026-10-18",
+      ),
+    ).toBe(true);
+  });
+
+  it("lists the next open days, skipping Sunday", () => {
+    expect(nextOpenDays(week, "2026-10-16", 3)).toEqual(["2026-10-16", "2026-10-17", "2026-10-19"]);
+  });
+
+  it("adds the day's hours to the promised date", () => {
+    expect(promisedDateText("2026-10-19", week)).toBe("Mon, Oct 19 (open 9am–5pm)");
+    expect(promisedDateText("2026-11-07", week)).toBe("Sat, Nov 7 (open 10am–4pm)");
+    expect(promisedDateText("2026-10-19", undefined)).toBe("Mon, Oct 19");
+  });
+
+  it("says when the customer can come next", () => {
+    const at = (iso: string) => pickupHoursText(week, "", tz, new Date(iso));
+    expect(at("2026-10-16T16:00:00Z")).toBe("Open today until 5pm.");
+    expect(at("2026-10-16T12:00:00Z")).toBe("Open today 9am–5pm.");
+    expect(at("2026-10-16T22:00:00Z")).toBe("Next open: Sat 10am–4pm.");
+    expect(at("2026-10-17T21:00:00Z")).toBe("Next open: Mon 9am–5pm.");
+    expect(pickupHoursText(undefined, "By appointment", tz)).toBe("By appointment");
   });
 });

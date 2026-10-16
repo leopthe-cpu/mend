@@ -23,6 +23,7 @@ import {
   smsSegments,
   type Template,
 } from "@/lib/messages";
+import { pickupHoursText, promisedDateText } from "@/lib/hours";
 import { friendlyDbError, type Membership } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import {
@@ -147,8 +148,16 @@ export function NotifyDialog({
       ticket_title: d.ticket.item_name,
       shop_name: shop.name,
       ticket_number: d.ticket.ticket_number,
-      pickup_hours: shop.business_hours?.text ?? "",
+      // Shop days (decision 79): when to come, from now, and the ready day's hours.
+      pickup_hours: pickupHoursText(
+        shop.business_hours?.schedule,
+        shop.business_hours?.text ?? "",
+        shop.time_zone,
+      ),
       shop_hours: shop.business_hours?.text ?? "",
+      promised_date: d.ticket.promised_date
+        ? promisedDateText(d.ticket.promised_date, shop.business_hours?.schedule)
+        : "a date to be confirmed",
     };
     const t =
       request?.kind === "status"

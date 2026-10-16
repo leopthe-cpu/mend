@@ -46,7 +46,7 @@ import {
 } from "@/lib/tickets";
 import { CustomFieldInput } from "./CustomFieldInput";
 import { PickupCalendar } from "./PickupCalendar";
-import { CustomerPicker, type Found } from "./intake/CustomerPicker";
+import { CustomerPicker, type CustomerDraft, type Found } from "./intake/CustomerPicker";
 import { PaymentField, type PayMode } from "./intake/PaymentField";
 import { ServiceLine, type Discount, type DraftLine } from "./intake/ServiceLine";
 
@@ -101,6 +101,7 @@ export function NewTicketDialog({
   const [taxes, setTaxes] = useState<TaxRate[]>([]);
 
   const [customer, setCustomer] = useState<Found | null>(null);
+  const [customerDraft, setCustomerDraft] = useState<CustomerDraft | null>(null);
 
   const [issue, setIssue] = useState("");
   const [title, setTitle] = useState("");
@@ -158,6 +159,7 @@ export function NewTicketDialog({
     setPasscode("");
     setPhotos([]);
     setTerms(false);
+    setCustomerDraft(null);
     setUpdates(true);
     setError(null);
   }
@@ -233,12 +235,24 @@ export function NewTicketDialog({
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const draft = !customer ? customerDraft : null;
     const missing = focusFirstMissingField([
-      {
-        id: customer ? "cust-selected" : "cust-search",
-        ok: !!customer,
-        message: "Choose a customer or add a new one.",
-      },
+      ...(draft
+        ? [
+            { id: "nc-name", ok: !!draft.name.trim(), message: "Enter the customer's name." },
+            {
+              id: "nc-phone",
+              ok: !!(draft.phone.trim() || draft.email.trim()),
+              message: "Enter the customer's phone number or email.",
+            },
+          ]
+        : [
+            {
+              id: customer ? "cust-selected" : "cust-search",
+              ok: !!customer,
+              message: "Choose a customer or add a new one.",
+            },
+          ]),
       { id: "issue", ok: !!issue.trim(), message: "Describe what needs doing." },
     ]);
     if (missing) {
@@ -297,7 +311,24 @@ export function NewTicketDialog({
     setSaving(true);
     try {
       const sb = getSupabase();
-      const customerId = customer?.id;
+      let customerId = customer?.id;
+      if (!customerId && draft) {
+        // Save the customer typed in the inline panel first. Keep it selected,
+        // so a retry after a ticket error doesn't create a duplicate.
+        const { data: newId, error: custError } = await sb.rpc("save_customer", {
+          p_shop_id: shop.id,
+          p_customer_id: null,
+          p_name: draft.name.trim(),
+          p_phone: draft.phone.trim() || null,
+          p_email: draft.email.trim() || null,
+          p_preferred_channel: draft.channel,
+          p_notes: null,
+        });
+        if (custError) throw custError;
+        customerId = newId as string;
+        setCustomer({ id: customerId, label: draft.name.trim() });
+        setCustomerDraft(null);
+      }
       if (!customerId) throw new Error("no customer");
       const cleanCustom = Object.fromEntries(
         Object.entries(custom).filter(
@@ -364,6 +395,8 @@ export function NewTicketDialog({
             timeZone={shop.time_zone}
             customer={customer}
             onCustomerChange={setCustomer}
+            draft={customerDraft}
+            onDraftChange={setCustomerDraft}
           />
 
           {/* Description & details */}

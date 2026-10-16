@@ -318,3 +318,5 @@ Each is a separate PR, with tests, after the documents exist.
   - 6(6) and unsubscribe;
   - cross-border consent;
   - Alberta/BC specifics.
+  - whether a STOP reply to a text must also stop emails from that shop
+    (decision 77 keeps emails on).

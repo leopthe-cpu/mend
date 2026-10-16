@@ -62,6 +62,10 @@ function messageEventText(d: Record<string, unknown>): string {
       return `${ch} failed${d["error"] ? `: ${String(d["error"])}` : ""}`;
     case "canceled":
       return `${ch} canceled`;
+    case "sms_opt_out":
+      return d["source"] === "stop"
+        ? "Customer replied STOP: texts are off. Call or email instead."
+        : "Texts turned off for this customer";
     default:
       return `${ch} updated`;
   }

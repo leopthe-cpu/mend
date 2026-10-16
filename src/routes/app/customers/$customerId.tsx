@@ -61,7 +61,9 @@ function CustomerDetail() {
     const sb = getSupabase();
     const { data, error } = await sb
       .from("customers")
-      .select("id, name, preferred_channel, sms_opted_out, email_opted_out, notes, created_at")
+      .select(
+        "id, name, preferred_channel, sms_opted_out, email_opted_out, sms_opted_out_at, sms_opt_out_source, notes, created_at",
+      )
       .eq("id", customerId)
       .maybeSingle();
     if (error || !data)
@@ -189,6 +191,12 @@ function CustomerDetail() {
                 <span className="w-20 font-medium">{label}</span>
                 <span className={out ? "text-danger" : "text-muted-foreground"}>
                   {out ? "Opted out" : "Allowed"}
+                  {out && ch === "sms" && c.sms_opted_out_at
+                    ? ` · ${c.sms_opt_out_source === "stop" ? "replied STOP" : "turned off"} on ${new Intl.DateTimeFormat(
+                        "en-CA",
+                        { timeZone: membership.shop.time_zone, month: "short", day: "numeric" },
+                      ).format(new Date(c.sms_opted_out_at))}`
+                    : ""}
                 </span>
                 {!out ? (
                   <Button variant="outline" size="sm" onClick={() => void setOptOut(ch, true)}>

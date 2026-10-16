@@ -28,6 +28,9 @@ export type Customer = {
   preferred_channel: "sms" | "email";
   sms_opted_out: boolean;
   email_opted_out: boolean;
+  /** Decision 77: when and how texts were turned off (customer page only). */
+  sms_opted_out_at?: string | null;
+  sms_opt_out_source?: "stop" | "staff" | null;
   notes: string | null;
   created_at: string;
 };
@@ -54,12 +57,20 @@ export type Ticket = {
   updates_consent_at: string | null;
   updates_consent_by: string | null;
   created_at: string;
-  customer?: { id: string; name: string } | null;
+  customer?: {
+    id: string;
+    name: string;
+    sms_opted_out: boolean;
+    email_opted_out: boolean;
+    /** Decision 77: when and how texts were turned off. */
+    sms_opted_out_at: string | null;
+    sms_opt_out_source: "stop" | "staff" | null;
+  } | null;
 };
 export type Member = { user_id: string; role: string; name: string; email: string };
 
 const TICKET_COLUMNS =
-  "id, shop_id, ticket_number, customer_id, item_name, item_description, issue_description, status_id, status_changed_at, assigned_to, promised_date, custom_fields, has_passcode, internal_notes, customer_notes, terms_accepted_at, picked_up_at, created_by, updates_consent, updates_consent_at, updates_consent_by, created_at, customer:customers(id, name)";
+  "id, shop_id, ticket_number, customer_id, item_name, item_description, issue_description, status_id, status_changed_at, assigned_to, promised_date, custom_fields, has_passcode, internal_notes, customer_notes, terms_accepted_at, picked_up_at, created_by, updates_consent, updates_consent_at, updates_consent_by, created_at, customer:customers(id, name, sms_opted_out, email_opted_out, sms_opted_out_at, sms_opt_out_source)";
 
 export async function fetchStatuses(shopId: string): Promise<Status[]> {
   const { data, error } = await getSupabase()

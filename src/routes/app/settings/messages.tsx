@@ -47,7 +47,10 @@ function MessageSettings() {
     void load();
   }, [load]);
 
+  // "Ticket ready" is the first Ready-group status by position (the one
+  // insert_trade_seed gives a template); other statuses keep theirs below.
   const readyStatus = statuses?.find((s) => s.category === "ready");
+  const otherStatuses = (statuses ?? []).filter((s) => s.id !== readyStatus?.id);
   const hours = shop.business_hours?.text?.trim() || "Mon-Fri 9-5";
   const sample: TemplateVars = useMemo(
     () => ({
@@ -74,7 +77,9 @@ function MessageSettings() {
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      {!canEdit ? <FormAlert tone="info">Only Admins can change message templates.</FormAlert> : null}
+      {!canEdit ? (
+        <FormAlert tone="info">Only Admins can change message templates.</FormAlert>
+      ) : null}
       {msg ? <FormAlert tone={msg.tone}>{msg.text}</FormAlert> : null}
       <Panel
         title="How messages work"
@@ -119,15 +124,28 @@ function MessageSettings() {
               description="Used when a ticket moves into a status that notifies by default."
               kind="status"
               statusId={readyStatus.id}
-              sms={templates.find((t) => t.kind === "status" && t.status_id === readyStatus.id && t.channel === "sms")}
-              email={templates.find((t) => t.kind === "status" && t.status_id === readyStatus.id && t.channel === "email")}
+              sms={templates.find(
+                (t) => t.kind === "status" && t.status_id === readyStatus.id && t.channel === "sms",
+              )}
+              email={templates.find(
+                (t) =>
+                  t.kind === "status" && t.status_id === readyStatus.id && t.channel === "email",
+              )}
               sample={sample}
               canEdit={canEdit}
               onSaved={onSaved}
               onError={onError}
             />
           ) : (
-            <Panel title="Ticket ready" description="Your shop has no "Ready" status yet — add one in Board & fields." />
+            <Panel title="Ticket ready">
+              <p className="text-sm text-muted-foreground">
+                Your shop has no status in the Ready group yet. Add one in{" "}
+                <Link to="/app/settings/board" className="underline">
+                  Board & fields
+                </Link>
+                .
+              </p>
+            </Panel>
           )}
 
           <TemplateEditor
@@ -143,6 +161,40 @@ function MessageSettings() {
             onSaved={onSaved}
             onError={onError}
           />
+
+          {otherStatuses.length ? (
+            <details className="rounded-md border border-border p-4">
+              <summary className="min-h-11 cursor-pointer content-center font-medium">
+                Other status messages ({otherStatuses.length})
+              </summary>
+              <div className="mt-4 flex flex-col gap-6">
+                {otherStatuses.map((s) => (
+                  <TemplateEditor
+                    key={s.id}
+                    shopId={shop.id}
+                    title={s.name}
+                    description={
+                      s.notify_by_default
+                        ? "Mend offers to send this when a ticket moves here."
+                        : "Not offered automatically; staff can still pick it from a ticket."
+                    }
+                    kind="status"
+                    statusId={s.id}
+                    sms={templates.find(
+                      (t) => t.kind === "status" && t.status_id === s.id && t.channel === "sms",
+                    )}
+                    email={templates.find(
+                      (t) => t.kind === "status" && t.status_id === s.id && t.channel === "email",
+                    )}
+                    sample={sample}
+                    canEdit={canEdit}
+                    onSaved={onSaved}
+                    onError={onError}
+                  />
+                ))}
+              </div>
+            </details>
+          ) : null}
         </>
       )}
     </div>
@@ -186,7 +238,13 @@ function TemplateEditor({
   const seg = smsSegments(preview);
   const id = `tpl-${kind}-${statusId ?? "global"}`;
 
-  async function saveOne(channel: Channel, existing: Template | undefined, body: string, subj: string | null) {
+  /** Create, update or (when emptied) delete one channel's template. */
+  async function saveOne(
+    channel: Channel,
+    existing: Template | undefined,
+    body: string,
+    subj: string | null,
+  ) {
     const db = getSupabase().from("message_templates");
     if (!body.trim()) {
       if (!existing) return null;
@@ -195,7 +253,9 @@ function TemplateEditor({
     const row = { body: body.trim(), subject: channel === "email" ? subj?.trim() || null : null };
     const r = existing
       ? await db.update(row).eq("id", existing.id).select("id")
-      : await db.insert({ ...row, shop_id: shopId, kind, status_id: statusId, channel }).select("id");
+      : await db
+          .insert({ ...row, shop_id: shopId, kind, status_id: statusId, channel })
+          .select("id");
     if (!r.error && !r.data?.length) return { message: "permission denied" };
     return r.error;
   }
@@ -224,7 +284,9 @@ function TemplateEditor({
             hint={
               smsBody.trim()
                 ? `Preview: "${preview}" · ${seg.units} characters, ${seg.segments} text${seg.segments > 1 ? "s" : ""}`
-                : "Leave empty to write the text each time."
+                : kind === "created"
+                  ? "Leave empty to not send it automatically."
+                  : "Leave empty to write the text each time."
             }
           >
             <Textarea
@@ -237,7 +299,12 @@ function TemplateEditor({
             />
           </Field>
           <Field id={`${id}-subject`} label="Email subject">
-            <Input id={`${id}-subject`} value={subject} maxLength={200} onChange={(e) => setSubject(e.target.value)} />
+            <Input
+              id={`${id}-subject`}
+              value={subject}
+              maxLength={200}
+              onChange={(e) => setSubject(e.target.value)}
+            />
           </Field>
           <Field id={`${id}-email`} label="Email message">
             <Textarea

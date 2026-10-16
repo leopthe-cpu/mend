@@ -50,6 +50,11 @@ type Loaded = {
   statusName: string;
 };
 
+/**
+ * "Notify Maria by SMS?" (spec §7.10): nothing is sent until the member
+ * presses Send. Shows the rendered message (editable for this send), the
+ * channel choice with opt-outs explained, and an SMS segment counter.
+ */
 export function NotifyDialog({
   request,
   membership,
@@ -82,7 +87,9 @@ export function NotifyDialog({
         const [cust, contacts, templates, statuses] = await Promise.all([
           db
             .from("customers")
-            .select("id, name, preferred_channel, sms_opted_out, email_opted_out, notes, created_at")
+            .select(
+              "id, name, preferred_channel, sms_opted_out, email_opted_out, notes, created_at",
+            )
             .eq("id", ticket.customer_id)
             .single(),
           fetchContacts([ticket.customer_id]),
@@ -145,7 +152,9 @@ export function NotifyDialog({
     };
     const t =
       request?.kind === "status"
-        ? d.templates.find((x) => x.kind === "status" && x.status_id === request.statusId && x.channel === ch)
+        ? d.templates.find(
+            (x) => x.kind === "status" && x.status_id === request.statusId && x.channel === ch,
+          )
         : request?.kind === "reminder"
           ? d.templates.find((x) => x.kind === "reminder" && x.channel === ch)
           : undefined;

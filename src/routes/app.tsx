@@ -13,6 +13,7 @@ import { AppSidebar } from "@/components/app/AppSidebar";
 import { TopBar } from "@/components/app/TopBar";
 import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { LEGAL } from "@/lib/legal";
 import { fetchMyMembership, roleAtLeast } from "@/lib/shop";
 import { getSupabase, SupabaseConfigError } from "@/lib/supabase";
 
@@ -43,12 +44,17 @@ export const Route = createFileRoute("/app")({
     if (!membership) throw redirect({ to: "/onboarding" });
     const { data: profile } = await getSupabase()
       .from("profiles")
-      .select("full_name")
+      .select("full_name, terms_version")
       .eq("user_id", session.user.id)
       .maybeSingle();
     // Decision 19: show the email until the person adds their name.
     const displayName = profile?.full_name?.trim() || session.user.email || "";
-    return { user: session.user, membership, displayName };
+    return {
+      user: session.user,
+      membership,
+      displayName,
+      termsVersion: (profile?.terms_version as string | null | undefined) ?? null,
+    };
   },
   component: AppLayout,
 });
@@ -58,7 +64,7 @@ export const Route = createFileRoute("/app")({
 const TABLET_MAX = 1280;
 
 function AppLayout() {
-  const { membership, displayName } = Route.useRouteContext();
+  const { membership, displayName, termsVersion } = Route.useRouteContext();
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(true);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -115,9 +121,56 @@ function AppLayout() {
               </Button>
             </div>
           ) : null}
+          <TermsBanner acceptedVersion={termsVersion} />
           <Outlet />
         </main>
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+// Accounts created before sign-up recorded acceptance, and everyone after a
+// terms update (LEGAL.version changes), see this until they accept
+// (docs/legal-compliance.md §7 item 2). Acceptance is stored server-side by
+// public.accept_terms.
+function TermsBanner({ acceptedVersion }: { acceptedVersion: string | null }) {
+  const [accepted, setAccepted] = useState(acceptedVersion === LEGAL.version);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (accepted) return null;
+  return (
+    <div className="mb-6 flex flex-col gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="font-semibold">Please review our terms</p>
+        <p className="text-sm text-muted-foreground">
+          Read the{" "}
+          <Link to="/terms" target="_blank" className="underline underline-offset-4">
+            terms of service
+          </Link>{" "}
+          and{" "}
+          <Link to="/privacy" target="_blank" className="underline underline-offset-4">
+            privacy policy
+          </Link>{" "}
+          (effective {LEGAL.effectiveDate}).
+        </p>
+        {error ? <p className="mt-1 text-sm text-destructive">{error}</p> : null}
+      </div>
+      <Button
+        className="shrink-0"
+        disabled={saving}
+        onClick={async () => {
+          setSaving(true);
+          setError(null);
+          const { error } = await getSupabase().rpc("accept_terms", {
+            p_version: LEGAL.version,
+          });
+          setSaving(false);
+          if (error) setError("That didn't save. Try again.");
+          else setAccepted(true);
+        }}
+      >
+        {saving ? "Saving…" : "I agree"}
+      </Button>
+    </div>
   );
 }

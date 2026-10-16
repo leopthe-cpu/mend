@@ -26,6 +26,7 @@ import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppSetupRouteImport } from './routes/app/setup'
 import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
 import { Route as InviteTokenRouteImport } from './routes/invite/$token'
+import { Route as SCodeRouteImport } from './routes/s.$code'
 import { Route as TTokenRouteImport } from './routes/t/$token'
 import { Route as TagTicketIdRouteImport } from './routes/tag.$ticketId'
 import { Route as AppCustomersIndexRouteImport } from './routes/app/customers/index'
@@ -127,6 +128,11 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
   path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SCodeRoute = SCodeRouteImport.update({
+  id: '/s/$code',
+  path: '/s/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TTokenRoute = TTokenRouteImport.update({
   id: '/t/$token',
   path: '/t/$token',
@@ -220,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/app/setup': typeof AppSetupRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/s/$code': typeof SCodeRoute
   '/t/$token': typeof TTokenRoute
   '/tag/$ticketId': typeof TagTicketIdRoute
   '/app/': typeof AppIndexRoute
@@ -252,6 +259,7 @@ export interface FileRoutesByTo {
   '/app/setup': typeof AppSetupRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/s/$code': typeof SCodeRoute
   '/t/$token': typeof TTokenRoute
   '/tag/$ticketId': typeof TagTicketIdRoute
   '/app': typeof AppIndexRoute
@@ -287,6 +295,7 @@ export interface FileRoutesById {
   '/app/setup': typeof AppSetupRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/s/$code': typeof SCodeRoute
   '/t/$token': typeof TTokenRoute
   '/tag/$ticketId': typeof TagTicketIdRoute
   '/app/': typeof AppIndexRoute
@@ -323,6 +332,7 @@ export interface FileRouteTypes {
     | '/app/setup'
     | '/auth/confirm'
     | '/invite/$token'
+    | '/s/$code'
     | '/t/$token'
     | '/tag/$ticketId'
     | '/app/'
@@ -355,6 +365,7 @@ export interface FileRouteTypes {
     | '/app/setup'
     | '/auth/confirm'
     | '/invite/$token'
+    | '/s/$code'
     | '/t/$token'
     | '/tag/$ticketId'
     | '/app'
@@ -389,6 +400,7 @@ export interface FileRouteTypes {
     | '/app/setup'
     | '/auth/confirm'
     | '/invite/$token'
+    | '/s/$code'
     | '/t/$token'
     | '/tag/$ticketId'
     | '/app/'
@@ -419,6 +431,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   AuthConfirmRoute: typeof AuthConfirmRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  SCodeRoute: typeof SCodeRoute
   TTokenRoute: typeof TTokenRoute
   TagTicketIdRoute: typeof TagTicketIdRoute
 }
@@ -542,6 +555,13 @@ declare module '@tanstack/react-router' {
       path: '/invite/$token'
       fullPath: '/invite/$token'
       preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/s/$code': {
+      id: '/s/$code'
+      path: '/s/$code'
+      fullPath: '/s/$code'
+      preLoaderRoute: typeof SCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/t/$token': {
@@ -720,6 +740,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   AuthConfirmRoute: AuthConfirmRoute,
   InviteTokenRoute: InviteTokenRoute,
+  SCodeRoute: SCodeRoute,
   TTokenRoute: TTokenRoute,
   TagTicketIdRoute: TagTicketIdRoute,
 }

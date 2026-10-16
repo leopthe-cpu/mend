@@ -317,6 +317,28 @@ function TicketDetail() {
                 </div>
               ) : null}
             </dl>
+            {ticket.customer?.sms_opted_out ? (
+              // Decision 77: texts won't go out; point staff to the phone/email.
+              <p
+                role="status"
+                className="mt-3 rounded-md border border-border bg-muted p-3 text-sm"
+              >
+                <strong>Texts are off.</strong>{" "}
+                {ticket.customer.sms_opt_out_source === "stop"
+                  ? "The customer replied STOP"
+                  : "Texts were turned off"}
+                {ticket.customer.sms_opted_out_at
+                  ? ` on ${new Intl.DateTimeFormat("en-CA", {
+                      timeZone: membership.shop.time_zone,
+                      month: "short",
+                      day: "numeric",
+                    }).format(new Date(ticket.customer.sms_opted_out_at))}`
+                  : ""}
+                . {contact?.phone ? "Call them" : "Contact them"}
+                {contact?.email && !ticket.customer.email_opted_out ? " or send an email" : ""}{" "}
+                instead.
+              </p>
+            ) : null}
             {ticket.terms_accepted_at ? (
               <p className="mt-2 text-sm text-muted-foreground">
                 Accepted the terms {ticket.terms_accepted_at.slice(0, 10)}

@@ -35,6 +35,8 @@ insert into t select 'resole', id::text from x;
 reset role;
 insert into public.memberships (shop_id, user_id, role) values
   (pg_temp.v('shop'), 'b8000000-0000-0000-0000-000000000002', 'staff');
+-- Texts need the shop's address and phone (decision 76).
+update public.shops set address = '1 Main St, Toronto ON', phone = '416 555 0000';
 
 select is((select count(*)::int from public.message_templates where shop_id = pg_temp.v('shop') and kind = 'created'), 2,
   'the migration seeds one created template per channel');

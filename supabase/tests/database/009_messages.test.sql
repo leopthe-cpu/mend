@@ -33,6 +33,8 @@ set local role authenticated;
 insert into t values ('shop_g', public.create_shop('G Repairs', null, 'other', 'CA', null, 'America/Toronto')::text);
 insert into t values ('maria_g', public.save_customer(pg_temp.v('shop_g'), null, 'Maria G', '+1 416-555-0100')::text);
 reset role;
+-- Texts need the shop's address and phone (decision 76).
+update public.shops set address = '1 Main St, Toronto ON', phone = '416 555 0000';
 
 -- ===== Quiet hours (pure) ==============================================
 select is(private.next_send_at('2026-10-07 02:30+00', 'America/Toronto', '21:00', '08:00'),

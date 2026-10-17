@@ -115,11 +115,11 @@ export const DEFAULT_TEMPLATES: Record<
   reminder: {
     sms: {
       subject: "",
-      body: "Hi {customer_first_name}, a reminder that your {ticket_title} is ready for pickup at {shop_name}. {shop_hours}",
+      body: "Hi {customer_first_name}, a reminder that your {ticket_title} is ready for pickup at {shop_name}. {pickup_hours}",
     },
     email: {
       subject: "Reminder: your {ticket_title} is ready for pickup",
-      body: "Hi {customer_first_name}, a reminder that your {ticket_title} is ready for pickup at {shop_name}. {shop_hours}",
+      body: "Hi {customer_first_name}, a reminder that your {ticket_title} is ready for pickup at {shop_name}. {pickup_hours}",
     },
   },
 };
@@ -130,12 +130,28 @@ const GSM_BASIC =
   "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
 const GSM_EXT = "^{}\\[~]|€\f";
 
-export function smsSegments(text: string): {
+/**
+ * Same swaps as private.sms_plain_text (decision 84): a dash, curly quote or
+ * special space outside GSM-7 would make the whole text UCS-2 (70 characters
+ * per segment instead of 160). The database applies this to every text, so
+ * counting on the cleaned text shows what is really sent.
+ */
+export function smsPlainText(text: string): string {
+  return text
+    .replace(/[\u2012\u2013\u2014\u2212]/g, "-")
+    .replace(/[\u2018\u2019\u02BC]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2026/g, "...")
+    .replace(/[\u00A0\u202F]/g, " ");
+}
+
+export function smsSegments(raw: string): {
   encoding: "GSM-7" | "UCS-2";
   units: number;
   segments: number;
   perSegment: number;
 } {
+  const text = smsPlainText(raw);
   let septets = 0;
   let gsm = true;
   for (const ch of text) {

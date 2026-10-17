@@ -88,7 +88,7 @@ function Doc(p: PdfInput) {
   const title =
     p.kind === "invoice" && p.invoice
       ? `Invoice #${p.invoice.invoice_number}`
-      : `Estimate v${p.estimate.version}`;
+      : `Quote v${p.estimate.version}`;
   const date = shopToday(p.timeZone, new Date(p.invoice?.issued_at ?? p.estimate.created_at));
 
   return (
@@ -252,7 +252,7 @@ export async function downloadPdf(input: PdfInput): Promise<void> {
   a.download =
     input.kind === "invoice" && input.invoice
       ? `invoice-${input.invoice.invoice_number}.pdf`
-      : `estimate-${input.ticketNumber}-v${input.estimate.version}.pdf`;
+      : `quote-${input.ticketNumber}-v${input.estimate.version}.pdf`;
   document.body.appendChild(a);
   a.click();
   a.remove();

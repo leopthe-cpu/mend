@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Panel } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FEATURES } from "@/lib/features";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import type { Ticket } from "@/lib/tickets";
@@ -27,7 +28,7 @@ export function PasscodePanel({
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  if (shopVertical !== "electronics" && !ticket.has_passcode) return null;
+  if ((shopVertical !== "electronics" || !FEATURES.passcodes) && !ticket.has_passcode) return null;
 
   async function reveal() {
     const { data, error } = await getSupabase().rpc("reveal_passcode", {

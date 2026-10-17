@@ -25,11 +25,16 @@ export type Estimate = {
   declined_at: string | null;
   superseded_at: string | null;
   subtotal_before_cents: number;
+  /** Line discounts plus the ticket discount. */
   savings_cents: number;
   subtotal_cents: number;
   tax_cents: number;
   total_cents: number;
   tax_breakdown: TaxLine[];
+  /** Whole-ticket discount (decision 78). */
+  discount_type: "percent" | "fixed" | null;
+  discount_value: number | null;
+  discount_cents: number;
   created_at: string;
 };
 
@@ -151,6 +156,8 @@ export async function fetchMoney(ticketId: string): Promise<MoneyData> {
     subtotal_cents: num(x.subtotal_cents),
     tax_cents: num(x.tax_cents),
     total_cents: num(x.total_cents),
+    discount_value: x.discount_value === null ? null : Number(x.discount_value),
+    discount_cents: num(x.discount_cents),
   })) as Estimate[];
   let lines: Line[] = [];
   if (estimates.length) {

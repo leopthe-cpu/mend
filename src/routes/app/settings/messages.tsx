@@ -18,7 +18,8 @@ import {
 } from "@/lib/messages";
 import { friendlyDbError, roleAtLeast } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
-import { fetchStatuses, type Status } from "@/lib/tickets";
+import { nextOpenDays, pickupHoursText, promisedDateText } from "@/lib/hours";
+import { fetchStatuses, shopToday, type Status } from "@/lib/tickets";
 
 export const Route = createFileRoute("/app/settings/messages")({
   component: MessageSettings,
@@ -60,13 +61,17 @@ function MessageSettings() {
       ticket_title: "winter coat",
       shop_name: shop.name,
       ticket_number: 1042,
-      pickup_hours: hours,
+      pickup_hours: pickupHoursText(shop.business_hours?.schedule, hours, shop.time_zone),
       shop_hours: hours,
-      promised_date: "Tue, Oct 20",
+      promised_date: promisedDateText(
+        nextOpenDays(shop.business_hours?.schedule, shopToday(shop.time_zone), 3)[2] ??
+          shopToday(shop.time_zone),
+        shop.business_hours?.schedule,
+      ),
       amount_due: "$100.00",
       payment_line: "Payment of $100.00 is due at pick-up.",
     }),
-    [shop.name, hours],
+    [shop.name, hours, shop.business_hours?.schedule, shop.time_zone],
   );
 
   const onSaved = async (text: string) => {
@@ -90,7 +95,9 @@ function MessageSettings() {
             <Link to="/app/settings/shop" className="underline">
               Shop
             </Link>
-            ) go out when quiet hours end. You can use {VARIABLES.join(", ")}.
+            ) go out when quiet hours end. You can use {VARIABLES.join(", ")}. {"{pickup_hours}"}{" "}
+            says when the customer can come next, from your weekly hours; {"{shop_hours}"} lists the
+            whole week; {"{promised_date}"} includes that day&rsquo;s hours.
           </>
         }
       >

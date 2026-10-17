@@ -86,3 +86,138 @@ export function scheduleToText(schedule: WeeklySchedule): string {
     })
     .join(", ");
 }
+
+// Shop days (decision 79). Dates are "YYYY-MM-DD" in the shop's time zone.
+// The database has the same rules (private.shop_open_on, private.promised_text,
+// private.pickup_hours_text in 20261024090000_shop_days.sql); keep them in step.
+
+const JS_DAY: DayKey[] = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+];
+
+function weekdayOf(iso: string): DayKey {
+  const [y, m, d] = iso.split("-").map(Number);
+  return JS_DAY[new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).getUTCDay()]!;
+}
+
+function addDays(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + n)).toISOString().slice(0, 10);
+}
+
+/** The schedule's entry for that date's weekday, if the shop set one. */
+export function dayFor(schedule: WeeklySchedule | undefined, iso: string): DaySchedule | undefined {
+  const day = weekdayOf(iso);
+  return schedule?.find((s) => s.day === day);
+}
+
+/** Open that day? A shop without a weekly schedule (or with every day closed,
+ *  which is a setup slip, not a real shop) counts as open every day. */
+export function isOpenOn(schedule: WeeklySchedule | undefined, iso: string): boolean {
+  if (!schedule?.some((s) => s.open)) return true;
+  return dayFor(schedule, iso)?.open ?? false;
+}
+
+/** The next `count` open dates from `fromIso` (included), looking at most 60 days ahead. */
+export function nextOpenDays(
+  schedule: WeeklySchedule | undefined,
+  fromIso: string,
+  count: number,
+): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < 60 && out.length < count; i++) {
+    const iso = addDays(fromIso, i);
+    if (isOpenOn(schedule, iso)) out.push(iso);
+  }
+  return out;
+}
+
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/** {promised_date}: "Mon, Oct 19 (open 9am–5pm)", or just the date without hours for that day. */
+export function promisedDateText(iso: string, schedule: WeeklySchedule | undefined): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const date = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1));
+  if (Number.isNaN(date.getTime())) return "a date to be confirmed";
+  const text = `${WEEKDAY_SHORT[date.getUTCDay()]}, ${MONTH_SHORT[date.getUTCMonth()]} ${date.getUTCDate()}`;
+  const day = dayFor(schedule, iso);
+  return day?.open
+    ? `${text} (open ${formatHourLabel(day.opens)}–${formatHourLabel(day.closes)})`
+    : text;
+}
+
+/** The shop's local date ("YYYY-MM-DD") and time ("HH:MM") right now. */
+function shopNow(timeZone: string, now: Date): { today: string; time: string } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return {
+    today: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}`,
+  };
+}
+
+/** Can a ticket still be ready today? Not once today's closing time has
+ *  passed (or the shop is closed today). Without a schedule, yes. */
+export function stillOpenToday(
+  schedule: WeeklySchedule | undefined,
+  timeZone: string,
+  now = new Date(),
+): boolean {
+  if (!schedule?.some((s) => s.open)) return true;
+  const { today, time } = shopNow(timeZone, now);
+  const d = dayFor(schedule, today);
+  return !!d?.open && time < d.closes;
+}
+
+/**
+ * {pickup_hours}: when the customer can come, from the moment the message is
+ * written. "Open today until 5pm.", "Open today 9am–5pm." or "Next open: Mon
+ * 9am–5pm." Day names, not "tomorrow", so a text held back by quiet hours
+ * stays true. Without a weekly schedule, the shop's hours text.
+ */
+export function pickupHoursText(
+  schedule: WeeklySchedule | undefined,
+  fallback: string,
+  timeZone: string,
+  now = new Date(),
+): string {
+  if (!schedule?.some((s) => s.open)) return fallback;
+  const { today, time } = shopNow(timeZone, now);
+  const t = dayFor(schedule, today);
+  if (t?.open && time < t.closes)
+    return time < t.opens
+      ? `Open today ${formatHourLabel(t.opens)}–${formatHourLabel(t.closes)}.`
+      : `Open today until ${formatHourLabel(t.closes)}.`;
+  const next = nextOpenDays(schedule, addDays(today, 1), 1)[0];
+  const n = next ? dayFor(schedule, next) : undefined;
+  if (!next || !n) return fallback;
+  return `Next open: ${DAY_SHORT[n.day]} ${formatHourLabel(n.opens)}–${formatHourLabel(n.closes)}.`;
+}

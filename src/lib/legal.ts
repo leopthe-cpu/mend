@@ -11,8 +11,8 @@ export const LEGAL = {
   mailingAddress: null as string | null,
   contactEmail: null as string | null,
   /** Bump when the text changes in a way users should know about. */
-  version: "interim-2026-10-16",
-  effectiveDate: "October 16, 2026",
+  version: "interim-2026-10-17",
+  effectiveDate: "October 17, 2026",
 } as const;
 
 /**
@@ -31,3 +31,11 @@ export const SUBPROCESSORS = [
   { name: "Twilio", purpose: "Sends and receives text messages", location: "United States" },
   { name: "Resend", purpose: "Sends emails", location: "United States" },
 ] as const;
+
+/**
+ * How long closed tickets are kept (decision 86). Shown on the privacy policy
+ * and in Settings → Your data so both say the same thing. The database job is
+ * public.retention_run (migration 20261029090000).
+ */
+export const RETENTION_TEXT =
+  "One year after a ticket is picked up or deleted, its photos, messages, notes and details are deleted, and so are customers with no other ticket. Tickets with an invoice or a payment keep the invoice, the payments and the customer's name, because Canadian tax law asks businesses to keep these records for six years; they are deleted after that. Owners and admins see a notice in the app 30 days before anything is deleted.";

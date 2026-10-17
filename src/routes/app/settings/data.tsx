@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { downloadFile, toCsv } from "@/lib/csv";
+import { RETENTION_TEXT } from "@/lib/legal";
 import { friendlyDbError } from "@/lib/shop";
 import { removeShopFiles } from "@/lib/shopFiles";
 import { getSupabase } from "@/lib/supabase";
@@ -169,6 +170,10 @@ function DataSettings() {
             </p>
           </div>
         )}
+      </Panel>
+
+      <Panel title="How long we keep data">
+        <p className="text-sm text-muted-foreground">{RETENTION_TEXT}</p>
       </Panel>
 
       <Panel

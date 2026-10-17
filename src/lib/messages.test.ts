@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatPromisedDate, renderTemplate, smsSegments } from "./messages";
+import { formatPromisedDate, renderTemplate, smsPlainText, smsSegments } from "./messages";
 
 const vars = {
   customer_name: "Maria Rossi",
@@ -90,5 +90,19 @@ describe("smsSegments", () => {
     expect(smsSegments("Ready 👍").encoding).toBe("UCS-2");
     expect(smsSegments("ê".repeat(70)).segments).toBe(1);
     expect(smsSegments("ê".repeat(71)).segments).toBe(2);
+  });
+});
+
+describe("smsPlainText (same as private.sms_plain_text)", () => {
+  it("swaps characters that would make a text UCS-2", () => {
+    expect(
+      smsPlainText("It\u2019s ready \u2013 open 9am\u20135pm\u2026 \u201Cthanks\u201D, Zoë"),
+    ).toBe('It\'s ready - open 9am-5pm... "thanks", Zoë');
+  });
+  it("so an en dash no longer costs an extra segment", () => {
+    expect(smsSegments("Open today 9am\u20135pm. " + "a".repeat(130))).toMatchObject({
+      encoding: "GSM-7",
+      segments: 1,
+    });
   });
 });

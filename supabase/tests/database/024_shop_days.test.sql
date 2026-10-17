@@ -73,7 +73,7 @@ select lives_ok($$ update public.tickets set item_name = 'Monday job (renamed)' 
 reset role;
 
 -- ===== Messages ===============================================================
-select ok((select body like '%will be ready on Mon, Oct 19 (open 9am–5pm).%' from public.messages
+select ok((select body like '%will be ready on Mon, Oct 19 (open 9am-5pm).%' from public.messages
             where ticket_id = pg_temp.v('tk') and kind = 'created'), 'the created text gives that day''s hours');
 select ok((select body not like '%$0.00%' from public.messages
             where ticket_id = pg_temp.v('tk') and kind = 'created'), 'no "$0.00 due" line without a price');

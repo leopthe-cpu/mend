@@ -38,6 +38,25 @@ confirming the request really comes from the shop's Owner.
 3. In the SQL editor: `delete from public.shops where id = '<shop id>';`
 4. Write down who asked, when, and what was deleted.
 
+## Automatic deletion of old tickets (decision 86)
+
+Runs every day at 07:17 UTC (pg_cron `mend-retention-daily`). What it deletes
+and keeps is described on the privacy page and in decision 86.
+
+- **Who is affected soon:** in the SQL editor,
+  `select * from private.retention_upcoming;` lists every shop with tickets
+  due in the next 30 days, its owner's email and the first date.
+- **Pause a shop** (e.g. while it downloads its data or asks for more time):
+  `update public.shops set retention_hold = true where id = '<shop id>';`
+  Set it back to `false` to resume. Held shops still show in the list.
+- **Longer retention** (pricing tier): `update public.shops set
+retention_months = 24 where id = '<shop id>';` (12 to 72).
+- **What ran:** each run writes one `retention.purged` row per shop to the
+  audit log, with how many tickets were deleted or cleared.
+- Photo files need the Vault entries `mend_project_url` and
+  `mend_publishable_key` (the same ones the message sender uses); without them
+  photos, and so their tickets, wait.
+
 ## Not covered
 
 - Deleting a person's Mend **account** (their login): Supabase → Authentication

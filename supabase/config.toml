@@ -428,3 +428,8 @@ verify_jwt = false
 
 [functions.resend-webhook]
 verify_jwt = false
+
+# Decision 86: deletes photo files of tickets past retention. Called by pg_cron
+# (no user JWT); only acts on what the database says is due.
+[functions.retention-photos]
+verify_jwt = false

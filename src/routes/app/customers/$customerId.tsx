@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Pencil } from "lucide-react";
+import { Download, Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { PhoneInput } from "@/components/app/MaskedInputs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { downloadFile } from "@/lib/csv";
+import { customerExportText, fileSlug, type CustomerExport } from "@/lib/customerExport";
 import { friendlyDbError, roleAtLeast } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import { fetchContacts, fetchStatuses, type Customer, type Status } from "@/lib/tickets";
@@ -41,6 +43,7 @@ function CustomerDetail() {
   const [message, setMessage] = useState<{ tone: "error" | "info"; text: string } | null>(null);
   // Read-only until Edit (Oz, 16 Oct), like the ticket details.
   const [editing, setEditing] = useState(false);
+  const [exported, setExported] = useState<CustomerExport | null>(null);
 
   const isAdmin = roleAtLeast(membership.role, "admin");
 
@@ -113,6 +116,16 @@ function CustomerDetail() {
     setEditing(false);
     await load();
   }
+
+  // Decision 87: for a customer who asks what the shop holds about them.
+  async function prepareExport() {
+    const { data, error } = await getSupabase().rpc("export_customer", {
+      p_customer_id: customerId,
+    });
+    if (error) return setMessage({ tone: "error", text: friendlyDbError(error) });
+    setExported(data as CustomerExport);
+  }
+  const exportBase = `${fileSlug(c?.name ?? "")}-data`;
 
   if (!c)
     return message ? (
@@ -303,6 +316,44 @@ function CustomerDetail() {
           {!tickets.length ? <li className="py-3 text-muted-foreground">No tickets yet.</li> : null}
         </ul>
       </Panel>
+      {isAdmin ? (
+        <Panel
+          title="Their data"
+          description="If this customer asks what you hold about them: a readable summary to send them, and the full record. Each download is recorded in the activity log."
+        >
+          {!exported ? (
+            <Button variant="outline" onClick={() => void prepareExport()}>
+              <Download /> Prepare download
+            </Button>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={() =>
+                  downloadFile(
+                    `${exportBase}.txt`,
+                    customerExportText(exported),
+                    "text/plain;charset=utf-8",
+                  )
+                }
+              >
+                <Download /> Summary (text)
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  downloadFile(
+                    `${exportBase}.json`,
+                    JSON.stringify(exported, null, 2),
+                    "application/json",
+                  )
+                }
+              >
+                <Download /> Full record (JSON)
+              </Button>
+            </div>
+          )}
+        </Panel>
+      ) : null}
     </div>
   );
 }

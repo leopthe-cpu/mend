@@ -116,6 +116,9 @@ function AppLayout() {
             </ActionBanner>
           ) : null}
           <TermsBanner acceptedVersion={termsVersion} />
+          {roleAtLeast(membership.role, "admin") ? (
+            <RetentionBanner shopId={membership.shop.id} />
+          ) : null}
           <Outlet />
         </main>
       </SidebarInset>
@@ -167,6 +170,38 @@ function TermsBanner({ acceptedVersion }: { acceptedVersion: string | null }) {
       >
         {saving ? "Saving…" : "Please review our terms, then tap here to agree"}
       </button>
+    </ActionBanner>
+  );
+}
+
+// Decision 86: 30 days before closed tickets are cleared, Owners and Admins
+// are told how many and from when, with a way to download first.
+function RetentionBanner({ shopId }: { shopId: string }) {
+  const [notice, setNotice] = useState<{ count: number; first: string } | null>(null);
+  useEffect(() => {
+    void getSupabase()
+      .rpc("retention_notice", { p_shop_id: shopId })
+      .then(({ data }) => {
+        const row = (data as { tickets_due: number; first_due: string | null }[] | null)?.[0];
+        if (row && row.tickets_due > 0 && row.first_due)
+          setNotice({ count: row.tickets_due, first: row.first_due });
+      });
+  }, [shopId]);
+  if (!notice) return null;
+  // first_due is already a date in the shop's time zone (retention_notice).
+  const date = new Intl.DateTimeFormat("en-CA", {
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${notice.first}T00:00:00Z`));
+  return (
+    <ActionBanner
+      tone="orange"
+      text={`Photos, messages and notes of ${notice.count} ticket${notice.count === 1 ? "" : "s"} closed a year ago will be deleted from ${date}. Download your data first if you need it.`}
+    >
+      <Link to="/app/settings/data" className={BANNER_TARGET}>
+        Old tickets will be cleared soon
+      </Link>
     </ActionBanner>
   );
 }

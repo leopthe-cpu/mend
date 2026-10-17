@@ -6,12 +6,11 @@ import {
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { ActionBanner } from "@/components/app/ActionBanner";
 import { AppSidebar } from "@/components/app/AppSidebar";
 import { TopBar } from "@/components/app/TopBar";
-import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { LEGAL } from "@/lib/legal";
 import { fetchMyMembership, roleAtLeast } from "@/lib/shop";
@@ -107,19 +106,14 @@ function AppLayout() {
         <TopBar membership={membership} />
         <main id="main" className="flex-1 px-4 py-6 md:px-8">
           {showSetup ? (
-            <div className="mb-6 flex flex-col gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-semibold">Finish setting up your shop</p>
-                <p className="text-sm text-muted-foreground">
-                  Add your shop name, trade, pickup hours and taxes. It takes about two minutes.
-                </p>
-              </div>
-              <Button asChild className="shrink-0">
-                <Link to="/app/setup">
-                  Continue setup <ArrowRight />
-                </Link>
-              </Button>
-            </div>
+            <ActionBanner
+              tone="orange"
+              text="Add your shop name, trade, pickup hours and taxes. It takes about two minutes."
+            >
+              <Link to="/app/setup" className={BANNER_TARGET}>
+                Finish setting up your shop
+              </Link>
+            </ActionBanner>
           ) : null}
           <TermsBanner acceptedVersion={termsVersion} />
           <Outlet />
@@ -139,10 +133,10 @@ function TermsBanner({ acceptedVersion }: { acceptedVersion: string | null }) {
   const [error, setError] = useState<string | null>(null);
   if (accepted) return null;
   return (
-    <div className="mb-6 flex flex-col gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="font-semibold">Please review our terms</p>
-        <p className="text-sm text-muted-foreground">
+    <ActionBanner
+      tone="green"
+      extra={
+        <>
           Read the{" "}
           <Link to="/terms" target="_blank" className="underline underline-offset-4">
             terms of service
@@ -152,11 +146,13 @@ function TermsBanner({ acceptedVersion }: { acceptedVersion: string | null }) {
             privacy policy
           </Link>{" "}
           (effective {LEGAL.effectiveDate}).
-        </p>
-        {error ? <p className="mt-1 text-sm text-destructive">{error}</p> : null}
-      </div>
-      <Button
-        className="shrink-0"
+          {error ? <span className="mt-1 block text-destructive">{error}</span> : null}
+        </>
+      }
+    >
+      <button
+        type="button"
+        className={`${BANNER_TARGET} text-left`}
         disabled={saving}
         onClick={async () => {
           setSaving(true);
@@ -169,8 +165,11 @@ function TermsBanner({ acceptedVersion }: { acceptedVersion: string | null }) {
           else setAccepted(true);
         }}
       >
-        {saving ? "Saving…" : "I agree"}
-      </Button>
-    </div>
+        {saving ? "Saving…" : "Please review our terms, then tap here to agree"}
+      </button>
+    </ActionBanner>
   );
 }
+
+// The banner's main control covers the whole banner (ActionBanner).
+const BANNER_TARGET = "font-semibold outline-none after:absolute after:inset-0 after:content-['']";

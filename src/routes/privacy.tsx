@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { LegalContact, LegalPage } from "@/components/site/LegalPage";
-import { LEGAL, SUBPROCESSORS, TWILIO_OPT_IN_CLAUSE } from "@/lib/legal";
+import { LEGAL, RETENTION_TEXT, SUBPROCESSORS, TWILIO_OPT_IN_CLAUSE } from "@/lib/legal";
 
 // Interim privacy policy (launch-plan.md L1a): enough for Twilio's toll-free
 // verification and for PIPEDA openness while the full policy is drafted and
@@ -89,9 +89,8 @@ function Page() {
 
       <h2>How long we keep it</h2>
       <p>
-        Information stays in a shop's account until the shop deletes it or closes its account; when
-        a shop deletes its account, its data is deleted. Retention periods for closed tickets,
-        photos and messages will be added to this policy before launch.
+        Information stays in a shop's account while the ticket is open. {RETENTION_TEXT} When a shop
+        deletes its account, all of its data is deleted.
       </p>
 
       <h2>How we protect it</h2>

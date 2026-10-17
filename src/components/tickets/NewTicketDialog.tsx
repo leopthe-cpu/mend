@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Camera, ChevronRight, Plus, X } from "lucide-react";
+import { Camera, Check, ChevronRight, Pencil, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
@@ -103,6 +103,9 @@ export function NewTicketDialog({
   const [svcQuery, setSvcQuery] = useState("");
   const [svcOpen, setSvcOpen] = useState(false);
   const [discount, setDiscount] = useState<TicketDiscountDraft | null>(null);
+  // The discount row locks once filled in (Enter, ✓ or clicking away); the
+  // pencil opens it again (decision 82).
+  const [discountLocked, setDiscountLocked] = useState(false);
 
   const [promised, setPromised] = useState("");
   const [assignee, setAssignee] = useState("");
@@ -158,13 +161,13 @@ export function NewTicketDialog({
     setPasscode("");
     setPhotos([]);
     setMoreOpen(false);
+    setDiscountLocked(false);
     setTerms(false);
     setUpdates(true);
     setError(null);
   }
 
   const requiredFields = fields.filter((f) => f.required);
-  const optionalFields = fields.filter((f) => !f.required);
   const isElectronics = shop.vertical === "electronics";
 
   const svcMatches = useMemo(() => {
@@ -333,8 +336,7 @@ export function NewTicketDialog({
           p_name: draft.name.trim(),
           p_phone: draft.phone.trim() || null,
           p_email: draft.email.trim() || null,
-          // Texts when there is a phone; changeable on the customer's page.
-          p_preferred_channel: draft.phone.trim() ? "sms" : "email",
+          p_preferred_channel: draft.channel,
           p_notes: null,
         });
         if (custError) throw custError;
@@ -391,11 +393,6 @@ export function NewTicketDialog({
     }
   }
 
-  const moreSummary = [
-    ...optionalFields.map((f) => f.label),
-    ...(isElectronics ? ["passcode"] : []),
-    "photos",
-  ].join(", ");
   const payNote =
     payMode === "full"
       ? "Total incl. tax · paid"
@@ -419,7 +416,19 @@ export function NewTicketDialog({
             Only the customer and what needs doing are required.
           </DialogDescription>
         </DialogHeader>
-        <form method="post" onSubmit={save} noValidate className="flex min-h-0 flex-1 flex-col">
+        <form
+          method="post"
+          onSubmit={save}
+          noValidate
+          className="flex min-h-0 flex-1 flex-col"
+          // Enter in a text field adds that row or picks from a list (handled
+          // by the field); it never creates the ticket. Create does (Oz, 16 Oct).
+          onKeyDown={(e) => {
+            const t = e.target as HTMLInputElement;
+            if (e.key === "Enter" && t.tagName === "INPUT" && t.type !== "checkbox")
+              e.preventDefault();
+          }}
+        >
           <div className="flex min-w-0 flex-1 flex-col gap-7 overflow-y-auto px-4 py-5 sm:px-6">
             <CustomerPicker
               shopId={shop.id}
@@ -461,6 +470,22 @@ export function NewTicketDialog({
                   />
                 </Field>
               ))}
+              {isElectronics ? (
+                <Field
+                  id="passcode"
+                  label="Device passcode"
+                  hint="Stored encrypted. Only the owner, admins and the assigned person can reveal it. Deleted at pickup."
+                >
+                  <Input
+                    id="passcode"
+                    type="password"
+                    autoComplete="off"
+                    value={passcode}
+                    onChange={(e) => setPasscode(e.target.value)}
+                    maxLength={64}
+                  />
+                </Field>
+              ) : null}
             </section>
 
             {/* Services */}
@@ -475,6 +500,15 @@ export function NewTicketDialog({
                   className="pl-9"
                   onKeyDown={(e) => {
                     if (e.key === "Escape") setSvcOpen(false);
+                    if (e.key === "Enter") {
+                      // Enter adds the best match, or a new service (Admins).
+                      const q = svcQuery.trim().toLowerCase();
+                      const match =
+                        catalog.find((i) => i.name.trim().toLowerCase() === q) ??
+                        (q ? svcMatches[0] : undefined);
+                      if (match) addServiceLine(match);
+                      else if (isAdmin && q) addServiceLine();
+                    }
                   }}
                   onClick={() => setSvcOpen(true)}
                   aria-label="Add a service"
@@ -508,7 +542,7 @@ export function NewTicketDialog({
                 {svcOpen && (svcMatches.length || isAdmin) ? (
                   <ul
                     data-picker-list
-                    className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-border bg-background shadow-md"
+                    className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-input bg-surface-2 shadow-lg ring-1 ring-black/5"
                   >
                     {svcMatches.map((i) => (
                       <li key={i.id}>
@@ -575,8 +609,50 @@ export function NewTicketDialog({
 
               {/* Whole-ticket discount (decision 78): Owner/Admin. */}
               {isAdmin && lines.length ? (
-                discount ? (
-                  <div className="flex flex-wrap items-center gap-3 rounded-md bg-surface-1 px-3 py-2">
+                discount && discountLocked && parsedDiscount?.ok ? (
+                  <div className="flex items-center gap-2 rounded-md bg-surface-1 py-1 pr-1 pl-3">
+                    <span className="flex-1">
+                      Discount{" "}
+                      {parsedDiscount.type === "percent"
+                        ? `${parsedDiscount.value}%`
+                        : money(Math.round(parsedDiscount.value * 100))}
+                    </span>
+                    <span className="tabular-nums">−{money(totals.ticketDiscountCents)}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-11"
+                      aria-label="Edit discount"
+                      onClick={() => setDiscountLocked(false)}
+                    >
+                      <Pencil />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-11"
+                      aria-label="Remove discount"
+                      onClick={() => setDiscount(null)}
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                ) : discount ? (
+                  <div
+                    className="flex flex-wrap items-center gap-3 rounded-md bg-surface-1 px-3 py-2"
+                    onBlur={(e) => {
+                      if (
+                        parsedDiscount?.ok &&
+                        !e.currentTarget.contains(e.relatedTarget as Node | null)
+                      )
+                        setDiscountLocked(true);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && parsedDiscount?.ok) setDiscountLocked(true);
+                    }}
+                  >
                     <span className="flex-1 text-sm font-semibold">
                       Discount on the whole ticket
                     </span>
@@ -588,6 +664,17 @@ export function NewTicketDialog({
                         setError(null);
                       }}
                     />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-11"
+                      aria-label="Done with discount"
+                      disabled={!parsedDiscount?.ok}
+                      onClick={() => setDiscountLocked(true)}
+                    >
+                      <Check />
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"
@@ -604,7 +691,10 @@ export function NewTicketDialog({
                     type="button"
                     variant="ghost"
                     className="self-start underline underline-offset-4"
-                    onClick={() => setDiscount({ type: "percent", value: "" })}
+                    onClick={() => {
+                      setDiscount({ type: "percent", value: "" });
+                      setDiscountLocked(false);
+                    }}
                   >
                     Add discount
                   </Button>
@@ -687,12 +777,13 @@ export function NewTicketDialog({
               </select>
             </div>
 
-            {/* More details: optional fields, passcode and photos */}
-            <section className="flex flex-col gap-4 border-t border-border pt-3">
+            {/* Photos (decision 82): photos show colour, brand and condition, so the
+                optional detail fields left this form; they stay on the ticket page. */}
+            <section className="flex flex-col gap-3 border-t border-border pt-3">
               <button
                 type="button"
                 aria-expanded={moreOpen}
-                aria-controls="more-details"
+                aria-controls="photos-section"
                 onClick={() => setMoreOpen(!moreOpen)}
                 className="flex min-h-11 items-center gap-3 text-left"
               >
@@ -700,69 +791,35 @@ export function NewTicketDialog({
                   aria-hidden
                   className={`size-5 shrink-0 transition-transform motion-reduce:transition-none ${moreOpen ? "rotate-90" : ""}`}
                 />
-                <span className="flex flex-col">
-                  <span className="font-semibold">More details</span>
-                  <span className="text-sm text-muted-foreground">
-                    {photos.length
-                      ? `${photos.length} photo${photos.length > 1 ? "s" : ""} added`
-                      : moreSummary.charAt(0).toUpperCase() + moreSummary.slice(1)}
-                  </span>
+                <span className="font-semibold">Photos</span>
+                <span className="text-sm text-muted-foreground">
+                  {photos.length
+                    ? `${photos.length} added`
+                    : "Optional: the item's condition, colour, brand"}
                 </span>
               </button>
-              <div id="more-details" hidden={!moreOpen} className="flex flex-col gap-4">
-                {optionalFields.length ? (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {optionalFields.map((f) => (
-                      <Field key={f.id} id={`cf-${f.id}`} label={f.label} hint={f.help_text}>
-                        <CustomFieldInput
-                          id={`cf-${f.id}`}
-                          field={f}
-                          value={custom[f.id]}
-                          onChange={(v) => setCustom({ ...custom, [f.id]: v })}
-                        />
-                      </Field>
-                    ))}
-                  </div>
+              <div id="photos-section" hidden={!moreOpen} className="flex flex-col gap-2">
+                <label
+                  htmlFor="photos"
+                  className="inline-flex h-11 w-fit cursor-pointer items-center gap-2 rounded-md border border-input px-4 font-medium hover:bg-accent"
+                >
+                  <Camera className="size-5" aria-hidden /> Add photos
+                </label>
+                <input
+                  id="photos"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  className="sr-only"
+                  onChange={(e) => setPhotos([...photos, ...Array.from(e.target.files ?? [])])}
+                />
+                {photos.length ? (
+                  <p className="text-sm text-muted-foreground">
+                    {photos.length} photo{photos.length > 1 ? "s" : ""} ready to upload (10 MB max
+                    each).
+                  </p>
                 ) : null}
-                {isElectronics ? (
-                  <Field
-                    id="passcode"
-                    label="Device passcode"
-                    hint="Stored encrypted. Only the owner, admins and the assigned person can reveal it. Deleted at pickup."
-                  >
-                    <Input
-                      id="passcode"
-                      type="password"
-                      autoComplete="off"
-                      value={passcode}
-                      onChange={(e) => setPasscode(e.target.value)}
-                      maxLength={64}
-                    />
-                  </Field>
-                ) : null}
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="photos"
-                    className="inline-flex h-11 w-fit cursor-pointer items-center gap-2 rounded-md border border-input px-4 font-medium hover:bg-accent"
-                  >
-                    <Camera className="size-5" aria-hidden /> Add condition photos
-                  </label>
-                  <input
-                    id="photos"
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    multiple
-                    className="sr-only"
-                    onChange={(e) => setPhotos([...photos, ...Array.from(e.target.files ?? [])])}
-                  />
-                  {photos.length ? (
-                    <p className="text-sm text-muted-foreground">
-                      {photos.length} photo{photos.length > 1 ? "s" : ""} ready to upload (10 MB max
-                      each).
-                    </p>
-                  ) : null}
-                </div>
               </div>
             </section>
 

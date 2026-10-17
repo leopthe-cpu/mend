@@ -45,7 +45,7 @@ select is_empty(
           'public.save_catalog_item', 'public.finish_shop_setup', 'public.onboarding_state', 'public.export_shop', 'public.set_shop_logo', 'public.delete_shop',
           'public.queue_message', 'public.cancel_message', 'public.set_customer_opt_out',
           'public.accept_terms', 'public.shop_contact', 'public.set_estimate_discount',
-          'public.retention_notice'
+          'public.retention_notice', 'public.export_customer'
         ]) $$,
   'authenticated can execute only allow-listed functions'
 );

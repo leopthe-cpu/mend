@@ -25,15 +25,21 @@ export function Field({
 export function Panel({
   title,
   description,
+  action,
   children,
 }: {
   title: string;
   description?: ReactNode;
+  /** A button on the right of the title, e.g. "Edit". */
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="rounded-lg border border-border bg-card p-6">
-      <h2 className="text-xl font-semibold">{title}</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold">{title}</h2>
+        {action}
+      </div>
       {description ? <div className="mt-1 text-muted-foreground">{description}</div> : null}
       <div className="mt-5">{children}</div>
     </section>

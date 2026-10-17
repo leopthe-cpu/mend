@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { Pencil } from "lucide-react";
+import { useState, type ReactNode } from "react";
 
 import { Field, Panel, selectClass } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
@@ -43,11 +44,15 @@ export function TicketDetailsPanel({
   ticket,
   fields,
   members,
+  status,
   onSaved,
 }: {
   ticket: Ticket;
   fields: CustomField[];
   members: Member[];
+  /** The status control, shown first and always usable (Oz, 16 Oct: status
+   *  belongs in the details, with a clear "Status" label). */
+  status: ReactNode;
   onSaved: (values: EditingState) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -83,6 +88,7 @@ export function TicketDetailsPanel({
   if (editing) {
     return (
       <Panel title="Details">
+        <div className="mb-5">{status}</div>
         <form method="post" onSubmit={handleSave} className="flex flex-col gap-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
@@ -185,14 +191,16 @@ export function TicketDetailsPanel({
   }
 
   return (
-    <Panel title="Details">
-      {saved ? <p className="mb-4 text-sm text-success">Saved.</p> : null}
-      <div className="flex items-center justify-between">
-        <h3 className="sr-only">Details</h3>
+    <Panel
+      title="Details"
+      action={
         <Button type="button" variant="outline" onClick={startEditing}>
-          Edit
+          <Pencil /> Edit
         </Button>
-      </div>
+      }
+    >
+      {saved ? <p className="mb-4 text-sm text-success">Saved.</p> : null}
+      {status}
       <dl className="mt-5 grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <dt className="text-sm text-muted-foreground">Item</dt>

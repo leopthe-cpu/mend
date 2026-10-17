@@ -13,16 +13,18 @@ export type CustomerDraft = {
   name: string;
   phone: string;
   email: string;
+  /** How this customer gets updates; saved on the customer for next time. */
+  channel: "sms" | "email";
 };
-const EMPTY_CUSTOMER: CustomerDraft = { name: "", phone: "", email: "" };
+const EMPTY_CUSTOMER: CustomerDraft = { name: "", phone: "", email: "", channel: "sms" };
 
 /**
  * Customer field for the new-ticket dialog (decision 78 redesign): one search
  * box. On focus it lists recent customers (with "Customer since" dates),
  * filters via search_shop on typing, and ends with "Create “<typed>”", which
  * opens a small new-customer panel prefilled from the text. Escape closes only
- * the list, not the whole dialog. The preferred channel follows what was
- * entered (text if there is a phone), changeable on the customer's page.
+ * the list, not the whole dialog. "Send updates by" (text or email) is saved
+ * on the customer, not the ticket, so it is remembered (decision 82).
  */
 export function CustomerPicker({
   shopId,
@@ -211,6 +213,32 @@ export function CustomerPicker({
                 />
               </Field>
             </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span id="nc-channel-label" className="text-sm">
+                Send updates by
+              </span>
+              <div
+                role="group"
+                aria-labelledby="nc-channel-label"
+                className="flex overflow-hidden rounded-md border border-input"
+              >
+                {(["sms", "email"] as const).map((ch) => (
+                  <button
+                    key={ch}
+                    type="button"
+                    aria-pressed={newCust.channel === ch}
+                    onClick={() => setNewCust({ ...newCust, channel: ch })}
+                    className={
+                      newCust.channel === ch
+                        ? "h-11 bg-primary px-4 font-semibold text-primary-foreground"
+                        : "h-11 bg-surface-2 px-4 hover:bg-accent"
+                    }
+                  >
+                    {ch === "sms" ? "Text" : "Email"}
+                  </button>
+                ))}
+              </div>
+            </div>
             <p className="text-sm text-muted-foreground">
               Saved with the ticket. A phone number, an email, or both.
             </p>
@@ -244,6 +272,15 @@ export function CustomerPicker({
                 // Escape closes only the list; the dialog checks for an open
                 // list (data-picker-list) before closing itself.
                 if (e.key === "Escape") setOpen(false);
+                // Enter picks the first match, or starts a new customer.
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  const first = found[0];
+                  if (first && query.trim()) {
+                    setOpen(false);
+                    void choose(first);
+                  } else if (query.trim()) startCreate();
+                }
               }}
               placeholder="Search by name, phone or email"
               autoFocus
@@ -253,7 +290,7 @@ export function CustomerPicker({
             {open ? (
               <ul
                 data-picker-list
-                className="absolute inset-x-0 top-full z-10 mt-1 max-h-72 divide-y divide-border overflow-y-auto rounded-md border border-border bg-background shadow-md"
+                className="absolute inset-x-0 top-full z-10 mt-1 max-h-72 divide-y divide-border overflow-y-auto rounded-md border border-input bg-surface-2 shadow-lg ring-1 ring-black/5"
               >
                 {found.map((f) => (
                   <li key={f.id}>

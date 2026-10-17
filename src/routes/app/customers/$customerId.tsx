@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
@@ -38,6 +39,8 @@ function CustomerDetail() {
   const [tickets, setTickets] = useState<Row[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [message, setMessage] = useState<{ tone: "error" | "info"; text: string } | null>(null);
+  // Read-only until Edit (Oz, 16 Oct), like the ticket details.
+  const [editing, setEditing] = useState(false);
 
   const isAdmin = roleAtLeast(membership.role, "admin");
 
@@ -107,6 +110,7 @@ function CustomerDetail() {
     });
     if (error) return setMessage({ tone: "error", text: friendlyDbError(error) });
     setMessage({ tone: "info", text: "Saved." });
+    setEditing(false);
     await load();
   }
 
@@ -121,63 +125,119 @@ function CustomerDetail() {
     <div className="flex max-w-4xl flex-col gap-6">
       <h1 className="text-[1.75rem] font-semibold">{c.name}</h1>
       {message ? <FormAlert tone={message.tone}>{message.text}</FormAlert> : null}
-      <form method="post" onSubmit={save}>
-        <Panel title="Contact">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Field id="c-name" label="Name">
+      {editing ? (
+        <form method="post" onSubmit={save}>
+          <Panel title="Contact">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Field id="c-name" label="Name">
+                  <Input
+                    id="c-name"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    maxLength={120}
+                  />
+                </Field>
+              </div>
+              <Field id="c-phone" label="Mobile phone">
+                <PhoneInput
+                  id="c-phone"
+                  value={form.phone}
+                  onValueChange={(phone) => setForm({ ...form, phone })}
+                />
+              </Field>
+              <Field id="c-email" label="Email">
                 <Input
-                  id="c-name"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  maxLength={120}
+                  id="c-email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
               </Field>
+              <Field id="c-channel" label="Send updates by">
+                <select
+                  id="c-channel"
+                  className={selectClass}
+                  value={form.channel}
+                  onChange={(e) => setForm({ ...form, channel: e.target.value as "sms" | "email" })}
+                >
+                  <option value="sms">Text message</option>
+                  <option value="email">Email</option>
+                </select>
+              </Field>
+              <div className="sm:col-span-2">
+                <Field id="c-notes" label="Notes">
+                  <Textarea
+                    id="c-notes"
+                    rows={3}
+                    className="bg-surface-2 text-base"
+                    value={form.notes}
+                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                    maxLength={2000}
+                  />
+                </Field>
+              </div>
             </div>
-            <Field id="c-phone" label="Mobile phone">
-              <PhoneInput
-                id="c-phone"
-                value={form.phone}
-                onValueChange={(phone) => setForm({ ...form, phone })}
-              />
-            </Field>
-            <Field id="c-email" label="Email">
-              <Input
-                id="c-email"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-            </Field>
-            <Field id="c-channel" label="Prefers">
-              <select
-                id="c-channel"
-                className={selectClass}
-                value={form.channel}
-                onChange={(e) => setForm({ ...form, channel: e.target.value as "sms" | "email" })}
+            <div className="mt-4 flex gap-3">
+              <Button type="submit">Save</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setEditing(false);
+                  void load();
+                }}
               >
-                <option value="sms">Text message</option>
-                <option value="email">Email</option>
-              </select>
-            </Field>
-            <div className="sm:col-span-2">
-              <Field id="c-notes" label="Notes">
-                <Textarea
-                  id="c-notes"
-                  rows={3}
-                  className="bg-surface-2 text-base"
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  maxLength={2000}
-                />
-              </Field>
+                Cancel
+              </Button>
             </div>
-          </div>
-          <Button type="submit" className="mt-4">
-            Save
-          </Button>
+          </Panel>
+        </form>
+      ) : (
+        <Panel
+          title="Contact"
+          action={
+            <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+              <Pencil /> Edit
+            </Button>
+          }
+        >
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <dt className="text-sm text-muted-foreground">Mobile phone</dt>
+              <dd>
+                {form.phone ? (
+                  <a href={`tel:${form.phone}`} className="underline-offset-4 hover:underline">
+                    {form.phone}
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm text-muted-foreground">Email</dt>
+              <dd className="break-all">
+                {form.email ? (
+                  <a href={`mailto:${form.email}`} className="underline-offset-4 hover:underline">
+                    {form.email}
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm text-muted-foreground">Send updates by</dt>
+              <dd>{form.channel === "sms" ? "Text message" : "Email"}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-sm text-muted-foreground">Notes</dt>
+              <dd className="whitespace-pre-wrap">{form.notes.trim() ? form.notes : "—"}</dd>
+            </div>
+          </dl>
         </Panel>
-      </form>
+      )}
       <Panel
         title="Messages"
         description="Customers who reply STOP to a text are opted out automatically."

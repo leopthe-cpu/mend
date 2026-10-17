@@ -17,7 +17,8 @@ create temporary view our_functions as
 select is_empty(
   $$ select nspname || '.' || proname from our_functions
       where has_function_privilege('anon', oid, 'EXECUTE')
-        and nspname || '.' || proname <> all (array['public.invite_preview', 'public.shop_contact']) $$,
+        and nspname || '.' || proname <> all (array['public.invite_preview', 'public.shop_contact',
+                                                   'public.unsubscribe_preview', 'public.email_unsubscribe']) $$,
   'anon can execute only allow-listed functions'
 );
 
@@ -45,7 +46,8 @@ select is_empty(
           'public.save_catalog_item', 'public.finish_shop_setup', 'public.onboarding_state', 'public.export_shop', 'public.set_shop_logo', 'public.delete_shop',
           'public.queue_message', 'public.cancel_message', 'public.set_customer_opt_out',
           'public.accept_terms', 'public.shop_contact', 'public.set_estimate_discount',
-          'public.retention_notice', 'public.export_customer'
+          'public.retention_notice', 'public.export_customer',
+          'public.unsubscribe_preview', 'public.email_unsubscribe'
         ]) $$,
   'authenticated can execute only allow-listed functions'
 );

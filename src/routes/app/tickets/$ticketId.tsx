@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Printer, Trash2 } from "lucide-react";
+import { ChevronLeft, Printer, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
@@ -212,7 +212,13 @@ function TicketDetail() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-3">
+      <Link
+        to="/app/tickets"
+        className="inline-flex min-h-11 w-fit items-center gap-1 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
+        <ChevronLeft className="size-5" aria-hidden /> Tickets
+      </Link>
+      <div className="-mt-4 flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="font-mono text-muted-foreground">#{ticket.ticket_number}</p>
           <h1 className="text-[1.75rem] font-semibold leading-tight">{ticket.item_name}</h1>
@@ -220,21 +226,14 @@ function TicketDetail() {
             <p className="font-medium text-danger">Overdue (promised {ticket.promised_date})</p>
           ) : null}
         </div>
-        <StatusMenu
-          className="w-56"
-          statuses={statuses}
-          value={ticket.status_id}
-          onChange={(id) => void moveTo(id)}
-          label="Status"
-        />
         <Button variant="outline" asChild>
           <Link to="/tag/$ticketId" params={{ ticketId: ticket.id }} target="_blank">
-            <Printer /> Claim tag
+            <Printer /> Print
           </Link>
         </Button>
         {isAdmin ? (
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={() => {
               if (
                 window.confirm(
@@ -272,6 +271,20 @@ function TicketDetail() {
             ticket={ticket}
             fields={fields}
             members={members}
+            status={
+              <div className="flex flex-col gap-2 sm:max-w-xs">
+                <label htmlFor="t-status" className="text-sm font-semibold">
+                  Status
+                </label>
+                <StatusMenu
+                  id="t-status"
+                  statuses={statuses}
+                  value={ticket.status_id}
+                  onChange={(id) => void moveTo(id)}
+                  label="Status"
+                />
+              </div>
+            }
             onSaved={saveDetails}
           />
           <TicketPhotosPanel ticket={ticket} photos={photos} onReload={load} />

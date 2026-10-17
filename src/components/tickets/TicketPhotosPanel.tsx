@@ -1,4 +1,4 @@
-import { Camera } from "lucide-react";
+import { Camera, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 import { Panel } from "@/components/app/Field";
@@ -16,6 +16,8 @@ export function TicketPhotosPanel({
   onReload: () => void;
 }) {
   const [msg, setMsg] = useState<string | null>(null);
+  // Empty sections stay folded (Oz, 16 Oct); open to add the first photos.
+  const [open, setOpen] = useState(false);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -25,6 +27,21 @@ export function TicketPhotosPanel({
     await onReload();
     // Clear so re-uploading the same file triggers onChange again.
     e.target.value = "";
+  }
+
+  if (!photos.length && !open) {
+    return (
+      <button
+        type="button"
+        aria-expanded={false}
+        onClick={() => setOpen(true)}
+        className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-border bg-card px-6 text-left hover:bg-accent"
+      >
+        <ChevronRight className="size-5 shrink-0" aria-hidden />
+        <span className="text-xl font-semibold">Photos</span>
+        <span className="text-muted-foreground">None yet</span>
+      </button>
+    );
   }
 
   return (

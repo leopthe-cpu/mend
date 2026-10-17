@@ -9,7 +9,9 @@ export function StatusMenu({
   onChange,
   label,
   className,
+  id,
 }: {
+  id?: string;
   statuses: Status[];
   value: string;
   onChange: (statusId: string) => void;
@@ -18,6 +20,7 @@ export function StatusMenu({
 }) {
   return (
     <select
+      id={id}
       aria-label={label}
       className={cn(selectClass, className)}
       value={value}

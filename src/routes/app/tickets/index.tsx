@@ -6,7 +6,9 @@ import { FormAlert } from "@/components/auth/AuthLayout";
 import { DateRangePicker, type DateRangeValue } from "@/components/app/DateRangePicker";
 import { PageHeader } from "@/components/app/EmptyState";
 import { Button } from "@/components/ui/button";
+import { formatMoney } from "@/lib/money";
 import { friendlyDbError } from "@/lib/shop";
+import { getSupabase } from "@/lib/supabase";
 import {
   fetchMembers,
   fetchStatuses,
@@ -29,6 +31,7 @@ type SortKey =
   | "ticket_number"
   | "customer"
   | "item"
+  | "total"
   | "status"
   | "promised_date"
   | "created_at"
@@ -57,6 +60,8 @@ function TicketList() {
   const navigate = useNavigate();
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  // Current (non-superseded) estimate total per ticket, for the Total column.
+  const [totals, setTotals] = useState<Map<string, number>>(new Map());
   const [members, setMembers] = useState<Member[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -77,11 +82,28 @@ function TicketList() {
     } catch {
       /* storage unavailable */
     }
-    void Promise.all([fetchStatuses(shop.id), fetchTickets(shop.id), fetchMembers(shop.id)])
-      .then(([s, t, m]) => {
+    void Promise.all([
+      fetchStatuses(shop.id),
+      fetchTickets(shop.id),
+      fetchMembers(shop.id),
+      getSupabase()
+        .from("estimates")
+        .select("ticket_id, total_cents")
+        .eq("shop_id", shop.id)
+        .neq("status", "superseded"),
+    ])
+      .then(([s, t, m, e]) => {
         setStatuses(s);
         setTickets(t);
         setMembers(m);
+        setTotals(
+          new Map(
+            ((e.data ?? []) as { ticket_id: string; total_cents: number }[]).map((x) => [
+              x.ticket_id,
+              Number(x.total_cents),
+            ]),
+          ),
+        );
       })
       .catch((e) => setError(friendlyDbError(e)));
   }, [shop.id]);
@@ -117,6 +139,8 @@ function TicketList() {
           return t.customer?.name.toLowerCase() ?? "";
         case "item":
           return t.item_name.toLowerCase();
+        case "total":
+          return totals.get(t.id) ?? -1;
         case "status":
           return byStatus.get(t.status_id)?.position ?? 0;
         case "promised_date":
@@ -136,6 +160,7 @@ function TicketList() {
     );
   }, [
     tickets,
+    totals,
     byStatus,
     statusFilter,
     assigneeFilter,
@@ -237,6 +262,7 @@ function TicketList() {
               {header("ticket_number", "#")}
               {header("customer", "Customer")}
               {header("item", "Item")}
+              {header("total", "Total")}
               {header("status", "Status")}
               {header("assigned_to", "Assigned to")}
               {header("promised_date", "Promised")}
@@ -265,6 +291,9 @@ function TicketList() {
                   <td className="px-3 py-3 font-mono">#{t.ticket_number}</td>
                   <td className="px-3 py-3">{t.customer?.name}</td>
                   <td className="px-3 py-3">{t.item_name}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">
+                    {totals.has(t.id) ? formatMoney(totals.get(t.id) ?? 0, shop.currency) : "—"}
+                  </td>
                   <td className="px-3 py-3">
                     <button
                       type="button"
@@ -325,7 +354,7 @@ function TicketList() {
             })}
             {!rows.length ? (
               <tr>
-                <td colSpan={8} className="px-3 py-6 text-muted-foreground">
+                <td colSpan={9} className="px-3 py-6 text-muted-foreground">
                   No tickets match.
                 </td>
               </tr>

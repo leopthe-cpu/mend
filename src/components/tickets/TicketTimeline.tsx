@@ -73,24 +73,25 @@ function messageEventText(d: Record<string, unknown>): string {
 
 function estimateEventText(d: Record<string, unknown>, currency: string): string {
   const money = (c: unknown) => formatMoney(Number(c ?? 0), currency);
-  const v = `estimate v${d["version"] ?? ""}`.trim();
+  // "Quote" is the shop-facing name for an estimate (decision 83).
+  const v = Number(d["version"] ?? 1) > 1 ? ` (v${d["version"]})` : "";
   switch (d["action"]) {
     case "started":
-      return `Started ${v}`;
+      return `Quote started${v}`;
     case "revised":
-      return `Started ${v} (revision)`;
+      return `Services changed: new quote${v}`;
     case "sent":
-      return `Sent ${v} · ${money(d["total_cents"])}`;
+      return `Quote sent${v} · ${money(d["total_cents"])}`;
     case "approved":
-      return `Customer approved ${v}${
+      return `Customer approved the quote${v}${
         d["approval_method"] ? ` ${APPROVAL_LABEL[d["approval_method"] as ApprovalMethod]}` : ""
       } · ${money(d["total_cents"])}`;
     case "declined":
-      return `Customer declined ${v}`;
+      return `Customer declined the quote${v}`;
     case "invoiced":
       return `Invoice #${d["invoice_number"]} issued · ${money(d["total_cents"])}`;
     default:
-      return "Estimate updated";
+      return "Quote updated";
   }
 }
 

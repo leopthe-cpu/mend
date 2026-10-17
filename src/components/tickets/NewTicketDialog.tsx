@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { FEATURES } from "@/lib/features";
 import { focusFirstMissingField } from "@/lib/form";
 import { previewTotals, type PreviewLine } from "@/lib/intake";
 import {
@@ -168,7 +169,8 @@ export function NewTicketDialog({
   }
 
   const requiredFields = fields.filter((f) => f.required);
-  const isElectronics = shop.vertical === "electronics";
+  // Behind a flag for launch (decision 85).
+  const askPasscode = shop.vertical === "electronics" && FEATURES.passcodes;
 
   const svcMatches = useMemo(() => {
     const q = svcQuery.trim().toLowerCase();
@@ -470,7 +472,7 @@ export function NewTicketDialog({
                   />
                 </Field>
               ))}
-              {isElectronics ? (
+              {askPasscode ? (
                 <Field
                   id="passcode"
                   label="Device passcode"

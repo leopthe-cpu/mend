@@ -1,4 +1,4 @@
--- Passcode reveals are capped at 30 per person per shop per hour (decision 60).
+-- Passcode reveals are capped at 10 per person per shop per hour (decisions 60, 85).
 begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
@@ -19,14 +19,14 @@ insert into t select 'tk', ticket_id::text from public.create_ticket(pg_temp.v('
 select is(public.reveal_passcode(pg_temp.v('tk')), '2468', 'a normal reveal works');
 reset role;
 
--- 29 more reveals in the last hour (written as the function would).
+-- 9 more reveals in the last hour (written as the function would).
 insert into public.audit_log (shop_id, actor_id, action, entity, entity_id)
 select pg_temp.v('shop'), 'c9000000-0000-0000-0000-000000000001', 'passcode.revealed', 'tickets', pg_temp.v('tk')
-  from generate_series(1, 29);
+  from generate_series(1, 9);
 
 select set_config('request.jwt.claims', '{"sub":"c9000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
-select throws_ok($$ select public.reveal_passcode(pg_temp.v('tk')) $$, '54000', null, 'the 31st reveal within an hour is refused');
+select throws_ok($$ select public.reveal_passcode(pg_temp.v('tk')) $$, '54000', null, 'the 11th reveal within an hour is refused');
 reset role;
 
 select * from finish();

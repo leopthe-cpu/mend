@@ -33,7 +33,7 @@ update public.shops set phone = '416 555 0000' where id = pg_temp.v('shop');
 insert into t select 'm1', message_id::text from public.queue_message(pg_temp.v('tk'), 'sms', 'Ready.');
 reset role;
 select is((select body from public.messages where id = pg_temp.v('m1')),
-  'Ready. Reply STOP to opt out. Shop info: https://mend-production-2e99.up.railway.app/s/'
+  'Ready. Reply STOP to opt out. Shop info: https://www.mendshops.com/s/'
     || (select public_code from public.shops where id = pg_temp.v('shop')),
   'the first text links the contact page');
 

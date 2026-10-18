@@ -24,7 +24,7 @@ reset role;
 -- Texts need the shop's address and phone (decision 76).
 update public.shops set address = '1 Main St, Toronto ON', phone = '416 555 0000';
 create function pg_temp.notice() returns text language sql as $$
-  select 'Reply STOP to opt out. Shop info: https://mend-production-2e99.up.railway.app/s/' || public_code
+  select 'Reply STOP to opt out. Shop info: https://www.mendshops.com/s/' || public_code
     from public.shops where id = pg_temp.v('shop') $$;
 set local role authenticated;
 

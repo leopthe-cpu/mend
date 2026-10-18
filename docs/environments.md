@@ -11,22 +11,22 @@ feature/* ──PR──▶ develop ──PR (Oz approves)──▶ main
                    Supabase "mend-staging"       Supabase "mend"
 ```
 
-| | Dev | Staging (pre-prod) | Production |
-|---|---|---|---|
-| Git branch | `feature/…` (one per change) | `develop` | `main` |
-| Website | local (`bun run dev`) | Railway environment **staging** | Railway environment **production** |
-| Database | local Supabase in Docker | Supabase project **mend-staging** (free) | Supabase project **mend** |
-| Data | throwaway test data | test data only, **never real customers** | real shops |
-| Texts / email | Mailpit (local) | off, or Twilio/Resend test credentials | live |
-| Who changes it | anyone, freely | merge a PR into `develop` (tests must pass) | merge a PR into `main` (**Oz approves**) |
-| AI agents (Claude, LibreChat) | full access | full access, including the staging database | **no direct access**; may open PRs only |
+|                               | Dev                          | Staging (pre-prod)                          | Production                               |
+| ----------------------------- | ---------------------------- | ------------------------------------------- | ---------------------------------------- |
+| Git branch                    | `feature/…` (one per change) | `develop`                                   | `main`                                   |
+| Website                       | local (`bun run dev`)        | Railway environment **staging**             | Railway environment **production**       |
+| Database                      | local Supabase in Docker     | Supabase project **mend-staging** (free)    | Supabase project **mend**                |
+| Data                          | throwaway test data          | test data only, **never real customers**    | real shops                               |
+| Texts / email                 | Mailpit (local)              | off, or Twilio/Resend test credentials      | live                                     |
+| Who changes it                | anyone, freely               | merge a PR into `develop` (tests must pass) | merge a PR into `main` (**Oz approves**) |
+| AI agents (Claude, LibreChat) | full access                  | full access, including the staging database | **no direct access**; may open PRs only  |
 
 ## Addresses
 
-| | Staging | Production |
-|---|---|---|
-| Website | https://mend-staging.up.railway.app | https://mend-production-2e99.up.railway.app |
-| Supabase project | `mend-staging` (`guqmpdlervjwhclsndyn`) | `mend` (`zasagjabtifpuhayttki`) |
+|                  | Staging                                 | Production                                                                                                    |
+| ---------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Website          | https://mend-staging.up.railway.app     | https://www.mendshops.com (also https://mend-production-2e99.up.railway.app; `mendshops.com` forwards to www) |
+| Supabase project | `mend-staging` (`guqmpdlervjwhclsndyn`) | `mend` (`zasagjabtifpuhayttki`)                                                                               |
 
 ## Everyday flow
 
@@ -49,6 +49,7 @@ Order matters: staging must exist before branch protection, so nothing is
 blocked half-way.
 
 ### 1. Supabase: create the staging project
+
 1. Supabase → **New project** in the same organization. Name `mend-staging`,
    region **Canada (Central)** like production, a strong database password
    (keep it in your password manager).
@@ -68,6 +69,7 @@ blocked half-way.
    migrations applied.
 
 ### 2. Railway: add a staging environment
+
 1. Open the project that holds the **mend** service → environment menu
    (top bar, next to "production") → **New environment** → name `staging`.
 2. In **staging**, on the mend service:
@@ -80,6 +82,7 @@ blocked half-way.
    built-in production defaults, decision 20).
 
 ### 3. GitHub: protect the branches
+
 Repository → Settings → **Branches** (or Rules → Rulesets) → add a rule:
 
 - **`main`**: require a pull request before merging, **require 1 approval**,
@@ -95,6 +98,7 @@ From then on, nobody (Claude and LibreChat included) can push straight to
 `develop` or `main`.
 
 ## AI agents
+
 - Each agent gets its **own** GitHub token, limited to this repository, that
   can push branches and open pull requests. Branch protection does the rest.
 - The Supabase connector for agents is pinned to **mend-staging**

@@ -97,6 +97,8 @@ export async function sendEmail(
     text: string;
     fromName: string;
     replyTo: string | null;
+    /** Extra headers, e.g. List-Unsubscribe (Resend `headers`, resend@6.32.0 types). */
+    headers?: Record<string, string>;
   },
 ): Promise<SendOutcome> {
   // Display name is the shop; the address is Mend's authenticated domain.
@@ -116,6 +118,7 @@ export async function sendEmail(
         subject: msg.subject,
         text: msg.text,
         ...(msg.replyTo ? { reply_to: msg.replyTo } : {}),
+        ...(msg.headers ? { headers: msg.headers } : {}),
       }),
     });
     if (!res.ok) return { ok: false, error: await errorText(res), retry: retryable(res.status) };

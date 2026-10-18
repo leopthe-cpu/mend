@@ -45,27 +45,14 @@ Before step 2, Claude publishes interim privacy and terms pages that pass Twilio
 
 ## Pre-launch: legal details for the privacy and terms pages
 
-Needed before the Twilio submission (launch-plan.md L1a). Send Claude the
-results; don't put anything private in chat beyond what will be public on
-the pages anyway.
-
-1. **Legal name.** Quickest: operate as a sole proprietor under your own
-   name ("Leonardo Thé, operating as Mend"); no registration needed. To use
-   "Mend" alone as the business name, register it in the Ontario Business
-   Registry (check the current fee). You can incorporate later; the pages
-   and possibly the Twilio verification then need updating.
-2. **Mailing address.** Not your home address: a Canada Post PO box or a
-   UPS Store mailbox. It goes on the privacy policy (privacy officer
-   contact).
-3. **Contact email** on mendshops.com, e.g. `hello@mendshops.com`, forwarding
-   to your inbox. Free forwarding services exist (for example Cloudflare
-   Email Routing or ImprovMX; which one fits depends on where the domain's
-   DNS is). Used for privacy requests, support and the SMS HELP reply.
+Done 18 Oct 2026 (`src/lib/legal.ts`): operated by Leonardo Thé as a sole
+proprietor ("operating as Mend"); contact `jody@mendshops.com`; mailing
+address 185 Crawford St, Unit 1, Toronto, ON M6J 2V5. These are public on
+/privacy and /terms and should match the Twilio submission.
 
 ## Before real shops use Mend
 
 - Read the security review (private copy, decision 65) §2 (known gaps) and §3 (needs a lawyer).
-- Decide the passcode-reveal limit (decision 60: 30 per person per hour) and how long to keep closed tickets, photos and messages.
 - Consider a longer minimum password (8+) in Supabase → Authentication → Passwords.
 
 - Decide on Supabase Pro: no pausing after 7 inactive days, downloadable backups, support, test branches, leaked-password checking. Check the current price at supabase.com/pricing.

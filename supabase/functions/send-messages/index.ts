@@ -5,6 +5,7 @@
 // SKIP LOCKED, so overlapping runs never send twice.
 import { adminClient, functionsBaseUrl, json } from "../_shared/admin.ts";
 import { sendEmail, sendSms, type SendOutcome } from "../_shared/providers.ts";
+import { type Footer, unsubscribeHeaders, withEmailFooter } from "../_shared/emailFooter.ts";
 
 type Due = {
   message_id: string;
@@ -50,15 +51,24 @@ Deno.serve(async (req) => {
             )
           : { ok: false, error: "Text messages aren't set up yet", retry: false };
     } else {
-      outcome =
-        resend.apiKey && resend.fromAddress
+      // Decision 88: who sent it and how to stop, in every email.
+      const footer = await db.rpc("email_footer_for", { p_message_id: m.message_id });
+      const f = ((footer.data ?? []) as Footer[])[0];
+      outcome = !f
+        ? {
+            ok: false,
+            error: `no unsubscribe link: ${footer.error?.message ?? "not found"}`,
+            retry: true,
+          }
+        : resend.apiKey && resend.fromAddress
           ? await sendEmail(resend, {
               id: m.message_id,
               to: m.recipient,
               subject: m.subject ?? m.shop_name,
-              text: m.body,
+              text: withEmailFooter(m.body, f),
               fromName: m.shop_name,
               replyTo: m.reply_to,
+              headers: unsubscribeHeaders(`${functionsBaseUrl()}/email-unsubscribe?t=${f.token}`),
             })
           : { ok: false, error: "Email isn't set up yet", retry: false };
     }

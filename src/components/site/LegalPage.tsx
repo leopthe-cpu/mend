@@ -36,7 +36,14 @@ export function LegalContact() {
         {LEGAL.operator}, operating as {LEGAL.tradeName}, {LEGAL.province}, Canada
       </li>
       <li>Privacy officer: {LEGAL.privacyOfficer}</li>
-      <li>Email: {LEGAL.contactEmail ?? "to be published before launch"}</li>
+      <li>
+        Email:{" "}
+        {LEGAL.contactEmail ? (
+          <a href={`mailto:${LEGAL.contactEmail}`}>{LEGAL.contactEmail}</a>
+        ) : (
+          "to be published before launch"
+        )}
+      </li>
       <li>Mailing address: {LEGAL.mailingAddress ?? "to be published before launch"}</li>
     </ul>
   );

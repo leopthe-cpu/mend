@@ -1,15 +1,15 @@
 // Details shown on the privacy policy and terms pages (launch-plan.md L1a,
 // decision 73). One place, so both pages and the Twilio submission match.
-// Address and email are pre-launch to-dos (oz-todo.md); while they are null
-// the pages say so instead of showing made-up contact details.
+// Address and email from Oz, 18 Oct 2026. If either is set back to null the
+// pages say it isn't published yet instead of showing made-up details.
 
 export const LEGAL = {
   operator: "Leonardo Thé",
   tradeName: "Mend",
   province: "Ontario",
   privacyOfficer: "Leonardo Thé",
-  mailingAddress: null as string | null,
-  contactEmail: null as string | null,
+  mailingAddress: "185 Crawford St, Unit 1, Toronto, ON M6J 2V5" as string | null,
+  contactEmail: "jody@mendshops.com" as string | null,
   /** Bump when the text changes in a way users should know about. */
   version: "interim-2026-10-17",
   effectiveDate: "October 17, 2026",

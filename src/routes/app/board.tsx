@@ -260,11 +260,21 @@ function Board() {
               )}
             >
               <h2 className="flex items-center gap-2 px-5 pt-4 pb-1 font-semibold">
-                <span
-                  aria-hidden
-                  className={cn("size-2.5 rounded-full", STATUS_COLOR_CLASS[s.color])}
-                />
-                {s.name}
+                {/* The title opens the List with only this status (decision
+                    117), including picked-up tickets older than the board's
+                    7 days. */}
+                <Link
+                  to="/app/tickets"
+                  search={{ f: `status:${s.id}` }}
+                  title={`See all ${s.name} tickets in the list`}
+                  className="-mx-2 flex items-center gap-2 rounded-full px-2 py-0.5 hover:bg-background"
+                >
+                  <span
+                    aria-hidden
+                    className={cn("size-2.5 rounded-full", STATUS_COLOR_CLASS[s.color])}
+                  />
+                  {s.name}
+                </Link>
                 <span className="ml-auto font-mono text-sm text-muted-foreground">
                   {col.length}
                 </span>

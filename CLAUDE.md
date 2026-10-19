@@ -58,3 +58,11 @@ Exactly one Owner per shop. Nobody grants a role above their own. The Owner can'
 - Status colors are always paired with a label and an icon. WCAG AA for every pair (`docs/contrast.md`). Touch targets ≥ 44×44 px, visible cyan focus rings, full keyboard support, respect `prefers-reduced-motion`.
 - shadcn/ui restyled with tokens; flat surfaces, subtle borders, no gradients or heavy shadows in the app. Film grain only on the marketing site.
 - Logo: `public/brand/mend-wordmark.png`. Never stretch or recolor it, and keep clear space of at least the period's height around it. Photos: `public/images/`.
+
+## Keep the progress file current
+
+Oz follows progress on the Popmart projects dashboard, which reads `docs/PROGRESS.md` (format: Creative.can `docs/PROGRESS_FORMAT.md`). At the end of every work session:
+1. Update the front matter (`updated`, `summary`).
+2. Move items between Doing, To do and Done, and add new items. Product and Marketing items can be `@me` (Oz) or `@claude`.
+3. Put anything that needs Oz's accounts, keys, decisions or content under To do with `@me`.
+4. Only mark an item Done with evidence (merged PR, passing tests, live page).

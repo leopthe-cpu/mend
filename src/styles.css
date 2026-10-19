@@ -21,10 +21,15 @@
  */
 
 @theme inline {
-  /* Brand guidelines: Inter for headings and body. Ticket numbers and money
-     use Inter's tabular figures (see .font-mono below). */
-  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
-  --font-mono: "Inter Variable", "Inter", system-ui, sans-serif;
+  /* The device's own UI font (San Francisco on Apple devices, Segoe UI on
+     Windows), like Apple's site (decision 91). Ticket numbers and money use
+     tabular figures (see .font-mono below). */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", system-ui,
+    sans-serif;
+  --font-mono:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", system-ui,
+    sans-serif;
   --color-brand: var(--brand);
   --color-brand-text: var(--brand-text);
   --color-status-received: var(--status-received);
@@ -82,9 +87,9 @@
 }
 
 /*
- * Mend design tokens: brand guidelines "Website Copy and Brand Guidelines - Mend"
- * (Oz, 2026-10-06; decision 50). Light cream canvas, black primary actions,
- * terracotta accent; deep charcoal for the navigation (.surface-dark).
+ * Mend design tokens, Apple-style look (decision 91, Oz approved the mockup
+ * 18 Oct 2026): light grey canvas, white cards, near-black text, one blue for
+ * actions and links; near-black for dark surfaces.
  *
  * Source of truth = the hex value in each comment; the oklch value next to it
  * is generated from that hex by src/lib/color.ts, and
@@ -93,35 +98,27 @@
  */
 :root {
   color-scheme: light;
-  --radius: 0.625rem;
+  --radius: 0.75rem;
 
-  /* Brand palette */
-  --mend-bg: oklch(0.9756 0.0026 106.45); /* #F7F7F5 — Canvas / Background */
-  --mend-surface-1: oklch(0.9502 0.0093 106.58); /* #EFEFE8 — Card / Panel Contrast */
+  /* Palette */
+  --mend-bg: oklch(0.9707 0.0027 286.35); /* #F5F5F7 — canvas */
+  --mend-surface-1: oklch(1 0 0); /* #FFFFFF — cards and panels */
   --mend-surface-2: oklch(1 0 0); /* #FFFFFF — inputs, raised elements */
-  --mend-border: oklch(0.8953 0.0108 106.62); /* #DDDDD5 — decorative dividers only */
-  --mend-input-border: oklch(0.5668 0.012 106.78); /* #77776F — form controls, needs 3:1 */
-  --mend-text: oklch(0.2178 0 0); /* #1A1A1A — Dominant Dark: primary text */
-  --mend-text-muted: oklch(
-    0.4979 0.0094 253.91
-  ); /* #5F6368 — Secondary Neutral: subtitles, meta text */
-  --mend-primary: oklch(0 0 0); /* #000000 — Primary Accent: buttons, key focal points */
+  --mend-border: oklch(0.8652 0.0068 286.26); /* #D2D2D7 — decorative dividers only */
+  --mend-input-border: oklch(0.6217 0.0074 286.18); /* #86868B — form controls, needs 3:1 */
+  --mend-text: oklch(0.2316 0.0038 286.1); /* #1D1D1F — primary text */
+  --mend-text-muted: oklch(0.5399 0.0077 286.14); /* #6E6E73 — subtitles, meta text */
+  --mend-primary: oklch(0.522 0.1771 255.83); /* #0066CC — buttons, links, focus */
   --mend-primary-foreground: oklch(1 0 0); /* #FFFFFF */
-  --mend-accent: oklch(
-    0.5987 0.1506 39.72
-  ); /* #C85A32 — Warm Accent: highlights, indicators, badges (UI, 3:1) */
-  --mend-accent-text: oklch(
-    0.5184 0.1391 40.44
-  ); /* #A8461F — darker terracotta for small text on cream (4.5:1) */
+  --mend-accent: oklch(0.522 0.1771 255.83); /* #0066CC — highlights, indicators, badges */
+  --mend-accent-text: oklch(0.522 0.1771 255.83); /* #0066CC — highlight text */
   --mend-accent-foreground: oklch(1 0 0); /* #FFFFFF */
 
   /* Status categories: icons/dots/borders; labels use --mend-text */
   --status-received: oklch(0.5233 0.0413 257.42); /* #5B6B82 */
   --status-in-progress: oklch(0.5026 0.1672 258.94); /* #1D5FC1 */
   --status-waiting: oklch(0.5542 0.1169 75.01); /* #9A6700 */
-  --status-ready: oklch(
-    0.5987 0.1506 39.72
-  ); /* #C85A32 — terracotta: the brand accent marks "ready" */
+  --status-ready: oklch(0.4751 0.1198 149.2); /* #1A6E34 — green: ready for pickup */
   --status-overdue: oklch(0.5003 0.1821 29.51); /* #B42318 */
   --status-closed: oklch(0.5406 0.0119 261.77); /* #6B6F76 */
 
@@ -133,20 +130,18 @@
   --warning: oklch(0.5078 0.108 73.3); /* #8A5A00 */
   --danger: oklch(0.5003 0.1821 29.51); /* #B42318 */
 
-  /* Charcoal surfaces for the navigation and dark sections */
-  --dark-bg: oklch(0.2178 0 0); /* #1A1A1A — Dominant Dark as a container background */
-  --dark-surface-1: oklch(0.2603 0 0); /* #242424 */
-  --dark-surface-2: oklch(0.3012 0 0); /* #2E2E2E */
-  --dark-border: oklch(0.3485 0 0); /* #3A3A3A — decorative dividers only */
-  --dark-input-border: oklch(0.6383 0.0088 106.65); /* #8C8C86 — form controls, needs 3:1 */
-  --dark-text: oklch(0.9756 0.0026 106.45); /* #F7F7F5 */
-  --dark-text-muted: oklch(0.7711 0.0098 106.63); /* #B5B5AE */
-  --dark-accent: oklch(
-    0.7211 0.1241 44.09
-  ); /* #E58A62 — lighter terracotta for text and focus on charcoal */
-  --dark-accent-foreground: oklch(0.2178 0 0); /* #1A1A1A */
+  /* Near-black surfaces: dark cards and dark marketing sections */
+  --dark-bg: oklch(0.2316 0.0038 286.1); /* #1D1D1F */
+  --dark-surface-1: oklch(0.2939 0.0036 286.18); /* #2C2C2E */
+  --dark-surface-2: oklch(0.3492 0.0034 286.22); /* #3A3A3C */
+  --dark-border: oklch(0.4024 0.0033 286.25); /* #48484A — decorative dividers only */
+  --dark-input-border: oklch(0.6812 0.0073 286.21); /* #98989D — form controls, needs 3:1 */
+  --dark-text: oklch(0.9707 0.0027 286.35); /* #F5F5F7 */
+  --dark-text-muted: oklch(0.752 0.0057 286.26); /* #AEAEB2 */
+  --dark-accent: oklch(0.7525 0.1337 248.04); /* #64B5FF — blue for text and focus on dark */
+  --dark-accent-foreground: oklch(0.2316 0.0038 286.1); /* #1D1D1F */
 
-  /* shadcn/ui semantic variables mapped onto the brand palette */
+  /* shadcn/ui semantic variables mapped onto the palette */
   --background: var(--mend-bg);
   --foreground: var(--mend-text);
   --card: var(--mend-surface-1);
@@ -155,12 +150,12 @@
   --popover-foreground: var(--mend-text);
   --primary: var(--mend-primary);
   --primary-foreground: var(--mend-primary-foreground);
-  --secondary: var(--mend-surface-2);
+  --secondary: var(--mend-bg);
   --secondary-foreground: var(--mend-text);
-  --muted: var(--mend-surface-1);
+  --muted: var(--mend-bg);
   --muted-foreground: var(--mend-text-muted);
-  /* shadcn "accent" = hover/selected surface, NOT the brand terracotta */
-  --accent: var(--mend-border);
+  /* shadcn "accent" = hover/selected surface, NOT the brand blue */
+  --accent: var(--mend-bg);
   --accent-foreground: var(--mend-text);
   --destructive: var(--danger);
   --destructive-foreground: var(--mend-primary-foreground);
@@ -174,14 +169,14 @@
   --chart-3: var(--warning);
   --chart-4: var(--status-received);
   --chart-5: var(--danger);
-  --sidebar: var(--dark-bg);
-  --sidebar-foreground: var(--dark-text);
-  --sidebar-primary: var(--dark-accent);
-  --sidebar-primary-foreground: var(--dark-accent-foreground);
-  --sidebar-accent: var(--dark-surface-2);
-  --sidebar-accent-foreground: var(--dark-text);
-  --sidebar-border: var(--dark-border);
-  --sidebar-ring: var(--dark-accent);
+  --sidebar: var(--mend-surface-1);
+  --sidebar-foreground: var(--mend-text);
+  --sidebar-primary: var(--mend-primary);
+  --sidebar-primary-foreground: var(--mend-primary-foreground);
+  --sidebar-accent: var(--mend-bg);
+  --sidebar-accent-foreground: var(--mend-text);
+  --sidebar-border: var(--mend-border);
+  --sidebar-ring: var(--mend-primary);
 }
 
 /* Scope: wrap a region in .surface-dark to render it on charcoal (the nav,
@@ -205,7 +200,7 @@
   --border: var(--dark-border);
   --input: var(--dark-input-border);
   --ring: var(--dark-accent);
-  --brand: var(--mend-accent);
+  --brand: var(--dark-accent);
   --brand-text: var(--dark-accent);
   --mend-surface-1: var(--dark-surface-1);
   --mend-surface-2: var(--dark-surface-2);
@@ -232,7 +227,7 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Visible focus ring everywhere (spec §8.4): black on cream, terracotta on charcoal */
+  /* Visible focus ring everywhere (spec §8.4): blue on light, light blue on dark */
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
@@ -256,7 +251,7 @@
    it must beat Tailwind's padding utilities (e.g. px-3) on each select. */
 select:not([multiple]):not([size]) {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235F6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236E6E73' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   background-size: 1.125rem;

@@ -214,7 +214,7 @@ function Setup() {
           ))}
         </ol>
 
-        <section className="mt-6 flex flex-col gap-5 rounded-lg border border-border bg-card p-6">
+        <section className="mt-6 flex flex-col gap-5 rounded-[1.75rem] bg-card p-6">
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
           {/* ─── Step 0: Names ─── */}
@@ -265,7 +265,7 @@ function Setup() {
                     <label
                       key={v.value}
                       className={cn(
-                        "flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-input p-3 text-center transition-colors",
+                        "flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-input p-3 text-center transition-colors",
                         vertical === v.value ? "border-primary bg-surface-2" : "hover:bg-surface-2",
                       )}
                     >

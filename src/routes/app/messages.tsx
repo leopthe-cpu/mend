@@ -109,7 +109,7 @@ function MessagesPage() {
             emailing the customer. Every message shows up here with its delivery status.
           </EmptyState>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+          <ul className="divide-y divide-border rounded-[1.75rem] bg-card">
             {rows.map((m) => {
               const Icon = m.channel === "sms" ? MessageSquare : Mail;
               const failed = m.status === "failed";

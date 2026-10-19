@@ -19,12 +19,11 @@ describe("color math", () => {
 
 describe("design tokens in styles.css", () => {
   it("declares the fixed brand colors exactly", () => {
-    expect(tokens.get("--mend-bg")?.hex).toBe("#F7F7F5");
-    expect(tokens.get("--mend-surface-1")?.hex).toBe("#EFEFE8");
-    expect(tokens.get("--mend-text")?.hex).toBe("#1A1A1A");
-    expect(tokens.get("--mend-text-muted")?.hex).toBe("#5F6368");
-    expect(tokens.get("--mend-primary")?.hex).toBe("#000000");
-    expect(tokens.get("--mend-accent")?.hex).toBe("#C85A32");
+    expect(tokens.get("--mend-bg")?.hex).toBe("#F5F5F7");
+    expect(tokens.get("--mend-surface-1")?.hex).toBe("#FFFFFF");
+    expect(tokens.get("--mend-text")?.hex).toBe("#1D1D1F");
+    expect(tokens.get("--mend-text-muted")?.hex).toBe("#6E6E73");
+    expect(tokens.get("--mend-primary")?.hex).toBe("#0066CC");
   });
 
   // Compare numbers, not text: Prettier rewrites `0.0760` as `0.076` and may

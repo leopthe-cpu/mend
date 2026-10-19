@@ -162,7 +162,7 @@ function CatalogPage() {
         {items === null ? (
           <p className="text-muted-foreground">Loading…</p>
         ) : visible.length === 0 ? (
-          <p className="rounded-lg border border-border bg-card p-6 text-muted-foreground">
+          <p className="rounded-[1.75rem] bg-card p-6 text-muted-foreground">
             {items.length === 0
               ? isAdmin
                 ? "No items yet. Add the services and parts you sell."
@@ -170,7 +170,7 @@ function CatalogPage() {
               : "Nothing matches."}
           </p>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+          <ul className="divide-y divide-border rounded-[1.75rem] bg-card">
             {visible.map((i) => {
               // Expired discounts drop out of this view on their own (spec §7.6).
               const active = discountActiveOn(i, today);

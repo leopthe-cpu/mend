@@ -88,7 +88,7 @@ export function TopBar({ membership }: { membership: Membership }) {
       <button
         type="button"
         onClick={() => setSearchOpen(true)}
-        className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-surface-2 px-3 text-left text-muted-foreground transition-colors hover:text-foreground md:max-w-md"
+        className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-input bg-surface-2 px-3 text-left text-muted-foreground transition-colors hover:text-foreground md:max-w-md"
       >
         <Search className="size-4 shrink-0" aria-hidden />
         <span className="truncate">Search tickets, customers, phone…</span>

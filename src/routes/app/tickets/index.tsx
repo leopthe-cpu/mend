@@ -255,7 +255,7 @@ function TicketList() {
         ) : null}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      <div className="overflow-x-auto rounded-[1.75rem] bg-card">
         <table className="w-full text-left">
           <thead className="border-b border-border text-sm text-muted-foreground">
             <tr>

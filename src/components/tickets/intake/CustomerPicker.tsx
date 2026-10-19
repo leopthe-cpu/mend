@@ -1,4 +1,4 @@
-import { Plus, Search } from "lucide-react";
+import { Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Field } from "@/components/app/Field";
@@ -250,7 +250,7 @@ export function CustomerPicker({
             Customer
           </label>
           <div className="relative">
-            <Search
+            <Users
               aria-hidden
               className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
             />
@@ -289,9 +289,24 @@ export function CustomerPicker({
             />
             {open ? (
               <ul
+                // "New customer" leads the list so it's never buried under a
+                // long list of matches (19 Oct feedback, item 5).
                 data-picker-list
                 className="absolute inset-x-0 top-full z-10 mt-1 max-h-72 divide-y divide-border overflow-y-auto rounded-lg border border-input bg-surface-2 shadow-lg ring-1 ring-black/5"
               >
+                <li>
+                  <button
+                    type="button"
+                    className="flex min-h-11 w-full items-center gap-2 px-4 text-left font-semibold hover:bg-accent"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      startCreate();
+                    }}
+                  >
+                    <Users aria-hidden className="size-4" />
+                    {query.trim() ? <>Create &ldquo;{query.trim()}&rdquo;</> : "New customer"}
+                  </button>
+                </li>
                 {found.map((f) => (
                   <li key={f.id}>
                     <button
@@ -312,19 +327,6 @@ export function CustomerPicker({
                     </button>
                   </li>
                 ))}
-                <li>
-                  <button
-                    type="button"
-                    className="flex min-h-11 w-full items-center gap-2 px-4 text-left font-semibold hover:bg-accent"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      startCreate();
-                    }}
-                  >
-                    <Plus aria-hidden className="size-4" />
-                    {query.trim() ? <>Create &ldquo;{query.trim()}&rdquo;</> : "New customer"}
-                  </button>
-                </li>
               </ul>
             ) : null}
           </div>

@@ -24,6 +24,7 @@ F11 (unsaved changes) goes in early, before F8–F10 add more editable rows.
 15. **Main search.** Matches customer name, item / description and dates; centred and a bit wider.
 16. **Profile menu.** The profile moves from the top right to the bottom of the rail (where Sign out is now); clicking it shows Settings and Sign out.
 17. **Unsaved changes.** Leaving a page with unsaved edits (customer details, a catalog item, a ticket) by clicking anywhere else in the product asks first: save, discard, or stay.
+18. **Edit the customer from the ticket.** A pencil on the ticket's Customer panel opens the customer's details (name, phone, email…) in a dialog on the ticket page, so a wrong phone or email can be fixed without leaving the ticket.
 
 ## Plan
 
@@ -40,6 +41,7 @@ F11 (unsaved changes) goes in early, before F8–F10 add more editable rows.
 | F9 | 10 | Messages as a two-pane chat: conversations by customer with last-message preview; chat thread with bubbles; composer sends through the existing `queue_message` (same rules: opt-outs, quiet hours, limits). Opens from the customer list's Message button. | Conversation list query (migration + pgTAP). |
 | F10 | 11, 12 | Catalog as a table: columns incl. added by; inline discount; row opens the item; filter bar from F7. | `catalog_items.created_by` if missing (migration). |
 | F11 | 17 | One shared "unsaved changes" guard used by every edit form (customer, catalog item, ticket, settings). In-app navigation shows a Mend dialog: **Save**, **Discard**, **Keep editing**; Save runs the form's own save and only leaves if it succeeds. Built on TanStack Router's `useBlocker` (`shouldBlockFn` + `withResolver`, checked in the installed v1.170.41 types). Closing or reloading the tab can only show the browser's own generic "Leave site?" prompt; browsers don't allow a custom dialog there. | — |
+| F12 | 18 | The customer edit form moves out of the customer page into a shared component; the customer page and a new dialog on the ticket page both use it, saving through the existing `save_customer` (same checks and audit as today). Pencil button on the ticket's Customer panel; the panel refreshes after saving. Uses F11's unsaved-changes guard when the dialog is closed with edits. | — |
 
 Questions to confirm while building:
 - Item 10: which side for whose messages (we assume shop on the right).

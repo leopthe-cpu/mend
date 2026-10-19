@@ -45,7 +45,7 @@ export function AppRail({
   return (
     <nav
       aria-label="Main"
-      className="fixed top-4 bottom-4 left-4 z-30 hidden w-[4.5rem] flex-col items-center rounded-[2.25rem] bg-card py-3 md:flex print:hidden"
+      className="fixed top-4 bottom-4 left-4 z-40 hidden w-[4.5rem] flex-col items-center rounded-[2.25rem] bg-card py-3 md:flex print:hidden"
     >
       {/* The logo is the way to the Board (19 Oct feedback, item 3). Later a
           shop's own logo can go here (Pro, once pricing tiers exist). */}
@@ -156,14 +156,20 @@ function initials(label: string): string {
   return ((words[0]?.[0] ?? "") + (words[1]?.[0] ?? "")).toUpperCase();
 }
 
-/** The page name in a small dark bubble beside the icon, on hover and keyboard focus. */
+/**
+ * The page name in a small dark bubble beside the icon, on hover and keyboard
+ * focus. Keyboard focus only (focus-visible): a mouse click leaves focus on
+ * the link, which used to keep the bubble up until you clicked elsewhere
+ * (19 Oct round 2, item 5). The rail sits above the sticky top bar (z-40) so
+ * the bubble isn't covered (item 2).
+ */
 function RailItem({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="group relative">
       {children}
       <span
         aria-hidden
-        className="pointer-events-none absolute top-1/2 left-full z-40 ml-3 -translate-y-1/2 rounded-full bg-foreground px-3 py-1.5 text-sm whitespace-nowrap text-background opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+        className="pointer-events-none absolute top-1/2 left-full z-40 ml-3 -translate-y-1/2 rounded-full bg-foreground px-3 py-1.5 text-sm whitespace-nowrap text-background opacity-0 transition-opacity group-hover:opacity-100 group-has-[:focus-visible]:opacity-100"
       >
         {label}
       </span>

@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, LayoutGrid, X } from "lucide-react";
+import { ArrowDown, ArrowUp, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { DateRangePicker, type DateRangeValue } from "@/components/app/DateRangePicker";
 import { PageHeader } from "@/components/app/EmptyState";
-import { Button } from "@/components/ui/button";
+import { TicketViewSwitch } from "@/components/tickets/TicketViewSwitch";
 import { formatMoney } from "@/lib/money";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
@@ -202,19 +202,7 @@ function TicketList() {
   return (
     <>
       <PageHeader title="Tickets">
-        <Button
-          variant="outline"
-          onClick={() => {
-            try {
-              localStorage.setItem("mend:ticketsView", "board");
-            } catch {
-              /* ignore */
-            }
-            void navigate({ to: "/app/board" });
-          }}
-        >
-          <LayoutGrid /> Board view
-        </Button>
+        <TicketViewSwitch current="/app/tickets" />
       </PageHeader>
       {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 

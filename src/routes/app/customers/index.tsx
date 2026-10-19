@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { MessageSquare, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { PageHeader } from "@/components/app/EmptyState";
+import { FilterBar, ValueChip, type FilterOption } from "@/components/app/FilterBar";
 import { NewCustomerForm, type NewCustomerValues } from "@/components/customers/NewCustomerForm";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,10 +14,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import { fetchContacts, type Customer } from "@/lib/tickets";
+
+type Stats = { repairs_done: number; open_tickets: number; last_ticket_at: string | null };
+
+const FILTERS: FilterOption[] = [
+  { id: "flag:open", group: "Show", label: "With open tickets" },
+  { id: "flag:sms-off", group: "Show", label: "Texts turned off" },
+  { id: "prefers:sms", group: "Prefers", label: "Text" },
+  { id: "prefers:email", group: "Prefers", label: "Email" },
+];
 
 export const Route = createFileRoute("/app/customers/")({
   head: () => ({ meta: [{ title: "Customers · Mend" }] }),
@@ -30,7 +39,12 @@ function CustomerList() {
   const [contacts, setContacts] = useState<
     Map<string, { phone: string | null; email: string | null }>
   >(new Map());
+  const [stats, setStats] = useState<Map<string, Stats>>(new Map());
   const [filter, setFilter] = useState("");
+  // FilterBar ids: "flag:open", "flag:sms-off", "prefers:sms", "prefers:email".
+  const [active, setActive] = useState<string[]>([]);
+  const toggle = (id: string) =>
+    setActive((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +60,27 @@ function CustomerList() {
     const list = (data ?? []) as Customer[];
     setCustomers(list);
     try {
-      setContacts(await fetchContacts(list.map((c) => c.id)));
+      const [ct, st] = await Promise.all([
+        fetchContacts(list.map((c) => c.id)),
+        getSupabase()
+          .from("customer_stats")
+          .select("customer_id, repairs_done, open_tickets, last_ticket_at")
+          .eq("shop_id", membership.shop.id),
+      ]);
+      if (st.error) throw st.error;
+      setContacts(ct);
+      setStats(
+        new Map(
+          ((st.data ?? []) as (Stats & { customer_id: string })[]).map((r) => [
+            r.customer_id,
+            {
+              repairs_done: Number(r.repairs_done),
+              open_tickets: Number(r.open_tickets),
+              last_ticket_at: r.last_ticket_at,
+            },
+          ]),
+        ),
+      );
     } catch (e) {
       setError(friendlyDbError(e));
     }
@@ -57,17 +91,28 @@ function CustomerList() {
 
   const rows = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return customers;
     const digits = q.replace(/\D/g, "");
+    const prefers = active.filter((a) => a.startsWith("prefers:")).map((a) => a.slice(8));
     return customers.filter((c) => {
       const ct = contacts.get(c.id);
+      if (prefers.length && !prefers.includes(c.preferred_channel)) return false;
+      if (active.includes("flag:open") && !(stats.get(c.id)?.open_tickets ?? 0)) return false;
+      if (active.includes("flag:sms-off") && !c.sms_opted_out) return false;
       return (
+        !q ||
         c.name.toLowerCase().includes(q) ||
         (!!ct?.email && ct.email.includes(q)) ||
         (digits.length >= 3 && !!ct?.phone && ct.phone.includes(digits))
       );
     });
-  }, [customers, contacts, filter]);
+  }, [customers, contacts, stats, filter, active]);
+
+  const since = (iso: string) =>
+    new Intl.DateTimeFormat("en-CA", {
+      month: "short",
+      year: "numeric",
+      timeZone: membership.shop.time_zone,
+    }).format(new Date(iso));
 
   async function createCustomer(values: NewCustomerValues) {
     const { error } = await getSupabase().rpc("save_customer", {
@@ -92,12 +137,13 @@ function CustomerList() {
         </Button>
       </PageHeader>
       {error ? <FormAlert tone="error">{error}</FormAlert> : null}
-      <Input
-        aria-label="Filter customers"
-        placeholder="Filter by name, phone or email"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        className="mb-4 max-w-md"
+      <FilterBar
+        options={FILTERS}
+        active={active}
+        onToggle={toggle}
+        text={filter}
+        onText={setFilter}
+        placeholder="Search or filter: name, phone, email, open tickets…"
       />
       <div className="overflow-x-auto rounded-lg bg-card">
         <table className="w-full text-left">
@@ -106,7 +152,13 @@ function CustomerList() {
               <th className="px-3 py-3 font-medium">Name</th>
               <th className="px-3 py-3 font-medium">Phone</th>
               <th className="px-3 py-3 font-medium">Email</th>
+              <th className="px-3 py-3 font-medium">Customer since</th>
+              <th className="px-3 py-3 text-right font-medium">Repairs</th>
+              <th className="px-3 py-3 text-right font-medium">Open</th>
               <th className="px-3 py-3 font-medium">Prefers</th>
+              <th className="px-3 py-3 font-medium">
+                <span className="sr-only">Message</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -135,17 +187,52 @@ function CustomerList() {
                 <td className="px-3 py-3 font-medium">{c.name}</td>
                 <td className="px-3 py-3 font-mono text-sm">{contacts.get(c.id)?.phone ?? ""}</td>
                 <td className="px-3 py-3">{contacts.get(c.id)?.email ?? ""}</td>
+                <td className="px-3 py-3 whitespace-nowrap">{since(c.created_at)}</td>
+                <td className="px-3 py-3 text-right tabular-nums">
+                  {stats.get(c.id)?.repairs_done ?? 0}
+                </td>
+                <td className="px-3 py-3 text-right">
+                  {stats.get(c.id)?.open_tickets ? (
+                    <ValueChip
+                      label={String(stats.get(c.id)?.open_tickets)}
+                      pressed={active.includes("flag:open")}
+                      onClick={() => toggle("flag:open")}
+                    />
+                  ) : (
+                    <span className="text-muted-foreground tabular-nums">0</span>
+                  )}
+                </td>
                 <td className="px-3 py-3">
-                  {c.preferred_channel === "sms" ? "Text" : "Email"}
-                  {(c.preferred_channel === "sms" ? c.sms_opted_out : c.email_opted_out)
-                    ? " (opted out)"
-                    : ""}
+                  <ValueChip
+                    label={
+                      (c.preferred_channel === "sms" ? "Text" : "Email") +
+                      ((c.preferred_channel === "sms" ? c.sms_opted_out : c.email_opted_out)
+                        ? " (opted out)"
+                        : "")
+                    }
+                    pressed={active.includes(`prefers:${c.preferred_channel}`)}
+                    onClick={() => toggle(`prefers:${c.preferred_channel}`)}
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  {/* Opens this customer's conversation (19 Oct feedback, item 9). */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void navigate({ to: "/app/messages", search: { customer: c.id } });
+                    }}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <MessageSquare aria-hidden /> Message
+                  </Button>
                 </td>
               </tr>
             ))}
             {!rows.length ? (
               <tr>
-                <td colSpan={4} className="px-3 py-6 text-muted-foreground">
+                <td colSpan={9} className="px-3 py-6 text-muted-foreground">
                   {customers.length
                     ? "No customers match."
                     : "Add your first customer with “+ Customer”."}

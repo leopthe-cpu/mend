@@ -1,9 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
-import { TicketViewSwitch } from "@/components/tickets/TicketViewSwitch";
+import { TicketsTop } from "@/components/tickets/TicketsTop";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
   addDays,
@@ -154,31 +161,11 @@ function CalendarPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="mr-auto text-[1.75rem] leading-tight font-semibold">
-          Tickets{" "}
-          <span className="font-medium text-muted-foreground">
-            {view === "week" ? weekLabel(anchor) : monthLabel(anchor)}
-          </span>
-        </h1>
-        <TicketViewSwitch current="/app/tickets/calendar" />
-        <div role="group" aria-label="View" className="flex rounded-full bg-card p-1">
-          {(["week", "month"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              aria-pressed={view === v}
-              onClick={() => go({ view: v })}
-              className={cn(
-                "h-10 cursor-pointer rounded-full px-5 text-[0.9375rem] font-medium capitalize",
-                view === v ? "bg-foreground text-background" : "text-foreground",
-              )}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
+      <div>
+        <TicketsTop current="/app/tickets/calendar" membership={membership} />
+        {/* Calendar controls sit below the shared top, so the view switch
+            stays in the same place on every view (decision 114). */}
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="secondary"
             size="icon"
@@ -188,9 +175,9 @@ function CalendarPage() {
           >
             <ChevronLeft aria-hidden />
           </Button>
-          <Button variant="outline" onClick={() => go({ d: today })}>
-            Today
-          </Button>
+          <h2 className="min-w-44 text-center text-xl font-semibold" aria-live="polite">
+            {view === "week" ? weekLabel(anchor) : monthLabel(anchor)}
+          </h2>
           <Button
             variant="secondary"
             size="icon"
@@ -200,6 +187,26 @@ function CalendarPage() {
           >
             <ChevronRight aria-hidden />
           </Button>
+          <Button variant="outline" onClick={() => go({ d: today })}>
+            Today
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" aria-label={`Show by ${view}`}>
+                {view === "week" ? "Week" : "Month"}
+                <ChevronDown aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="rounded-lg">
+              <DropdownMenuRadioGroup
+                value={view}
+                onValueChange={(v) => go({ view: v === "month" ? "month" : "week" })}
+              >
+                <DropdownMenuRadioItem value="week">Week</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="month">Month</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

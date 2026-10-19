@@ -3,10 +3,8 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
-import { DateRangePicker, type DateRangeValue } from "@/components/app/DateRangePicker";
 import { FilterBar, ValueChip, type FilterOption } from "@/components/app/FilterBar";
-import { PageHeader } from "@/components/app/EmptyState";
-import { TicketViewSwitch } from "@/components/tickets/TicketViewSwitch";
+import { TicketsTop } from "@/components/tickets/TicketsTop";
 import { formatMoney } from "@/lib/money";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
@@ -24,8 +22,15 @@ import {
 } from "@/lib/tickets";
 import { cn } from "@/lib/utils";
 
+// Filters live in the address (?f=status:…,flag:overdue), so the summary
+// tiles can open the list already filtered and a reload keeps them
+// (decision 114).
+type ListSearch = { f?: string };
+
 export const Route = createFileRoute("/app/tickets/")({
   head: () => ({ meta: [{ title: "Tickets · Mend" }] }),
+  validateSearch: (s: Record<string, unknown>): ListSearch =>
+    typeof s["f"] === "string" && s["f"] ? { f: s["f"] } : {},
   component: TicketList,
 });
 
@@ -46,17 +51,24 @@ function TicketList() {
   const navigate = useNavigate();
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loaded, setLoaded] = useState(false);
   // Current (non-superseded) estimate total per ticket, for the Total column.
   const [totals, setTotals] = useState<Map<string, number>>(new Map());
   const [members, setMembers] = useState<Member[]>([]);
   const [error, setError] = useState<string | null>(null);
   // Filters as ids ("status:<id>", "assigned:<id|none>", "created:<id>",
   // "customer:<id>", "flag:overdue", "flag:closed"); see FilterBar.
-  const [active, setActive] = useState<string[]>([]);
+  const { f } = Route.useSearch();
+  const active = useMemo(() => (f ? f.split(",").filter(Boolean) : []), [f]);
   const [text, setText] = useState("");
-  const [range, setRange] = useState<DateRangeValue>({ from: "", to: "" });
-  const toggle = (id: string) =>
-    setActive((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
+  const toggle = (id: string) => {
+    const next = active.includes(id) ? active.filter((x) => x !== id) : [...active, id];
+    void navigate({
+      to: "/app/tickets",
+      search: next.length ? { f: next.join(",") } : {},
+      replace: true,
+    });
+  };
   const isOn = (id: string) => active.includes(id);
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({
     key: "ticket_number",
@@ -83,6 +95,7 @@ function TicketList() {
       .then(([s, t, m, e]) => {
         setStatuses(s);
         setTickets(t);
+        setLoaded(true);
         setMembers(m);
         setTotals(
           new Map(
@@ -108,6 +121,7 @@ function TicketList() {
     const people = members.map((m) => ({ id: m.user_id, name: m.name || m.email }));
     const customers = new Map(tickets.map((t) => [t.customer_id, t.customer?.name ?? ""]));
     return [
+      { id: "flag:today", group: "Show", label: "Due today" },
       { id: "flag:overdue", group: "Show", label: "Overdue only" },
       { id: "flag:closed", group: "Show", label: "Include picked up" },
       ...statuses.map((st) => ({
@@ -140,6 +154,7 @@ function TicketList() {
       if (fCreated.size && !fCreated.has(t.created_by ?? "")) return false;
       if (fCustomer.size && !fCustomer.has(t.customer_id)) return false;
       if (active.includes("flag:overdue") && !isOverdue(t, s, today)) return false;
+      if (active.includes("flag:today") && (t.promised_date !== today || s?.is_final)) return false;
       if (s?.category === "closed" && !(active.includes("flag:closed") || fStatus.has(t.status_id)))
         return false;
       if (
@@ -149,10 +164,6 @@ function TicketList() {
         !t.item_name.toLowerCase().includes(q)
       )
         return false;
-      // Compare in the shop's time zone (not UTC).
-      const created = shopToday(shop.time_zone, new Date(t.created_at));
-      if (range.from && created < range.from) return false;
-      if (range.to && created > range.to) return false;
       return true;
     });
     const val = (t: Ticket): string | number => {
@@ -180,7 +191,7 @@ function TicketList() {
     return list.sort(
       (a, b) => (val(a) < val(b) ? -1 : val(a) > val(b) ? 1 : 0) * (sort.asc ? 1 : -1),
     );
-  }, [tickets, totals, byStatus, active, text, range, sort, today, shop.time_zone, members]);
+  }, [tickets, totals, byStatus, active, text, sort, today, shop.time_zone, members]);
 
   const openTicket = (id: string) =>
     void navigate({ to: "/app/tickets/$ticketId", params: { ticketId: id } });
@@ -209,9 +220,13 @@ function TicketList() {
 
   return (
     <>
-      <PageHeader title="Tickets">
-        <TicketViewSwitch current="/app/tickets" />
-      </PageHeader>
+      <TicketsTop
+        current="/app/tickets"
+        membership={membership}
+        tickets={loaded ? tickets : undefined}
+        statuses={loaded ? statuses : undefined}
+        selfLoad={false}
+      />
       {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
       <FilterBar
@@ -221,9 +236,7 @@ function TicketList() {
         text={text}
         onText={setText}
         placeholder="Search or filter: customer, item, #, status, person…"
-      >
-        <DateRangePicker value={range} onChange={setRange} />
-      </FilterBar>
+      />
 
       <div className="overflow-x-auto rounded-lg bg-card">
         <table className="w-full text-left">

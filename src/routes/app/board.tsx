@@ -5,9 +5,8 @@ import { StopAlerts } from "@/components/messages/StopAlerts";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
 import { BoardCard } from "@/components/board/BoardCard";
-import { BoardSummary } from "@/components/board/BoardSummary";
 import { usePointerDrag } from "@/components/board/usePointerDrag";
-import { TicketViewSwitch } from "@/components/tickets/TicketViewSwitch";
+import { TicketsTop } from "@/components/tickets/TicketsTop";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import {
@@ -128,18 +127,13 @@ function Board() {
 
   return (
     <>
-      <h1 className="mb-5 text-[1.75rem] leading-tight font-semibold md:text-[2.125rem]">
-        {greeting(shop.time_zone)}, <span className="text-muted-foreground">{shop.name}</span>
-      </h1>
-      {loaded && tickets.length ? (
-        <BoardSummary
-          tickets={tickets}
-          statuses={statuses}
-          today={today}
-          unclaimedDays={shop.unclaimed_reminder_days}
-          schedule={shop.business_hours?.schedule}
-        />
-      ) : null}
+      <TicketsTop
+        current="/app/board"
+        membership={membership}
+        tickets={loaded ? tickets : undefined}
+        statuses={loaded ? statuses : undefined}
+        selfLoad={false}
+      />
       <StopAlerts shopId={shop.id} timeZone={shop.time_zone} />
       {error ? (
         <div className="mb-4">
@@ -190,10 +184,6 @@ function Board() {
           <strong>+ Ticket</strong> to log your first job.
         </p>
       ) : null}
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <h2 className="mr-auto text-xl font-semibold">Tickets</h2>
-        <TicketViewSwitch current="/app/board" />
-      </div>
       {/* Columns share the width (19 Oct round 2, item 1; decision 112): each
           grows between 20rem and 25rem, so four fill a 14" MacBook and more
           scroll sideways inside the board. Past 25rem the leftover space goes
@@ -281,14 +271,4 @@ function Board() {
       ) : null}
     </>
   );
-}
-
-/** "Good morning" before noon, "Good afternoon" until 6pm, then "Good evening", in the shop's time zone. */
-function greeting(timeZone: string): string {
-  const hour = Number(
-    new Intl.DateTimeFormat("en-CA", { timeZone, hour: "numeric", hourCycle: "h23" }).format(
-      new Date(),
-    ),
-  );
-  return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 }

@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, Bell, Image as ImageIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { StopAlerts } from "@/components/messages/StopAlerts";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
+import { BoardCard } from "@/components/board/BoardCard";
 import { BoardSummary } from "@/components/board/BoardSummary";
+import { usePointerDrag } from "@/components/board/usePointerDrag";
 import { TicketViewSwitch } from "@/components/tickets/TicketViewSwitch";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
@@ -13,9 +14,6 @@ import {
   fetchMembers,
   fetchStatuses,
   fetchTickets,
-  initials,
-  isOverdue,
-  isUnclaimed,
   onBoard,
   shopToday,
   signedPhotoUrls,
@@ -51,8 +49,6 @@ function Board() {
   const [loaded, setLoaded] = useState(false);
   const [notify, setNotify] = useState<NotifyRequest | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [dragOver, setDragOver] = useState<string | null>(null);
-  const [dragging, setDragging] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -120,6 +116,11 @@ function Board() {
   }
 
   const today = shopToday(shop.time_zone);
+  const { drag, cardProps } = usePointerDrag((id, statusId) => {
+    if (tickets.find((t) => t.id === id)?.status_id !== statusId) void move(id, statusId);
+  });
+  const dragged = drag ? tickets.find((t) => t.id === drag.id) : undefined;
+  const dragStatus = dragged ? statuses.find((s) => s.id === dragged.status_id) : undefined;
   const memberName = (id: string | null) => {
     const m = members.find((x) => x.user_id === id);
     return m ? m.name || m.email : "";
@@ -202,22 +203,12 @@ function Board() {
           return (
             <section
               key={s.id}
+              data-drop-id={s.id}
               aria-label={`${s.name}, ${col.length} tickets`}
               className={cn(
                 "flex w-[17rem] shrink-0 snap-start flex-col rounded-[1.75rem] bg-card sm:w-72",
-                dragOver === s.id && "ring-2 ring-ring",
+                drag?.over === s.id && "ring-2 ring-ring",
               )}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(s.id);
-              }}
-              onDragLeave={() => setDragOver((d) => (d === s.id ? null : d))}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(null);
-                const id = e.dataTransfer.getData("text/ticket-id");
-                if (id) void move(id, s.id);
-              }}
             >
               <h2 className="flex items-center gap-2 px-5 pt-4 pb-1 font-semibold">
                 <span
@@ -230,99 +221,51 @@ function Board() {
                 </span>
               </h2>
               <ol className="flex flex-col gap-3 p-3">
-                {col.map((t) => {
-                  const overdue = isOverdue(t, s, today);
-                  const unclaimed = isUnclaimed(t, s, shop.unclaimed_reminder_days);
-                  const assignee = memberName(t.assigned_to);
-                  return (
-                    <li
-                      key={t.id}
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData("text/ticket-id", t.id);
-                        e.dataTransfer.effectAllowed = "move";
-                        // Drag the whole card, held where it was grabbed
-                        // (19 Oct feedback, item 2). Without this, grabbing
-                        // the text dragged only the inner link (a URL).
-                        const box = e.currentTarget.getBoundingClientRect();
-                        e.dataTransfer.setDragImage(
-                          e.currentTarget,
-                          e.clientX - box.left,
-                          e.clientY - box.top,
-                        );
-                        setDragging(t.id);
-                      }}
-                      onDragEnd={() => setDragging(null)}
-                      className={cn(
-                        "rounded-2xl bg-background p-3 transition-opacity",
-                        dragging === t.id && "opacity-40",
-                      )}
-                    >
-                      <div className="flex gap-3">
-                        {thumbs.get(t.id) ? (
-                          <img
-                            src={thumbs.get(t.id)}
-                            alt=""
-                            className="size-14 shrink-0 rounded-lg object-cover"
-                            loading="lazy"
-                            draggable={false}
-                          />
-                        ) : null}
-                        <Link
-                          to="/app/tickets/$ticketId"
-                          params={{ ticketId: t.id }}
-                          draggable={false}
-                          className="min-w-0 flex-1 rounded-lg"
-                        >
-                          <div className="font-mono text-sm text-muted-foreground">
-                            #{t.ticket_number}
-                          </div>
-                          <div className="truncate font-semibold">{t.customer?.name}</div>
-                          <div className="truncate">{t.item_name}</div>
-                        </Link>
-                        {assignee ? (
-                          <span
-                            title={assignee}
-                            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card font-mono text-sm"
-                          >
-                            {initials(assignee)}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-                        {t.promised_date ? (
-                          <span className="text-muted-foreground">Due {t.promised_date}</span>
-                        ) : null}
-                        {!thumbs.get(t.id) ? null : (
-                          <ImageIcon
-                            className="size-4 text-muted-foreground"
-                            aria-label="Has photos"
-                          />
-                        )}
-                        {overdue ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-status-overdue px-2 font-medium text-danger">
-                            <AlertTriangle className="size-3.5" aria-hidden /> Overdue
-                          </span>
-                        ) : null}
-                        {unclaimed ? (
-                          <button
-                            type="button"
-                            className="inline-flex min-h-8 items-center gap-1 rounded-full border border-status-waiting px-2 font-medium text-warning hover:bg-status-waiting/10"
-                            onClick={() => setNotify({ ticketId: t.id, kind: "reminder" })}
-                            aria-label={`Unclaimed: send #${t.ticket_number} a pickup reminder`}
-                          >
-                            <Bell className="size-3.5" aria-hidden /> Unclaimed · Send reminder
-                          </button>
-                        ) : null}
-                      </div>
-                    </li>
-                  );
-                })}
+                {col.map((t) => (
+                  <li
+                    key={t.id}
+                    {...cardProps(t.id)}
+                    className={cn(
+                      "cursor-grab transition-opacity",
+                      drag?.id === t.id && "opacity-30",
+                    )}
+                  >
+                    <BoardCard
+                      ticket={t}
+                      status={s}
+                      today={today}
+                      unclaimedDays={shop.unclaimed_reminder_days}
+                      thumb={thumbs.get(t.id)}
+                      assignee={memberName(t.assigned_to)}
+                      onRemind={() => setNotify({ ticketId: t.id, kind: "reminder" })}
+                    />
+                  </li>
+                ))}
               </ol>
             </section>
           );
         })}
       </div>
+      {/* The card under the pointer while dragging. */}
+      {drag && dragged && dragStatus ? (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed top-0 left-0 z-50 rotate-2 cursor-grabbing shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-2xl"
+          style={{
+            width: drag.width,
+            transform: `translate(${drag.x - drag.dx}px, ${drag.y - drag.dy}px) rotate(2deg)`,
+          }}
+        >
+          <BoardCard
+            ticket={dragged}
+            status={dragStatus}
+            today={today}
+            unclaimedDays={shop.unclaimed_reminder_days}
+            thumb={thumbs.get(dragged.id)}
+            assignee={memberName(dragged.assigned_to)}
+          />
+        </div>
+      ) : null}
       {statuses.length ? (
         <p className="mt-2 text-sm text-muted-foreground">
           Drag a card to another column to move it, or open the ticket to change its status.

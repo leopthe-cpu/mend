@@ -194,9 +194,12 @@ function Board() {
         <h2 className="mr-auto text-xl font-semibold">Tickets</h2>
         <TicketViewSwitch current="/app/board" />
       </div>
-      {/* Columns scroll sideways inside the board only. The scroll padding keeps
-          the first column lined up with the page title: without it, snapping
-          pulls the first column flush to the edge (Oz's feedback, UX plan v2). */}
+      {/* Columns share the width (19 Oct round 2, item 1; decision 112): each
+          grows between 20rem and 25rem, so four fill a 14" MacBook and more
+          scroll sideways inside the board. Past 25rem the leftover space goes
+          to the auto margins, evenly between and around the columns, keeping
+          them centred; auto margins collapse to 0 when the columns overflow,
+          so the first one never gets cut off. */}
       <div className="flex snap-x gap-4 overflow-x-auto pb-4">
         {statuses.map((s) => {
           const col = tickets.filter((t) => t.status_id === s.id && onBoard(t, s));
@@ -206,7 +209,7 @@ function Board() {
               data-drop-id={s.id}
               aria-label={`${s.name}, ${col.length} tickets`}
               className={cn(
-                "flex w-[17rem] shrink-0 snap-start flex-col rounded-[1.75rem] bg-card sm:w-72",
+                "mx-auto flex max-w-[25rem] min-w-[20rem] flex-1 basis-0 snap-start flex-col rounded-[1.75rem] bg-card",
                 drag?.over === s.id && "ring-2 ring-ring",
               )}
             >

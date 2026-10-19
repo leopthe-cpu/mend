@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CustomFieldInput } from "@/components/tickets/CustomFieldInput";
 import type { CustomField, Member, Ticket } from "@/lib/tickets";
+import { useUnsavedChanges } from "@/lib/unsaved";
 
 type EditingState = {
   item_name: string;
@@ -71,19 +72,30 @@ export function TicketDetailsPanel({
     setSaved(false);
   }
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
+  async function saveForm(): Promise<boolean> {
     setSaving(true);
     try {
       await onSaved(form);
       setEditing(false);
       setSaved(true);
+      return true;
     } catch {
       // The parent already shows the error message; stay in edit mode.
+      return false;
     } finally {
       setSaving(false);
     }
   }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    await saveForm();
+  }
+
+  useUnsavedChanges(
+    editing && JSON.stringify(form) !== JSON.stringify(emptyState(ticket)),
+    saveForm,
+  );
 
   if (editing) {
     return (

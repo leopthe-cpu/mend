@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useUnsavedChanges } from "@/lib/unsaved";
 import { Field, Panel } from "@/components/app/Field";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
@@ -267,21 +268,33 @@ function TemplateEditor({
     return r.error;
   }
 
+  async function submit(): Promise<boolean> {
+    if (emailBody.trim() && !subject.trim()) {
+      onError("Add an email subject.");
+      return false;
+    }
+    setSaving(true);
+    const errs = [
+      await saveOne("sms", sms, smsBody, null),
+      await saveOne("email", email, emailBody, subject),
+    ].filter(Boolean);
+    setSaving(false);
+    if (errs.length) {
+      onError(friendlyDbError(errs[0]));
+      return false;
+    }
+    await onSaved(`${title} saved.`);
+    return true;
+  }
+  useUnsavedChanges(canEdit && dirty, submit);
+
   return (
     <Panel title={title} description={description}>
       <form
         method="post"
-        onSubmit={async (e) => {
+        onSubmit={(e) => {
           e.preventDefault();
-          if (emailBody.trim() && !subject.trim()) return onError("Add an email subject.");
-          setSaving(true);
-          const errs = [
-            await saveOne("sms", sms, smsBody, null),
-            await saveOne("email", email, emailBody, subject),
-          ].filter(Boolean);
-          setSaving(false);
-          if (errs.length) return onError(friendlyDbError(errs[0]));
-          await onSaved(`${title} saved.`);
+          void submit();
         }}
       >
         <fieldset disabled={!canEdit} className="grid gap-4">

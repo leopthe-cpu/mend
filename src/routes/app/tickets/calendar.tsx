@@ -320,80 +320,86 @@ function CalendarPage() {
               </span>
             ))}
             {monthGrid(anchor).map(({ iso, inMonth }) => {
-              const n = perDay.get(iso)?.length ?? 0;
+              const list = perDay.get(iso) ?? [];
+              const n = list.length;
               const closed = !isOpenOn(schedule, iso);
-              const late = (perDay.get(iso) ?? []).filter((t) =>
+              const late = list.filter((t) =>
                 isOverdue(t, statusById.get(t.status_id), today),
               ).length;
-              const busy = n >= 6 ? "dark" : n >= 4 ? "mid" : "low";
+              const week = { view: "week" as const, d: iso };
+              // Each day lists its tickets as small white cards (19 Oct round
+              // 2, item 8; decision 113): first three, then "+N more" opens
+              // the week. Phones show the count.
               return (
-                <Link
+                <div
                   key={iso}
-                  to="/app/tickets/calendar"
-                  search={{ view: "week", d: iso }}
-                  aria-label={`${weekdayShort(iso)} ${dayOfMonth(iso)}: ${closed && !n ? "closed" : ticketCount(n)}${late ? `, ${late} late` : ""}`}
                   className={cn(
-                    "flex min-h-16 flex-col justify-between rounded-2xl border-2 p-1.5 md:min-h-28 md:p-3",
+                    "flex min-h-16 min-w-0 flex-col gap-1.5 rounded-2xl border-2 p-1.5 md:min-h-32 md:p-2",
                     iso === today ? "border-primary" : "border-transparent",
                     !inMonth && "opacity-45",
-                    closed && !n
-                      ? "bg-background/60 text-muted-foreground"
-                      : busy === "dark"
-                        ? "bg-foreground text-background"
-                        : busy === "mid"
-                          ? "bg-primary/15"
-                          : "bg-background",
+                    closed && !n ? "bg-background/60 text-muted-foreground" : "bg-background",
                   )}
                 >
-                  <span className="text-base font-semibold md:text-lg">{dayOfMonth(iso)}</span>
-                  {/* Computers: the customers due that day (19 Oct feedback,
-                      item 6), first three and "+N more". Phones: the count. */}
-                  {n ? (
-                    <span aria-hidden className="hidden min-w-0 flex-col text-sm md:flex">
-                      {(perDay.get(iso) ?? []).slice(0, 3).map((t) => (
-                        <span key={t.id} className="truncate">
-                          {t.customer?.name ?? `#${t.ticket_number}`}
-                        </span>
-                      ))}
-                      {n > 3 ? <span className="opacity-75">+{n - 3} more</span> : null}
+                  <Link
+                    to="/app/tickets/calendar"
+                    search={week}
+                    aria-label={`${weekdayShort(iso)} ${dayOfMonth(iso)}: ${closed && !n ? "closed" : ticketCount(n)}${late ? `, ${late} late` : ""}. Open the week`}
+                    className="flex items-baseline justify-between gap-1 rounded-lg px-1 hover:underline"
+                  >
+                    <span className="text-base font-semibold">{dayOfMonth(iso)}</span>
+                    <span className="text-xs md:hidden">
+                      {n ? n : ""}
+                      {late ? <span className="font-bold text-danger"> !</span> : null}
                     </span>
-                  ) : null}
-                  <span className="flex flex-col text-xs md:text-[0.9375rem]">
-                    <span className="font-medium">
-                      {closed && !n ? (
-                        <span className="hidden md:inline">Closed</span>
-                      ) : n ? (
-                        <span className="md:hidden">{n}</span>
-                      ) : null}
-                    </span>
-                    {late ? (
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "font-bold md:hidden",
-                          busy === "dark" ? "text-[#FFB4AB]" : "text-danger",
-                        )}
-                      >
-                        !
-                      </span>
+                    {closed && !n ? <span className="hidden text-sm md:inline">Closed</span> : null}
+                  </Link>
+                  <ul className="hidden min-w-0 flex-col gap-1 md:flex">
+                    {list.slice(0, 3).map((t) => {
+                      const st = statusById.get(t.status_id);
+                      const isLate = isOverdue(t, st, today);
+                      return (
+                        <li key={t.id} className="min-w-0">
+                          <Link
+                            to="/app/tickets/$ticketId"
+                            params={{ ticketId: t.id }}
+                            title={`#${t.ticket_number} · ${t.customer?.name ?? ""} · ${t.item_name}`}
+                            className="flex min-w-0 items-center gap-1.5 rounded-lg bg-card px-2 py-1 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.06)] hover:ring-2 hover:ring-primary/30"
+                          >
+                            <span
+                              aria-hidden
+                              className={cn(
+                                "size-2 shrink-0 rounded-full",
+                                isLate ? "bg-danger" : st ? STATUS_COLOR_CLASS[st.color] : "",
+                              )}
+                            />
+                            <span className="min-w-0 truncate">
+                              <span className="font-medium">
+                                {t.customer?.name ?? `#${t.ticket_number}`}
+                              </span>
+                              <span className="text-muted-foreground"> · {t.item_name}</span>
+                            </span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                    {n > 3 ? (
+                      <li>
+                        <Link
+                          to="/app/tickets/calendar"
+                          search={week}
+                          className="px-1 text-sm text-muted-foreground hover:underline"
+                        >
+                          +{n - 3} more
+                        </Link>
+                      </li>
                     ) : null}
-                    {late ? (
-                      <span
-                        className={cn(
-                          "hidden md:inline",
-                          busy === "dark" ? "text-[#FFB4AB]" : "text-danger",
-                        )}
-                      >
-                        {late} late
-                      </span>
-                    ) : null}
-                  </span>
-                </Link>
+                  </ul>
+                </div>
               );
             })}
           </div>
           <p className="mt-3 px-1 text-sm text-muted-foreground">
-            Darker days have more tickets. Pick a day to see its week.
+            A red dot means late. Pick a day&rsquo;s number to see its week.
           </p>
         </section>
       )}

@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Printer, Trash2 } from "lucide-react";
+import { Pencil, Printer, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { BackButton } from "@/components/app/BackButton";
+import { EditCustomerDialog } from "@/components/customers/EditCustomerDialog";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Panel } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ function TicketDetail() {
   const navigate = useNavigate();
   const isAdmin = roleAtLeast(membership.role, "admin");
   const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [editCustomer, setEditCustomer] = useState(false);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [fields, setFields] = useState<CustomField[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -293,7 +295,21 @@ function TicketDetail() {
         </div>
 
         <div className="flex flex-col gap-6">
-          <Panel title="Customer">
+          <Panel
+            title="Customer"
+            action={
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-11"
+                aria-label="Edit customer"
+                title="Edit customer"
+                onClick={() => setEditCustomer(true)}
+              >
+                <Pencil />
+              </Button>
+            }
+          >
             <Link
               to="/app/customers/$customerId"
               params={{ customerId: ticket.customer_id }}
@@ -394,6 +410,13 @@ function TicketDetail() {
           />
         </div>
       </div>
+      <EditCustomerDialog
+        open={editCustomer}
+        onOpenChange={setEditCustomer}
+        shopId={ticket.shop_id}
+        customerId={ticket.customer_id}
+        onSaved={load}
+      />
     </div>
   );
 }

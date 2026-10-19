@@ -6,6 +6,7 @@ import { StopAlerts } from "@/components/messages/StopAlerts";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
 import { BoardSummary } from "@/components/board/BoardSummary";
+import { TicketViewSwitch } from "@/components/tickets/TicketViewSwitch";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import {
@@ -188,6 +189,10 @@ function Board() {
           <strong>+ Ticket</strong> to log your first job.
         </p>
       ) : null}
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <h2 className="mr-auto text-xl font-semibold">Tickets</h2>
+        <TicketViewSwitch current="/app/board" />
+      </div>
       {/* Columns scroll sideways inside the board only. The scroll padding keeps
           the first column lined up with the page title: without it, snapping
           pulls the first column flush to the edge (Oz's feedback, UX plan v2). */}

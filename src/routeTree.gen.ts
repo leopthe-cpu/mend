@@ -44,6 +44,7 @@ import { Route as AppSettingsTaxesRouteImport } from './routes/app/settings/taxe
 import { Route as AppSettingsTeamRouteImport } from './routes/app/settings/team'
 import { Route as AppTicketsIndexRouteImport } from './routes/app/tickets/index'
 import { Route as AppTicketsTicketIdRouteImport } from './routes/app/tickets/$ticketId'
+import { Route as AppTicketsCalendarRouteImport } from './routes/app/tickets/calendar'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -220,6 +221,11 @@ const AppTicketsTicketIdRoute = AppTicketsTicketIdRouteImport.update({
   path: '/tickets/$ticketId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTicketsCalendarRoute = AppTicketsCalendarRouteImport.update({
+  id: '/tickets/calendar',
+  path: '/tickets/calendar',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -254,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/app/settings/taxes': typeof AppSettingsTaxesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/app/tickets/$ticketId': typeof AppTicketsTicketIdRoute
+  '/app/tickets/calendar': typeof AppTicketsCalendarRoute
   '/app/customers/': typeof AppCustomersIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/app/tickets/': typeof AppTicketsIndexRoute
@@ -289,6 +296,7 @@ export interface FileRoutesByTo {
   '/app/settings/taxes': typeof AppSettingsTaxesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/app/tickets/$ticketId': typeof AppTicketsTicketIdRoute
+  '/app/tickets/calendar': typeof AppTicketsCalendarRoute
   '/app/customers': typeof AppCustomersIndexRoute
   '/app/settings': typeof AppSettingsIndexRoute
   '/app/tickets': typeof AppTicketsIndexRoute
@@ -327,6 +335,7 @@ export interface FileRoutesById {
   '/app/settings/taxes': typeof AppSettingsTaxesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/app/tickets/$ticketId': typeof AppTicketsTicketIdRoute
+  '/app/tickets/calendar': typeof AppTicketsCalendarRoute
   '/app/customers/': typeof AppCustomersIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/app/tickets/': typeof AppTicketsIndexRoute
@@ -366,6 +375,7 @@ export interface FileRouteTypes {
     | '/app/settings/taxes'
     | '/app/settings/team'
     | '/app/tickets/$ticketId'
+    | '/app/tickets/calendar'
     | '/app/customers/'
     | '/app/settings/'
     | '/app/tickets/'
@@ -401,6 +411,7 @@ export interface FileRouteTypes {
     | '/app/settings/taxes'
     | '/app/settings/team'
     | '/app/tickets/$ticketId'
+    | '/app/tickets/calendar'
     | '/app/customers'
     | '/app/settings'
     | '/app/tickets'
@@ -438,6 +449,7 @@ export interface FileRouteTypes {
     | '/app/settings/taxes'
     | '/app/settings/team'
     | '/app/tickets/$ticketId'
+    | '/app/tickets/calendar'
     | '/app/customers/'
     | '/app/settings/'
     | '/app/tickets/'
@@ -708,6 +720,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTicketsTicketIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/tickets/calendar': {
+      id: '/app/tickets/calendar'
+      path: '/tickets/calendar'
+      fullPath: '/app/tickets/calendar'
+      preLoaderRoute: typeof AppTicketsCalendarRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -749,6 +768,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppCustomersCustomerIdRoute: typeof AppCustomersCustomerIdRoute
   AppTicketsTicketIdRoute: typeof AppTicketsTicketIdRoute
+  AppTicketsCalendarRoute: typeof AppTicketsCalendarRoute
   AppCustomersIndexRoute: typeof AppCustomersIndexRoute
   AppTicketsIndexRoute: typeof AppTicketsIndexRoute
 }
@@ -763,6 +783,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppCustomersCustomerIdRoute: AppCustomersCustomerIdRoute,
   AppTicketsTicketIdRoute: AppTicketsTicketIdRoute,
+  AppTicketsCalendarRoute: AppTicketsCalendarRoute,
   AppCustomersIndexRoute: AppCustomersIndexRoute,
   AppTicketsIndexRoute: AppTicketsIndexRoute,
 }

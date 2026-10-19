@@ -74,7 +74,7 @@ export function BoardSummary({
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="text-xl font-semibold">This week</h2>
             <Link
-              to="/app/calendar"
+              to="/app/tickets/calendar"
               className="rounded-full text-[0.9375rem] underline underline-offset-4"
             >
               Open calendar

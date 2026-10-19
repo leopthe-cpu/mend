@@ -183,7 +183,10 @@ export function PhoneTabBar({
   const isActive = useActive();
   const [moreOpen, setMoreOpen] = useState(false);
   const tabs = appNav.filter((n) => phoneTabs.includes(n.to));
-  const rest = appNav.filter((n) => !phoneTabs.includes(n.to));
+  // Calendar is reached through the Tickets tab's view switch (decision 101).
+  const rest = appNav.filter(
+    (n) => !phoneTabs.includes(n.to) && !tabs.some((t) => n.to.startsWith(`${t.to}/`)),
+  );
   const moreActive = rest.some((n) => isActive(n.to));
 
   const tabClass = (active: boolean) =>

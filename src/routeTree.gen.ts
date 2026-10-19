@@ -21,6 +21,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppBoardRouteImport } from './routes/app/board'
+import { Route as AppCalendarRouteImport } from './routes/app/calendar'
 import { Route as AppCatalogRouteImport } from './routes/app/catalog'
 import { Route as AppMessagesRouteImport } from './routes/app/messages'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
@@ -102,6 +103,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppBoardRoute = AppBoardRouteImport.update({
   id: '/board',
   path: '/board',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCalendarRoute = AppCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCatalogRoute = AppCatalogRouteImport.update({
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/app/board': typeof AppBoardRoute
+  '/app/calendar': typeof AppCalendarRoute
   '/app/catalog': typeof AppCatalogRoute
   '/app/messages': typeof AppMessagesRoute
   '/app/settings': typeof AppSettingsRouteWithChildren
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/app/board': typeof AppBoardRoute
+  '/app/calendar': typeof AppCalendarRoute
   '/app/catalog': typeof AppCatalogRoute
   '/app/messages': typeof AppMessagesRoute
   '/app/setup': typeof AppSetupRoute
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/app/board': typeof AppBoardRoute
+  '/app/calendar': typeof AppCalendarRoute
   '/app/catalog': typeof AppCatalogRoute
   '/app/messages': typeof AppMessagesRoute
   '/app/settings': typeof AppSettingsRouteWithChildren
@@ -336,6 +345,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/unsubscribe'
     | '/app/board'
+    | '/app/calendar'
     | '/app/catalog'
     | '/app/messages'
     | '/app/settings'
@@ -371,6 +381,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/unsubscribe'
     | '/app/board'
+    | '/app/calendar'
     | '/app/catalog'
     | '/app/messages'
     | '/app/setup'
@@ -406,6 +417,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/unsubscribe'
     | '/app/board'
+    | '/app/calendar'
     | '/app/catalog'
     | '/app/messages'
     | '/app/settings'
@@ -533,6 +545,13 @@ declare module '@tanstack/react-router' {
       path: '/board'
       fullPath: '/app/board'
       preLoaderRoute: typeof AppBoardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/calendar': {
+      id: '/app/calendar'
+      path: '/calendar'
+      fullPath: '/app/calendar'
+      preLoaderRoute: typeof AppCalendarRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/catalog': {
@@ -722,6 +741,7 @@ const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppBoardRoute: typeof AppBoardRoute
+  AppCalendarRoute: typeof AppCalendarRoute
   AppCatalogRoute: typeof AppCatalogRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppSettingsRoute: typeof AppSettingsRouteWithChildren
@@ -735,6 +755,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppBoardRoute: AppBoardRoute,
+  AppCalendarRoute: AppCalendarRoute,
   AppCatalogRoute: AppCatalogRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppSettingsRoute: AppSettingsRouteWithChildren,

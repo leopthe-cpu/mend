@@ -544,7 +544,7 @@ export function NewTicketDialog({
                 {svcOpen && (svcMatches.length || isAdmin) ? (
                   <ul
                     data-picker-list
-                    className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-input bg-surface-2 shadow-lg ring-1 ring-black/5"
+                    className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-xl border border-input bg-surface-2 shadow-lg ring-1 ring-black/5"
                   >
                     {svcMatches.map((i) => (
                       <li key={i.id}>
@@ -803,7 +803,7 @@ export function NewTicketDialog({
               <div id="photos-section" hidden={!moreOpen} className="flex flex-col gap-2">
                 <label
                   htmlFor="photos"
-                  className="inline-flex h-11 w-fit cursor-pointer items-center gap-2 rounded-md border border-input px-4 font-medium hover:bg-accent"
+                  className="inline-flex h-11 w-fit cursor-pointer items-center gap-2 rounded-xl border border-input px-4 font-medium hover:bg-accent"
                 >
                   <Camera className="size-5" aria-hidden /> Add photos
                 </label>

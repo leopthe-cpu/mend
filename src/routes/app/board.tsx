@@ -187,7 +187,7 @@ function Board() {
               key={s.id}
               aria-label={`${s.name}, ${col.length} tickets`}
               className={cn(
-                "flex w-[17rem] shrink-0 snap-start flex-col rounded-lg border border-border bg-card sm:w-72",
+                "flex w-[17rem] shrink-0 snap-start flex-col rounded-[1.75rem] bg-card sm:w-72",
                 dragOver === s.id && "ring-2 ring-ring",
               )}
               onDragOver={(e) => {

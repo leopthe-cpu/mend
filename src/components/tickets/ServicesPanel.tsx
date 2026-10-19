@@ -391,7 +391,7 @@ function ServiceSearch({
   if (custom) {
     return (
       <div
-        className="flex flex-col gap-2 rounded-md border border-input bg-surface-1 p-3"
+        className="flex flex-col gap-2 rounded-xl border border-input bg-surface-1 p-3"
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
@@ -490,7 +490,7 @@ function ServiceSearch({
       {open && (matches.length || isAdmin) ? (
         <ul
           data-picker-list
-          className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-input bg-surface-2 shadow-lg ring-1 ring-black/5"
+          className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-xl border border-input bg-surface-2 shadow-lg ring-1 ring-black/5"
         >
           {matches.map((i) => (
             <li key={i.id}>

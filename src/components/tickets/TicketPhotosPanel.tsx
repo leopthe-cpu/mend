@@ -35,7 +35,7 @@ export function TicketPhotosPanel({
         type="button"
         aria-expanded={false}
         onClick={() => setOpen(true)}
-        className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-border bg-card px-6 text-left hover:bg-accent"
+        className="flex min-h-14 w-full items-center gap-3 rounded-[1.75rem] bg-card px-6 text-left hover:bg-accent"
       >
         <ChevronRight className="size-5 shrink-0" aria-hidden />
         <span className="text-xl font-semibold">Photos</span>
@@ -69,7 +69,7 @@ export function TicketPhotosPanel({
       )}
       <label
         htmlFor="more-photos"
-        className="mt-4 inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-input px-4 font-medium hover:bg-accent"
+        className="mt-4 inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl border border-input px-4 font-medium hover:bg-accent"
       >
         <Camera className="size-5" aria-hidden /> Add photos
       </label>

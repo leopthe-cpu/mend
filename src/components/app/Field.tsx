@@ -35,7 +35,7 @@ export function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-border bg-card p-6">
+    <section className="rounded-[1.75rem] bg-card p-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">{title}</h2>
         {action}
@@ -47,4 +47,4 @@ export function Panel({
 }
 
 export const selectClass =
-  "h-11 w-full rounded-md border border-input bg-surface-2 px-3 text-base disabled:opacity-60";
+  "h-11 w-full rounded-xl border border-input bg-surface-2 px-3 text-base disabled:opacity-60";

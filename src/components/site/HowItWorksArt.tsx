@@ -19,13 +19,13 @@ export function TicketArt() {
       {/* Phone with Mend's form */}
       <div className="absolute right-6 bottom-[-1.5rem] w-44 rounded-[1.5rem] border-4 border-[#1A1A1A] bg-background p-3 shadow-lg">
         <div className="text-sm font-semibold">New ticket</div>
-        <div className="mt-2 rounded-md border border-input bg-white px-2 py-1.5 text-sm">
+        <div className="mt-2 rounded-xl border border-input bg-white px-2 py-1.5 text-sm">
           Maria Rossi
         </div>
-        <div className="mt-2 rounded-md border border-input bg-white px-2 py-1.5 font-mono text-sm">
+        <div className="mt-2 rounded-xl border border-input bg-white px-2 py-1.5 font-mono text-sm">
           416 555 0100
         </div>
-        <div className="mt-2 rounded-md border border-input bg-white px-2 py-1.5 text-sm">
+        <div className="mt-2 rounded-xl border border-input bg-white px-2 py-1.5 text-sm">
           Brown boots
         </div>
         <div className="mt-3 rounded-md bg-black py-1.5 text-center text-sm font-medium text-white">

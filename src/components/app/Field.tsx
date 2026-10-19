@@ -47,4 +47,4 @@ export function Panel({
 }
 
 export const selectClass =
-  "h-11 w-full rounded-xl border border-input bg-surface-2 px-3 text-base disabled:opacity-60";
+  "h-11 w-full rounded-lg border border-input bg-surface-2 px-3 text-base disabled:opacity-60";

@@ -82,18 +82,22 @@ export function TopBar({ membership, userLabel }: { membership: Membership; user
   };
 
   return (
-    <header className="flex items-center gap-3 px-4 py-4 md:pr-6 md:pl-0 print:hidden">
-      {/* Search pill (mockup, decision 92): black round icon, then the hint. */}
+    // Sticky (19 Oct feedback, item 1): search and New ticket stay in reach on
+    // long pages. The translucent canvas colour keeps content from showing
+    // through as it scrolls under.
+    <header className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 py-4 backdrop-blur-md md:pr-6 md:pl-0 print:hidden">
+      {/* Search bar (decision 92): black icon, then the hint. Same corner
+          radius as banners and inputs (19 Oct feedback, item 8). */}
       <button
         type="button"
         onClick={() => setSearchOpen(true)}
-        className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full bg-card pr-4 pl-1.5 text-left text-muted-foreground transition-colors hover:text-foreground md:max-w-md"
+        className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-lg bg-card pr-4 pl-1.5 text-left text-muted-foreground transition-colors hover:text-foreground md:max-w-md"
       >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
           <Search className="size-4" aria-hidden />
         </span>
         <span className="truncate">Search tickets, customers, phone…</span>
-        <kbd className="ml-auto hidden rounded-full border border-border px-2 font-mono text-sm sm:inline">
+        <kbd className="ml-auto hidden rounded-md border border-border px-2 font-mono text-sm sm:inline">
           Ctrl K
         </kbd>
       </button>

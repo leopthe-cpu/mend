@@ -69,7 +69,7 @@ export function TicketPhotosPanel({
       )}
       <label
         htmlFor="more-photos"
-        className="mt-4 inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl border border-input px-4 font-medium hover:bg-accent"
+        className="mt-4 inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-input px-4 font-medium hover:bg-accent"
       >
         <Camera className="size-5" aria-hidden /> Add photos
       </label>

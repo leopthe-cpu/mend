@@ -144,7 +144,7 @@ export function CustomerPicker({
       {customer ? (
         <>
           <span className="text-sm font-semibold">Customer</span>
-          <div className="flex items-center gap-3 rounded-xl border border-input bg-surface-2 py-2 pr-1 pl-3">
+          <div className="flex items-center gap-3 rounded-lg border border-input bg-surface-2 py-2 pr-1 pl-3">
             <span
               aria-hidden
               className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-1 text-sm font-semibold"
@@ -173,7 +173,7 @@ export function CustomerPicker({
       ) : creating ? (
         <>
           <span className="text-sm font-semibold">Customer</span>
-          <div className="flex flex-col gap-3 rounded-xl border border-input bg-surface-1 p-3">
+          <div className="flex flex-col gap-3 rounded-lg border border-input bg-surface-1 p-3">
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-semibold">New customer</span>
               <Button
@@ -220,7 +220,7 @@ export function CustomerPicker({
               <div
                 role="group"
                 aria-labelledby="nc-channel-label"
-                className="flex overflow-hidden rounded-xl border border-input"
+                className="flex overflow-hidden rounded-lg border border-input"
               >
                 {(["sms", "email"] as const).map((ch) => (
                   <button
@@ -290,7 +290,7 @@ export function CustomerPicker({
             {open ? (
               <ul
                 data-picker-list
-                className="absolute inset-x-0 top-full z-10 mt-1 max-h-72 divide-y divide-border overflow-y-auto rounded-xl border border-input bg-surface-2 shadow-lg ring-1 ring-black/5"
+                className="absolute inset-x-0 top-full z-10 mt-1 max-h-72 divide-y divide-border overflow-y-auto rounded-lg border border-input bg-surface-2 shadow-lg ring-1 ring-black/5"
               >
                 {found.map((f) => (
                   <li key={f.id}>

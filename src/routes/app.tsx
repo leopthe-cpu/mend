@@ -13,7 +13,7 @@ import { AppRail, PhoneTabBar } from "@/components/app/AppRail";
 import { TopBar } from "@/components/app/TopBar";
 import { UnsavedChangesDialog } from "@/components/app/UnsavedChangesDialog";
 import { LEGAL } from "@/lib/legal";
-import { fetchMyMembership, roleAtLeast } from "@/lib/shop";
+import { forgetAppData, loadAppData, roleAtLeast } from "@/lib/shop";
 import { getSupabase, SupabaseConfigError } from "@/lib/supabase";
 import { UnsavedContext, UnsavedRegistry } from "@/lib/unsaved";
 
@@ -40,13 +40,11 @@ export const Route = createFileRoute("/app")({
     if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
       throw redirect({ to: "/mfa", search: { redirect: location.href } });
     }
-    const membership = await fetchMyMembership(session.user.id);
-    if (!membership) throw redirect({ to: "/onboarding" });
-    const { data: profile } = await getSupabase()
-      .from("profiles")
-      .select("full_name, terms_version")
-      .eq("user_id", session.user.id)
-      .maybeSingle();
+    const { membership, profile } = await loadAppData(session.user.id);
+    if (!membership) {
+      forgetAppData();
+      throw redirect({ to: "/onboarding" });
+    }
     // Decision 19: show the email until the person adds their name.
     const displayName = profile?.full_name?.trim() || session.user.email || "";
     return {
@@ -74,6 +72,7 @@ function AppLayout() {
   useEffect(() => {
     const { data } = getSupabase().auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
+        forgetAppData();
         void navigate({ to: "/login", replace: true });
       }
     });
@@ -160,7 +159,10 @@ function TermsBanner({ acceptedVersion }: { acceptedVersion: string | null }) {
           });
           setSaving(false);
           if (error) setError("That didn't save. Try again.");
-          else setAccepted(true);
+          else {
+            forgetAppData();
+            setAccepted(true);
+          }
         }}
       >
         {saving ? "Saving…" : "Please review our terms, then tap here to agree"}

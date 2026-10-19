@@ -10,7 +10,7 @@ import { PhoneInput } from "@/components/app/MaskedInputs";
 import { WeeklyHoursEditor } from "@/components/app/WeeklyHoursEditor";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { friendlyDbError, roleAtLeast, TIME_ZONES } from "@/lib/shop";
+import { forgetAppData, friendlyDbError, roleAtLeast, TIME_ZONES } from "@/lib/shop";
 import { defaultSchedule, scheduleToText, type WeeklySchedule } from "@/lib/hours";
 import { getSupabase } from "@/lib/supabase";
 
@@ -94,6 +94,7 @@ function ShopSettings() {
     if (!data?.length) return fail("You don't have permission to change these settings.");
     setStatus({ tone: "info", text: "Saved." });
     setSavedState(JSON.stringify({ form, schedule }));
+    forgetAppData();
     await router.invalidate();
     return true;
   }

@@ -2,6 +2,7 @@ import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-ro
 import { Check, Copy, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
+import { forgetAppData } from "@/lib/shop";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { PageHeader } from "@/components/app/EmptyState";
 import { Field, selectClass } from "@/components/app/Field";
@@ -129,6 +130,8 @@ function Setup() {
     });
     setSaving(false);
     if (error) return setError(friendlyDbError(error));
+    // The setup banner and shop name come from the cached membership.
+    forgetAppData();
     // Advance to the invite step without navigating (the guard won't re-fire
     // because we stay on the same page).
     setStep(4);

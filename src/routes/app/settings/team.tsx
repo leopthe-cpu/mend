@@ -15,7 +15,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { friendlyDbError, ROLE_LABEL, TEAM_ROLE_LABEL, roleAtLeast, type Role } from "@/lib/shop";
+import {
+  forgetAppData,
+  friendlyDbError,
+  ROLE_LABEL,
+  roleAtLeast,
+  TEAM_ROLE_LABEL,
+  type Role,
+} from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/app/settings/team")({
@@ -307,6 +314,7 @@ function TeamSettings() {
               tone: "info",
               text: "Ownership transferred. You are now an Admin (co-manager).",
             });
+            forgetAppData();
             await router.invalidate();
             await load();
           }}

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Download, Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { BackButton } from "@/components/app/BackButton";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Field, Panel, selectClass } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
@@ -136,7 +137,10 @@ function CustomerDetail() {
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
-      <h1 className="text-[1.75rem] font-semibold">{c.name}</h1>
+      <div className="flex items-center gap-3">
+        <BackButton to="/app/customers" label="Back" />
+        <h1 className="min-w-0 text-[1.75rem] font-semibold">{c.name}</h1>
+      </div>
       {message ? <FormAlert tone={message.tone}>{message.text}</FormAlert> : null}
       {editing ? (
         <form method="post" onSubmit={save}>

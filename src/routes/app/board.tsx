@@ -240,7 +240,7 @@ function Board() {
                           <img
                             src={thumbs.get(t.id)}
                             alt=""
-                            className="size-14 shrink-0 rounded-xl object-cover"
+                            className="size-14 shrink-0 rounded-lg object-cover"
                             loading="lazy"
                           />
                         ) : null}

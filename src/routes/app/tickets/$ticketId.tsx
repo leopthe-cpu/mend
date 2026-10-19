@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, Printer, Trash2 } from "lucide-react";
+import { Printer, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { BackButton } from "@/components/app/BackButton";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Panel } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
@@ -212,13 +213,8 @@ function TicketDetail() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Link
-        to="/app/tickets"
-        className="inline-flex min-h-11 w-fit items-center gap-1 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-      >
-        <ChevronLeft className="size-5" aria-hidden /> Tickets
-      </Link>
-      <div className="-mt-4 flex flex-wrap items-start gap-3">
+      <div className="flex flex-wrap items-start gap-3">
+        <BackButton to="/app/tickets" label="Back" />
         <div className="min-w-0 flex-1">
           <p className="font-mono text-muted-foreground">#{ticket.ticket_number}</p>
           <h1 className="text-[1.75rem] font-semibold leading-tight">{ticket.item_name}</h1>

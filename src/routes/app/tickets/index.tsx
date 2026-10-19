@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, X } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { DateRangePicker, type DateRangeValue } from "@/components/app/DateRangePicker";
+import { FilterBar, ValueChip, type FilterOption } from "@/components/app/FilterBar";
 import { PageHeader } from "@/components/app/EmptyState";
 import { TicketViewSwitch } from "@/components/tickets/TicketViewSwitch";
 import { formatMoney } from "@/lib/money";
@@ -16,6 +17,7 @@ import {
   isOverdue,
   shopToday,
   STATUS_COLOR_CLASS,
+  STATUS_TINT_CLASS,
   type Member,
   type Status,
   type Ticket,
@@ -38,22 +40,6 @@ type SortKey =
   | "assigned_to"
   | "created_by";
 
-function Chip({ children, onClear }: { children: React.ReactNode; onClear: () => void }) {
-  return (
-    <span className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface-2 px-3 text-sm">
-      {children}
-      <button
-        type="button"
-        aria-label="Remove filter"
-        onClick={onClear}
-        className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
-      >
-        <X className="size-4" />
-      </button>
-    </span>
-  );
-}
-
 function TicketList() {
   const { membership } = Route.useRouteContext();
   const shop = membership.shop;
@@ -64,12 +50,14 @@ function TicketList() {
   const [totals, setTotals] = useState<Map<string, number>>(new Map());
   const [members, setMembers] = useState<Member[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
-  const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
+  // Filters as ids ("status:<id>", "assigned:<id|none>", "created:<id>",
+  // "customer:<id>", "flag:overdue", "flag:closed"); see FilterBar.
+  const [active, setActive] = useState<string[]>([]);
+  const [text, setText] = useState("");
   const [range, setRange] = useState<DateRangeValue>({ from: "", to: "" });
-  const [overdue, setOverdue] = useState(false);
-  const [showClosed, setShowClosed] = useState(false);
+  const toggle = (id: string) =>
+    setActive((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
+  const isOn = (id: string) => active.includes(id);
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({
     key: "ticket_number",
     asc: false,
@@ -116,17 +104,51 @@ function TicketList() {
     return m ? m.name || m.email : "—";
   };
 
+  const options = useMemo<FilterOption[]>(() => {
+    const people = members.map((m) => ({ id: m.user_id, name: m.name || m.email }));
+    const customers = new Map(tickets.map((t) => [t.customer_id, t.customer?.name ?? ""]));
+    return [
+      { id: "flag:overdue", group: "Show", label: "Overdue only" },
+      { id: "flag:closed", group: "Show", label: "Include picked up" },
+      ...statuses.map((st) => ({
+        id: `status:${st.id}`,
+        group: "Status",
+        label: st.name,
+        dotClass: STATUS_COLOR_CLASS[st.color],
+      })),
+      ...people.map((m) => ({ id: `assigned:${m.id}`, group: "Assigned to", label: m.name })),
+      { id: "assigned:none", group: "Assigned to", label: "Unassigned" },
+      ...people.map((m) => ({ id: `created:${m.id}`, group: "Created by", label: m.name })),
+      ...[...customers]
+        .sort(([, a], [, b]) => a.localeCompare(b))
+        .map(([id, name]) => ({ id: `customer:${id}`, group: "Customer", label: name })),
+    ];
+  }, [statuses, members, tickets]);
+
   const rows = useMemo(() => {
+    const pick = (prefix: string) =>
+      new Set(active.filter((a) => a.startsWith(prefix)).map((a) => a.slice(prefix.length)));
+    const fStatus = pick("status:");
+    const fAssigned = pick("assigned:");
+    const fCreated = pick("created:");
+    const fCustomer = pick("customer:");
+    const q = text.trim().toLowerCase().replace(/^#/, "");
     const list = tickets.filter((t) => {
       const s = byStatus.get(t.status_id);
-      if (statusFilter && t.status_id !== statusFilter) return false;
-      if (assigneeFilter) {
-        if (assigneeFilter === "none" ? t.assigned_to : t.assigned_to !== assigneeFilter)
-          return false;
-      }
-      if (creatorFilter && t.created_by !== creatorFilter) return false;
-      if (overdue && !isOverdue(t, s, today)) return false;
-      if (s?.category === "closed" && !(showClosed || t.status_id === statusFilter)) return false;
+      if (fStatus.size && !fStatus.has(t.status_id)) return false;
+      if (fAssigned.size && !fAssigned.has(t.assigned_to ?? "none")) return false;
+      if (fCreated.size && !fCreated.has(t.created_by ?? "")) return false;
+      if (fCustomer.size && !fCustomer.has(t.customer_id)) return false;
+      if (active.includes("flag:overdue") && !isOverdue(t, s, today)) return false;
+      if (s?.category === "closed" && !(active.includes("flag:closed") || fStatus.has(t.status_id)))
+        return false;
+      if (
+        q &&
+        !String(t.ticket_number).startsWith(q) &&
+        !(t.customer?.name ?? "").toLowerCase().includes(q) &&
+        !t.item_name.toLowerCase().includes(q)
+      )
+        return false;
       // Compare in the shop's time zone (not UTC).
       const created = shopToday(shop.time_zone, new Date(t.created_at));
       if (range.from && created < range.from) return false;
@@ -158,21 +180,7 @@ function TicketList() {
     return list.sort(
       (a, b) => (val(a) < val(b) ? -1 : val(a) > val(b) ? 1 : 0) * (sort.asc ? 1 : -1),
     );
-  }, [
-    tickets,
-    totals,
-    byStatus,
-    statusFilter,
-    assigneeFilter,
-    creatorFilter,
-    overdue,
-    showClosed,
-    range,
-    sort,
-    today,
-    shop.time_zone,
-    members,
-  ]);
+  }, [tickets, totals, byStatus, active, text, range, sort, today, shop.time_zone, members]);
 
   const openTicket = (id: string) =>
     void navigate({ to: "/app/tickets/$ticketId", params: { ticketId: id } });
@@ -206,42 +214,16 @@ function TicketList() {
       </PageHeader>
       {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <FilterBar
+        options={options}
+        active={active}
+        onToggle={toggle}
+        text={text}
+        onText={setText}
+        placeholder="Search or filter: customer, item, #, status, person…"
+      >
         <DateRangePicker value={range} onChange={setRange} />
-        <button
-          type="button"
-          onClick={() => setOverdue(!overdue)}
-          className={cn(
-            "min-h-11 rounded-md border px-3 text-sm font-medium",
-            overdue ? "border-primary bg-surface-2 text-foreground" : "border-input",
-          )}
-        >
-          Overdue only
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowClosed(!showClosed)}
-          className={cn(
-            "min-h-11 rounded-md border px-3 text-sm font-medium",
-            showClosed ? "border-primary bg-surface-2 text-foreground" : "border-input",
-          )}
-        >
-          Include picked up
-        </button>
-        {statusFilter ? (
-          <Chip onClear={() => setStatusFilter(null)}>
-            {statuses.find((s) => s.id === statusFilter)?.name}
-          </Chip>
-        ) : null}
-        {assigneeFilter ? (
-          <Chip onClear={() => setAssigneeFilter(null)}>
-            {assigneeFilter === "none" ? "Unassigned" : memberName(assigneeFilter)}
-          </Chip>
-        ) : null}
-        {creatorFilter ? (
-          <Chip onClear={() => setCreatorFilter(null)}>Created by {memberName(creatorFilter)}</Chip>
-        ) : null}
-      </div>
+      </FilterBar>
 
       <div className="overflow-x-auto rounded-lg bg-card">
         <table className="w-full text-left">
@@ -277,42 +259,45 @@ function TicketList() {
                   }}
                 >
                   <td className="px-3 py-3 font-mono">#{t.ticket_number}</td>
-                  <td className="px-3 py-3">{t.customer?.name}</td>
+                  <td className="px-3 py-3">
+                    {/* Customer: plain text that filters, no chip (item 12). */}
+                    <button
+                      type="button"
+                      aria-pressed={isOn(`customer:${t.customer_id}`)}
+                      className={cn(
+                        "min-h-11 cursor-pointer text-left underline-offset-4 hover:underline",
+                        isOn(`customer:${t.customer_id}`) && "font-semibold underline",
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggle(`customer:${t.customer_id}`);
+                      }}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      {t.customer?.name}
+                    </button>
+                  </td>
                   <td className="px-3 py-3">{t.item_name}</td>
                   <td className="px-3 py-3 text-right tabular-nums">
                     {totals.has(t.id) ? formatMoney(totals.get(t.id) ?? 0, shop.currency) : "—"}
                   </td>
                   <td className="px-3 py-3">
-                    <button
-                      type="button"
-                      className="inline-flex min-h-11 items-center gap-2 rounded-md underline-offset-4 hover:underline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setStatusFilter(statusFilter === t.status_id ? null : t.status_id);
-                      }}
-                    >
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "size-2.5 rounded-full",
-                          s ? STATUS_COLOR_CLASS[s.color] : "",
-                        )}
+                    {s ? (
+                      <ValueChip
+                        label={s.name}
+                        dotClass={STATUS_COLOR_CLASS[s.color]}
+                        tintClass={STATUS_TINT_CLASS[s.color]}
+                        pressed={isOn(`status:${s.id}`)}
+                        onClick={() => toggle(`status:${s.id}`)}
                       />
-                      {s?.name}
-                    </button>
+                    ) : null}
                   </td>
                   <td className="px-3 py-3">
-                    <button
-                      type="button"
-                      className="min-h-11 rounded-md underline-offset-4 hover:underline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const next = t.assigned_to ?? "none";
-                        setAssigneeFilter(assigneeFilter === next ? null : next);
-                      }}
-                    >
-                      {memberName(t.assigned_to)}
-                    </button>
+                    <ValueChip
+                      label={t.assigned_to ? memberName(t.assigned_to) : "Unassigned"}
+                      pressed={isOn(`assigned:${t.assigned_to ?? "none"}`)}
+                      onClick={() => toggle(`assigned:${t.assigned_to ?? "none"}`)}
+                    />
                   </td>
                   <td className={cn("px-3 py-3", overdueRow && "font-medium text-danger")}>
                     {t.promised_date ?? ""}
@@ -323,16 +308,11 @@ function TicketList() {
                   </td>
                   <td className="px-3 py-3">
                     {t.created_by ? (
-                      <button
-                        type="button"
-                        className="min-h-11 rounded-md underline-offset-4 hover:underline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCreatorFilter(creatorFilter === t.created_by ? null : t.created_by);
-                        }}
-                      >
-                        {memberName(t.created_by)}
-                      </button>
+                      <ValueChip
+                        label={memberName(t.created_by)}
+                        pressed={isOn(`created:${t.created_by}`)}
+                        onClick={() => toggle(`created:${t.created_by}`)}
+                      />
                     ) : (
                       "—"
                     )}

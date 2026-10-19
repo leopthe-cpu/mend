@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { StopAlerts } from "@/components/messages/StopAlerts";
@@ -7,6 +8,7 @@ import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDi
 import { BoardCard } from "@/components/board/BoardCard";
 import { usePointerDrag } from "@/components/board/usePointerDrag";
 import { TicketsTop } from "@/components/tickets/TicketsTop";
+import { openNewTicket } from "@/lib/newTicket";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import {
@@ -191,7 +193,7 @@ function Board() {
           them centred; auto margins collapse to 0 when the columns overflow,
           so the first one never gets cut off. */}
       <div className="flex snap-x gap-4 overflow-x-auto pb-4">
-        {statuses.map((s) => {
+        {statuses.map((s, i) => {
           const col = tickets.filter((t) => t.status_id === s.id && onBoard(t, s));
           return (
             <section
@@ -212,6 +214,19 @@ function Board() {
                 <span className="ml-auto font-mono text-sm text-muted-foreground">
                   {col.length}
                 </span>
+                {/* New tickets start in the first column, so it gets the
+                    same + as the top bar (decision 115). */}
+                {i === 0 ? (
+                  <button
+                    type="button"
+                    onClick={openNewTicket}
+                    aria-label="New ticket"
+                    title="New ticket"
+                    className="-mr-2 flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+                  >
+                    <Plus aria-hidden className="size-4" />
+                  </button>
+                ) : null}
               </h2>
               <ol className="flex flex-col gap-3 p-3">
                 {col.map((t) => (

@@ -12,6 +12,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import type { Membership } from "@/lib/shop";
+import { onOpenNewTicket } from "@/lib/newTicket";
 import { parseSearchDate } from "@/lib/searchDate";
 import { getSupabase } from "@/lib/supabase";
 import { shopToday } from "@/lib/tickets";
@@ -59,6 +60,7 @@ export function TopBar({ membership }: { membership: Membership }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  useEffect(() => onOpenNewTicket(() => setNewOpen(true)), []);
 
   useEffect(() => {
     const q = query.trim();

@@ -6,7 +6,7 @@ import { FormAlert } from "@/components/auth/AuthLayout";
 import { Panel } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
 import { logoProblem, logoUrl, replaceLogo } from "@/lib/logo";
-import { friendlyDbError } from "@/lib/shop";
+import { forgetAppData, friendlyDbError } from "@/lib/shop";
 
 // Shop logo on Settings → Shop. Shown on estimates and invoices (PDFs).
 export function LogoPanel({
@@ -41,6 +41,7 @@ export function LogoPanel({
     setBusy(true);
     try {
       await replaceLogo(shopId, file);
+      forgetAppData();
       await router.invalidate();
     } catch (err) {
       setError(err instanceof Error && !("code" in err) ? err.message : friendlyDbError(err));

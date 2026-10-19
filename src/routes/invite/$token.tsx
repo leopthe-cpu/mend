@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import { AuthLayout, FormAlert } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
-import { friendlyDbError, ROLE_LABEL, type Role } from "@/lib/shop";
+import { forgetAppData, friendlyDbError, ROLE_LABEL, type Role } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 
 // Invite link (spec §5 "Invite flow"). Shows the shop and role, then the
@@ -63,6 +63,7 @@ function InvitePage() {
     const { error } = await getSupabase().rpc("accept_invite", { p_token: token });
     setBusy(false);
     if (error) return setError(friendlyDbError(error));
+    forgetAppData();
     await navigate({ to: "/app/board", replace: true });
   }
 

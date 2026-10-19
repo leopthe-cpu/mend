@@ -9,9 +9,8 @@ import {
 import { useEffect, useState } from "react";
 
 import { ActionBanner } from "@/components/app/ActionBanner";
-import { AppSidebar } from "@/components/app/AppSidebar";
+import { AppRail, PhoneTabBar } from "@/components/app/AppRail";
 import { TopBar } from "@/components/app/TopBar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { LEGAL } from "@/lib/legal";
 import { fetchMyMembership, roleAtLeast } from "@/lib/shop";
 import { getSupabase, SupabaseConfigError } from "@/lib/supabase";
@@ -58,14 +57,9 @@ export const Route = createFileRoute("/app")({
   component: AppLayout,
 });
 
-// Below this width (tablets at the counter) the nav starts collapsed to icons;
-// phones get a drawer (handled inside the shadcn Sidebar). Spec §8.4.
-const TABLET_MAX = 1280;
-
 function AppLayout() {
   const { membership, displayName, termsVersion } = Route.useRouteContext();
   const navigate = useNavigate();
-  const [navOpen, setNavOpen] = useState(true);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Decision 53: the shop starts with defaults; keep a way back to setup in
   // view until the Owner (or an Admin) finishes it.
@@ -73,10 +67,6 @@ function AppLayout() {
     !membership.shop.setup_completed_at &&
     roleAtLeast(membership.role, "admin") &&
     pathname !== "/app/setup";
-
-  useEffect(() => {
-    if (window.innerWidth < TABLET_MAX) setNavOpen(false);
-  }, []);
 
   // Signed out in another tab, or the session ended: leave the app.
   useEffect(() => {
@@ -88,23 +78,22 @@ function AppLayout() {
     return () => data.subscription.unsubscribe();
   }, [navigate]);
 
+  const signOut = () => void getSupabase().auth.signOut();
+
   return (
-    <SidebarProvider open={navOpen} onOpenChange={setNavOpen}>
+    <div className="min-h-svh bg-background text-foreground">
       <a
         href="#main"
-        className="sr-only z-50 rounded-md bg-primary px-4 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+        className="sr-only z-50 rounded-full bg-primary px-4 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
       >
         Skip to content
       </a>
-      <AppSidebar
-        userLabel={displayName}
-        shopName={membership.shop.name}
-        onSignOut={() => void getSupabase().auth.signOut()}
-      />
-      {/* Light grey main view, dark nav (decision 21) */}
-      <SidebarInset className="min-w-0 bg-background text-foreground">
-        <TopBar membership={membership} />
-        <main id="main" className="flex-1 px-4 py-6 md:px-8">
+      {/* Floating rail on tablets and computers, tab bar on phones (decision 92). */}
+      <AppRail onSignOut={signOut} />
+      <PhoneTabBar shopName={membership.shop.name} userLabel={displayName} onSignOut={signOut} />
+      <div className="min-w-0 pb-24 md:pb-0 md:pl-[6.5rem]">
+        <TopBar membership={membership} userLabel={displayName} />
+        <main id="main" className="px-4 pb-8 md:pr-6 md:pl-0">
           {showSetup ? (
             <ActionBanner
               tone="orange"
@@ -121,8 +110,8 @@ function AppLayout() {
           ) : null}
           <Outlet />
         </main>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </div>
   );
 }
 

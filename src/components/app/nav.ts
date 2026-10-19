@@ -10,3 +10,6 @@ export const appNav = [
   { to: "/app/messages", label: "Messages", icon: MessageSquare },
   { to: "/app/settings", label: "Settings", icon: Settings },
 ] as const;
+
+// Pages that get their own tab on phones; the rest sit under "More" (decision 92).
+export const phoneTabs: readonly string[] = ["/app/board", "/app/tickets", "/app/customers"];

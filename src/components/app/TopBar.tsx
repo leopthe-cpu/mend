@@ -12,7 +12,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import type { Membership } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import { appNav } from "./nav";
@@ -28,7 +27,7 @@ function isTyping(target: EventTarget | null): boolean {
   );
 }
 
-export function TopBar({ membership }: { membership: Membership }) {
+export function TopBar({ membership, userLabel }: { membership: Membership; userLabel: string }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -83,33 +82,46 @@ export function TopBar({ membership }: { membership: Membership }) {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-background px-3 md:px-6 print:hidden">
-      <SidebarTrigger className="size-11" aria-label="Toggle navigation" />
+    <header className="flex items-center gap-3 px-4 py-4 md:pr-6 md:pl-0 print:hidden">
+      {/* Search pill (mockup, decision 92): black round icon, then the hint. */}
       <button
         type="button"
         onClick={() => setSearchOpen(true)}
-        className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-input bg-surface-2 px-3 text-left text-muted-foreground transition-colors hover:text-foreground md:max-w-md"
+        className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full bg-card pr-4 pl-1.5 text-left text-muted-foreground transition-colors hover:text-foreground md:max-w-md"
       >
-        <Search className="size-4 shrink-0" aria-hidden />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+          <Search className="size-4" aria-hidden />
+        </span>
         <span className="truncate">Search tickets, customers, phone…</span>
-        <kbd className="ml-auto hidden rounded border border-border px-1.5 font-mono text-sm sm:inline">
+        <kbd className="ml-auto hidden rounded-full border border-border px-2 font-mono text-sm sm:inline">
           Ctrl K
         </kbd>
       </button>
-      {/* The one solid-black button in the app (UX plan v2): every other "+"
-          button is outlined. The label shortens to "+" on phones, so the
-          accessible name stays "New ticket" either way. */}
+      {/* The one filled button in the bar. The label shortens to "+" on
+          phones, so the accessible name stays "New ticket" either way. */}
       <Button
-        className="ml-auto"
+        className="ml-auto h-12"
         onClick={() => setNewOpen(true)}
         aria-keyshortcuts="N"
         aria-label="New ticket"
       >
         <Plus aria-hidden />
         <span className="hidden sm:inline" aria-hidden>
-          Ticket
+          New ticket
         </span>
       </Button>
+      <div className="hidden h-12 items-center gap-2.5 rounded-full bg-card py-1 pr-4 pl-1 lg:flex">
+        <span
+          aria-hidden
+          className="flex size-10 items-center justify-center rounded-full bg-border text-sm font-semibold"
+        >
+          {initials(userLabel)}
+        </span>
+        <span className="flex flex-col leading-tight">
+          <span className="max-w-40 truncate text-[0.9375rem] font-semibold">{userLabel}</span>
+          <span className="text-sm text-muted-foreground capitalize">{membership.role}</span>
+        </span>
+      </div>
 
       <CommandDialog
         open={searchOpen}
@@ -166,4 +178,11 @@ export function TopBar({ membership }: { membership: Membership }) {
       <NewTicketDialog open={newOpen} onOpenChange={setNewOpen} membership={membership} />
     </header>
   );
+}
+
+/** "Oz Tester" → "OT"; an email → its first letter. */
+function initials(label: string): string {
+  const words = label.split(/[\s@.]+/).filter(Boolean);
+  if (label.includes("@") || words.length < 2) return (words[0]?.[0] ?? "?").toUpperCase();
+  return ((words[0]?.[0] ?? "") + (words[1]?.[0] ?? "")).toUpperCase();
 }

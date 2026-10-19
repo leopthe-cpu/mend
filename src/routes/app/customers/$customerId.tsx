@@ -2,18 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Download, Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { useUnsavedChanges } from "@/lib/unsaved";
 import { BackButton } from "@/components/app/BackButton";
+import { CustomerFields } from "@/components/customers/CustomerFields";
 import { FormAlert } from "@/components/auth/AuthLayout";
-import { Field, Panel, selectClass } from "@/components/app/Field";
+import { Panel } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
-import { PhoneInput } from "@/components/app/MaskedInputs";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { downloadFile } from "@/lib/csv";
+import { saveCustomerForm, type CustomerFormValues } from "@/lib/customerForm";
 import { customerExportText, fileSlug, type CustomerExport } from "@/lib/customerExport";
 import { friendlyDbError, roleAtLeast } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
+import { useUnsavedChanges } from "@/lib/unsaved";
 import { fetchContacts, fetchStatuses, type Customer, type Status } from "@/lib/tickets";
 
 export const Route = createFileRoute("/app/customers/$customerId")({
@@ -33,11 +32,11 @@ function CustomerDetail() {
   const { customerId } = Route.useParams();
   const { membership } = Route.useRouteContext();
   const [c, setC] = useState<Customer | null>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<CustomerFormValues>({
     name: "",
     phone: "",
     email: "",
-    channel: "sms" as "sms" | "email",
+    channel: "sms",
     notes: "",
   });
   // What was loaded, to tell whether the open form has unsaved edits.
@@ -116,17 +115,9 @@ function CustomerDetail() {
   }
 
   async function saveForm(): Promise<boolean> {
-    const { error } = await getSupabase().rpc("save_customer", {
-      p_shop_id: membership.shop.id,
-      p_customer_id: customerId,
-      p_name: form.name,
-      p_phone: form.phone || null,
-      p_email: form.email || null,
-      p_preferred_channel: form.channel,
-      p_notes: form.notes || null,
-    });
+    const error = await saveCustomerForm(membership.shop.id, customerId, form);
     if (error) {
-      setMessage({ tone: "error", text: friendlyDbError(error) });
+      setMessage({ tone: "error", text: error });
       return false;
     }
     setMessage({ tone: "info", text: "Saved." });
@@ -162,56 +153,7 @@ function CustomerDetail() {
       {editing ? (
         <form method="post" onSubmit={save}>
           <Panel title="Contact">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Field id="c-name" label="Name">
-                  <Input
-                    id="c-name"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    maxLength={120}
-                  />
-                </Field>
-              </div>
-              <Field id="c-phone" label="Mobile phone">
-                <PhoneInput
-                  id="c-phone"
-                  value={form.phone}
-                  onValueChange={(phone) => setForm({ ...form, phone })}
-                />
-              </Field>
-              <Field id="c-email" label="Email">
-                <Input
-                  id="c-email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </Field>
-              <Field id="c-channel" label="Send updates by">
-                <select
-                  id="c-channel"
-                  className={selectClass}
-                  value={form.channel}
-                  onChange={(e) => setForm({ ...form, channel: e.target.value as "sms" | "email" })}
-                >
-                  <option value="sms">Text message</option>
-                  <option value="email">Email</option>
-                </select>
-              </Field>
-              <div className="sm:col-span-2">
-                <Field id="c-notes" label="Notes">
-                  <Textarea
-                    id="c-notes"
-                    rows={3}
-                    className="bg-surface-2 text-base"
-                    value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    maxLength={2000}
-                  />
-                </Field>
-              </div>
-            </div>
+            <CustomerFields value={form} onChange={setForm} />
             <div className="mt-4 flex gap-3">
               <Button type="submit">Save</Button>
               <Button

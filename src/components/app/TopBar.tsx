@@ -13,7 +13,9 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import type { Membership } from "@/lib/shop";
+import { parseSearchDate } from "@/lib/searchDate";
 import { getSupabase } from "@/lib/supabase";
+import { shopToday } from "@/lib/tickets";
 import { appNav } from "./nav";
 
 type Hit = { kind: string; id: string; label: string; sublabel: string | null };
@@ -61,9 +63,11 @@ export function TopBar({ membership }: { membership: Membership }) {
     if (q.length < 2) return setHits([]);
     const mine = ++seq.current;
     const timer = setTimeout(async () => {
+      // "Oct 20", "tomorrow"… are sent as YYYY-MM-DD (decision 102).
+      const date = parseSearchDate(q, shopToday(membership.shop.time_zone));
       const { data } = await getSupabase().rpc("search_shop", {
         p_shop_id: membership.shop.id,
-        p_query: q,
+        p_query: date ?? q,
       });
       if (mine === seq.current)
         setHits(
@@ -71,7 +75,7 @@ export function TopBar({ membership }: { membership: Membership }) {
         );
     }, 200);
     return () => clearTimeout(timer);
-  }, [query, membership.shop.id]);
+  }, [query, membership.shop.id, membership.shop.time_zone]);
 
   const go = (h: Hit) => {
     setSearchOpen(false);
@@ -87,33 +91,38 @@ export function TopBar({ membership }: { membership: Membership }) {
     // through as it scrolls under.
     <header className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 py-4 backdrop-blur-md md:pr-6 md:pl-0 print:hidden">
       {/* Search bar (decision 92): black icon, then the hint. Same corner
-          radius as banners and inputs (19 Oct feedback, item 8). */}
+          radius as banners and inputs (item 8); centred and wider on
+          computers (item 15), with an equal spacer on the left so it sits in
+          the middle of the bar. */}
+      <div aria-hidden className="hidden flex-1 lg:block" />
       <button
         type="button"
         onClick={() => setSearchOpen(true)}
-        className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-lg bg-card pr-4 pl-1.5 text-left text-muted-foreground transition-colors hover:text-foreground md:max-w-md"
+        className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-lg bg-card pr-4 pl-1.5 text-left text-muted-foreground transition-colors hover:text-foreground lg:max-w-2xl lg:flex-[2]"
       >
         <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
           <Search className="size-4" aria-hidden />
         </span>
-        <span className="truncate">Search tickets, customers, phone…</span>
+        <span className="truncate">Search customers, items, dates, ticket #…</span>
         <kbd className="ml-auto hidden rounded-md border border-border px-2 font-mono text-sm sm:inline">
           Ctrl K
         </kbd>
       </button>
       {/* The one filled button in the bar. The label shortens to "+" on
           phones, so the accessible name stays "New ticket" either way. */}
-      <Button
-        className="ml-auto h-12"
-        onClick={() => setNewOpen(true)}
-        aria-keyshortcuts="N"
-        aria-label="New ticket"
-      >
-        <Plus aria-hidden />
-        <span className="hidden sm:inline" aria-hidden>
-          New ticket
-        </span>
-      </Button>
+      <div className="flex justify-end lg:flex-1">
+        <Button
+          className="h-12"
+          onClick={() => setNewOpen(true)}
+          aria-keyshortcuts="N"
+          aria-label="New ticket"
+        >
+          <Plus aria-hidden />
+          <span className="hidden sm:inline" aria-hidden>
+            New ticket
+          </span>
+        </Button>
+      </div>
 
       <CommandDialog
         open={searchOpen}
@@ -123,7 +132,7 @@ export function TopBar({ membership }: { membership: Membership }) {
         description="Search tickets and customers, or jump to a page"
       >
         <CommandInput
-          placeholder="Ticket #, name, exact phone or email…"
+          placeholder="Name, item, date (Oct 20), ticket #, exact phone or email…"
           value={query}
           onValueChange={setQuery}
         />
@@ -131,7 +140,7 @@ export function TopBar({ membership }: { membership: Membership }) {
           <CommandEmpty>
             {query.trim().length < 2
               ? "Type at least 2 characters."
-              : "Nothing found. Phone and email must match exactly."}
+              : "Nothing found. Phone and email must match exactly; dates look like Oct 20 or 2026-10-20."}
           </CommandEmpty>
           {hits.length ? (
             <CommandGroup heading="Results">

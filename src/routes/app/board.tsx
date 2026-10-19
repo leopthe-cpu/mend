@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { StopAlerts } from "@/components/messages/StopAlerts";
 import { FormAlert } from "@/components/auth/AuthLayout";
-import { PageHeader } from "@/components/app/EmptyState";
 import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
+import { BoardSummary } from "@/components/board/BoardSummary";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import {
@@ -125,7 +125,18 @@ function Board() {
 
   return (
     <>
-      <PageHeader title="Board" />
+      <h1 className="mb-5 text-[1.75rem] leading-tight font-semibold md:text-[2.125rem]">
+        {greeting(shop.time_zone)}, <span className="text-muted-foreground">{shop.name}</span>
+      </h1>
+      {loaded && tickets.length ? (
+        <BoardSummary
+          tickets={tickets}
+          statuses={statuses}
+          today={today}
+          unclaimedDays={shop.unclaimed_reminder_days}
+          schedule={shop.business_hours?.schedule}
+        />
+      ) : null}
       <StopAlerts shopId={shop.id} timeZone={shop.time_zone} />
       {error ? (
         <div className="mb-4">
@@ -179,7 +190,7 @@ function Board() {
       {/* Columns scroll sideways inside the board only. The scroll padding keeps
           the first column lined up with the page title: without it, snapping
           pulls the first column flush to the edge (Oz's feedback, UX plan v2). */}
-      <div className="-mx-4 flex snap-x scroll-px-4 gap-4 overflow-x-auto px-4 pb-4 md:-mx-8 md:scroll-px-8 md:px-8">
+      <div className="flex snap-x gap-4 overflow-x-auto pb-4">
         {statuses.map((s) => {
           const col = tickets.filter((t) => t.status_id === s.id && onBoard(t, s));
           return (
@@ -202,7 +213,7 @@ function Board() {
                 if (id) void move(id, s.id);
               }}
             >
-              <h2 className="flex items-center gap-2 border-b border-border px-4 py-3 font-semibold">
+              <h2 className="flex items-center gap-2 px-5 pt-4 pb-1 font-semibold">
                 <span
                   aria-hidden
                   className={cn("size-2.5 rounded-full", STATUS_COLOR_CLASS[s.color])}
@@ -222,21 +233,21 @@ function Board() {
                       key={t.id}
                       draggable
                       onDragStart={(e) => e.dataTransfer.setData("text/ticket-id", t.id)}
-                      className="rounded-md border border-border bg-surface-2 p-3"
+                      className="rounded-2xl bg-background p-3"
                     >
                       <div className="flex gap-3">
                         {thumbs.get(t.id) ? (
                           <img
                             src={thumbs.get(t.id)}
                             alt=""
-                            className="size-14 shrink-0 rounded object-cover"
+                            className="size-14 shrink-0 rounded-xl object-cover"
                             loading="lazy"
                           />
                         ) : null}
                         <Link
                           to="/app/tickets/$ticketId"
                           params={{ ticketId: t.id }}
-                          className="min-w-0 flex-1 rounded"
+                          className="min-w-0 flex-1 rounded-lg"
                         >
                           <div className="font-mono text-sm text-muted-foreground">
                             #{t.ticket_number}
@@ -247,7 +258,7 @@ function Board() {
                         {assignee ? (
                           <span
                             title={assignee}
-                            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent font-mono text-sm"
+                            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card font-mono text-sm"
                           >
                             {initials(assignee)}
                           </span>
@@ -264,14 +275,14 @@ function Board() {
                           />
                         )}
                         {overdue ? (
-                          <span className="inline-flex items-center gap-1 rounded border border-status-overdue px-1.5 font-medium text-danger">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-status-overdue px-2 font-medium text-danger">
                             <AlertTriangle className="size-3.5" aria-hidden /> Overdue
                           </span>
                         ) : null}
                         {unclaimed ? (
                           <button
                             type="button"
-                            className="inline-flex min-h-8 items-center gap-1 rounded border border-status-waiting px-1.5 font-medium text-warning hover:bg-status-waiting/10"
+                            className="inline-flex min-h-8 items-center gap-1 rounded-full border border-status-waiting px-2 font-medium text-warning hover:bg-status-waiting/10"
                             onClick={() => setNotify({ ticketId: t.id, kind: "reminder" })}
                             aria-label={`Unclaimed: send #${t.ticket_number} a pickup reminder`}
                           >
@@ -299,4 +310,14 @@ function Board() {
       ) : null}
     </>
   );
+}
+
+/** "Good morning" before noon, "Good afternoon" until 6pm, then "Good evening", in the shop's time zone. */
+function greeting(timeZone: string): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-CA", { timeZone, hour: "numeric", hourCycle: "h23" }).format(
+      new Date(),
+    ),
+  );
+  return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 }

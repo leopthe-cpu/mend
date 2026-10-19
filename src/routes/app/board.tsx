@@ -222,7 +222,7 @@ function Board() {
                     onClick={openNewTicket}
                     aria-label="New ticket"
                     title="New ticket"
-                    className="-mr-2 flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+                    className="-my-1 -mr-2 flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
                   >
                     <Plus aria-hidden className="size-4" />
                   </button>

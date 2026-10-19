@@ -6,7 +6,6 @@ import { NewTicketDialog } from "@/components/tickets/NewTicketDialog";
 import { Button } from "@/components/ui/button";
 import {
   CommandDialog,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -34,6 +33,9 @@ export function TopBar({ membership }: { membership: Membership }) {
   const [newOpen, setNewOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
+  // The query the shown results belong to; differs from the typed query
+  // while a search is still on its way.
+  const [doneFor, setDoneFor] = useState("");
   const seq = useRef(0);
   const navigate = useNavigate();
 
@@ -60,7 +62,11 @@ export function TopBar({ membership }: { membership: Membership }) {
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) return setHits([]);
+    if (q.length < 2) {
+      setHits([]);
+      setDoneFor("");
+      return;
+    }
     const mine = ++seq.current;
     const timer = setTimeout(async () => {
       // "Oct 20", "tomorrow"… are sent as YYYY-MM-DD (decision 102).
@@ -69,13 +75,25 @@ export function TopBar({ membership }: { membership: Membership }) {
         p_shop_id: membership.shop.id,
         p_query: date ?? q,
       });
-      if (mine === seq.current)
+      if (mine === seq.current) {
         setHits(
           ((data ?? []) as Hit[]).filter((h, i, all) => all.findIndex((x) => x.id === h.id) === i),
         );
+        setDoneFor(q);
+      }
     }, 200);
     return () => clearTimeout(timer);
   }, [query, membership.shop.id, membership.shop.time_zone]);
+
+  // "Go to" pages: all of them before typing, then only names that match, so
+  // Enter on a search with no results doesn't open the first page (19 Oct
+  // round 2, item 3).
+  const q = query.trim();
+  const pages = q
+    ? appNav.filter(({ label }) => label.toLowerCase().startsWith(q.toLowerCase()))
+    : appNav;
+  const searching = q.length >= 2 && doneFor !== q;
+  const nothing = q.length >= 2 && !searching && !hits.length;
 
   const go = (h: Hit) => {
     setSearchOpen(false);
@@ -137,11 +155,33 @@ export function TopBar({ membership }: { membership: Membership }) {
           onValueChange={setQuery}
         />
         <CommandList>
-          <CommandEmpty>
-            {query.trim().length < 2
-              ? "Type at least 2 characters."
-              : "Nothing found. Phone and email must match exactly; dates look like Oct 20 or 2026-10-20."}
-          </CommandEmpty>
+          {q.length === 1 ? (
+            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+              Keep typing: at least 2 characters.
+            </p>
+          ) : null}
+          {searching && !hits.length ? (
+            <p role="status" className="px-4 py-6 text-center text-sm text-muted-foreground">
+              Searching…
+            </p>
+          ) : null}
+          {nothing ? (
+            <div role="status" className="px-4 py-5 text-sm">
+              <p className="font-semibold">Nothing matches &ldquo;{q}&rdquo;</p>
+              <ul className="mt-2 flex list-disc flex-col gap-1 pl-5 text-muted-foreground">
+                <li>
+                  Check the spelling, or type just the start of a name: &ldquo;Mar&rdquo; finds
+                  Maria.
+                </li>
+                <li>For a ticket, type its number, like 1042.</li>
+                <li>Phone numbers and emails need to be complete.</li>
+                <li>
+                  Dates work like &ldquo;Oct 20&rdquo;, &ldquo;20 Oct&rdquo; or
+                  &ldquo;tomorrow&rdquo;.
+                </li>
+              </ul>
+            </div>
+          ) : null}
           {hits.length ? (
             <CommandGroup heading="Results">
               {hits.map((h) => (
@@ -159,21 +199,23 @@ export function TopBar({ membership }: { membership: Membership }) {
               ))}
             </CommandGroup>
           ) : null}
-          <CommandGroup heading="Go to">
-            {appNav.map(({ to, label, icon: Icon }) => (
-              <CommandItem
-                key={to}
-                value={`go ${label}`}
-                onSelect={() => {
-                  setSearchOpen(false);
-                  void navigate({ to });
-                }}
-              >
-                <Icon aria-hidden />
-                {label}
-              </CommandItem>
-            ))}
-          </CommandGroup>
+          {pages.length ? (
+            <CommandGroup heading="Go to">
+              {pages.map(({ to, label, icon: Icon }) => (
+                <CommandItem
+                  key={to}
+                  value={`go ${label}`}
+                  onSelect={() => {
+                    setSearchOpen(false);
+                    void navigate({ to });
+                  }}
+                >
+                  <Icon aria-hidden />
+                  {label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null}
         </CommandList>
       </CommandDialog>
       <NewTicketDialog open={newOpen} onOpenChange={setNewOpen} membership={membership} />

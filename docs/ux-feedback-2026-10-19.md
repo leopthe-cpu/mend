@@ -3,6 +3,7 @@
 Feedback on the redesign (decisions 91–94) after testing staging. Each item
 becomes its own PR into develop; staging is re-tested before the next release.
 Order: quick fixes first, then the navigation change, then the bigger views.
+F11 (unsaved changes) goes in early, before F8–F10 add more editable rows.
 
 ## Feedback, as given
 
@@ -22,6 +23,7 @@ Order: quick fixes first, then the navigation change, then the bigger views.
 14. **Back button.** A real round black "‹" button instead of the "‹ Tickets" text link.
 15. **Main search.** Matches customer name, item / description and dates; centred and a bit wider.
 16. **Profile menu.** The profile moves from the top right to the bottom of the rail (where Sign out is now); clicking it shows Settings and Sign out.
+17. **Unsaved changes.** Leaving a page with unsaved edits (customer details, a catalog item, a ticket) by clicking anywhere else in the product asks first: save, discard, or stay.
 
 ## Plan
 
@@ -37,6 +39,7 @@ Order: quick fixes first, then the navigation change, then the bigger views.
 | F8 | 9 | Customer list columns: since, repairs done, pending, Message button. | `customer_stats` view or RPC (migration + pgTAP). |
 | F9 | 10 | Messages as a two-pane chat: conversations by customer with last-message preview; chat thread with bubbles; composer sends through the existing `queue_message` (same rules: opt-outs, quiet hours, limits). Opens from the customer list's Message button. | Conversation list query (migration + pgTAP). |
 | F10 | 11, 12 | Catalog as a table: columns incl. added by; inline discount; row opens the item; filter bar from F7. | `catalog_items.created_by` if missing (migration). |
+| F11 | 17 | One shared "unsaved changes" guard used by every edit form (customer, catalog item, ticket, settings). In-app navigation shows a Mend dialog: **Save**, **Discard**, **Keep editing**; Save runs the form's own save and only leaves if it succeeds. Built on TanStack Router's `useBlocker` (`shouldBlockFn` + `withResolver`, checked in the installed v1.170.41 types). Closing or reloading the tab can only show the browser's own generic "Leave site?" prompt; browsers don't allow a custom dialog there. | — |
 
 Questions to confirm while building:
 - Item 10: which side for whose messages (we assume shop on the right).

@@ -11,9 +11,11 @@ import { useEffect, useState } from "react";
 import { ActionBanner } from "@/components/app/ActionBanner";
 import { AppRail, PhoneTabBar } from "@/components/app/AppRail";
 import { TopBar } from "@/components/app/TopBar";
+import { UnsavedChangesDialog } from "@/components/app/UnsavedChangesDialog";
 import { LEGAL } from "@/lib/legal";
 import { fetchMyMembership, roleAtLeast } from "@/lib/shop";
 import { getSupabase, SupabaseConfigError } from "@/lib/supabase";
+import { UnsavedContext, UnsavedRegistry } from "@/lib/unsaved";
 
 // The signed-in app. Rendered in the browser only: the session lives in the
 // browser, and this guard is a convenience, not a security boundary. Data
@@ -79,39 +81,43 @@ function AppLayout() {
   }, [navigate]);
 
   const signOut = () => void getSupabase().auth.signOut();
+  const [unsaved] = useState(() => new UnsavedRegistry());
 
   return (
-    <div className="min-h-svh bg-background text-foreground">
-      <a
-        href="#main"
-        className="sr-only z-50 rounded-full bg-primary px-4 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
-      >
-        Skip to content
-      </a>
-      {/* Floating rail on tablets and computers, tab bar on phones (decision 92). */}
-      <AppRail userLabel={displayName} role={membership.role} onSignOut={signOut} />
-      <PhoneTabBar shopName={membership.shop.name} userLabel={displayName} onSignOut={signOut} />
-      <div className="min-w-0 pb-24 md:pb-0 md:pl-[6.5rem]">
-        <TopBar membership={membership} />
-        <main id="main" className="px-4 pb-8 md:pr-6 md:pl-0">
-          {showSetup ? (
-            <ActionBanner
-              tone="orange"
-              text="Add your shop name, trade, pickup hours and taxes. It takes about two minutes."
-            >
-              <Link to="/app/setup" className={BANNER_TARGET}>
-                Finish setting up your shop
-              </Link>
-            </ActionBanner>
-          ) : null}
-          <TermsBanner acceptedVersion={termsVersion} />
-          {roleAtLeast(membership.role, "admin") ? (
-            <RetentionBanner shopId={membership.shop.id} />
-          ) : null}
-          <Outlet />
-        </main>
+    <UnsavedContext.Provider value={unsaved}>
+      <div className="min-h-svh bg-background text-foreground">
+        <a
+          href="#main"
+          className="sr-only z-50 rounded-full bg-primary px-4 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+        >
+          Skip to content
+        </a>
+        {/* Floating rail on tablets and computers, tab bar on phones (decision 92). */}
+        <AppRail userLabel={displayName} role={membership.role} onSignOut={signOut} />
+        <PhoneTabBar shopName={membership.shop.name} userLabel={displayName} onSignOut={signOut} />
+        <div className="min-w-0 pb-24 md:pb-0 md:pl-[6.5rem]">
+          <TopBar membership={membership} />
+          <main id="main" className="px-4 pb-8 md:pr-6 md:pl-0">
+            {showSetup ? (
+              <ActionBanner
+                tone="orange"
+                text="Add your shop name, trade, pickup hours and taxes. It takes about two minutes."
+              >
+                <Link to="/app/setup" className={BANNER_TARGET}>
+                  Finish setting up your shop
+                </Link>
+              </ActionBanner>
+            ) : null}
+            <TermsBanner acceptedVersion={termsVersion} />
+            {roleAtLeast(membership.role, "admin") ? (
+              <RetentionBanner shopId={membership.shop.id} />
+            ) : null}
+            <Outlet />
+          </main>
+        </div>
+        <UnsavedChangesDialog registry={unsaved} />
       </div>
-    </div>
+    </UnsavedContext.Provider>
   );
 }
 

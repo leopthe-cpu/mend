@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { useUnsavedChanges } from "@/lib/unsaved";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Field, Panel, selectClass } from "@/components/app/Field";
 import { LogoPanel } from "@/components/app/LogoPanel";
@@ -42,25 +43,32 @@ function ShopSettings() {
   });
   const [status, setStatus] = useState<{ tone: "error" | "info"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  // Unsaved-changes guard (decision 99): compare with what was last saved.
+  const [savedState, setSavedState] = useState(() => JSON.stringify({ form, schedule }));
+  useUnsavedChanges(canEdit && JSON.stringify({ form, schedule }) !== savedState, () => saveForm());
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm({ ...form, [k]: e.target.value });
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim()) return setStatus({ tone: "error", text: "The shop needs a name." });
+    await saveForm();
+  }
+
+  async function saveForm(): Promise<boolean> {
+    const fail = (text: string) => {
+      setStatus({ tone: "error", text });
+      return false;
+    };
+    if (!form.name.trim()) return fail("The shop needs a name.");
     // Decision 76: texts identify the shop (CASL); the database refuses texts
     // without both.
     if (!form.address.trim() || form.phone.replace(/\D/g, "").length < 10)
-      return setStatus({
-        tone: "error",
-        text: "Add the shop's address and phone. They identify your shop in the texts you send.",
-      });
+      return fail(
+        "Add the shop's address and phone. They identify your shop in the texts you send.",
+      );
     const days = Number(form.unclaimed_reminder_days);
     if (!Number.isInteger(days) || days < 1 || days > 365)
-      return setStatus({
-        tone: "error",
-        text: "Reminder days must be a whole number from 1 to 365.",
-      });
+      return fail("Reminder days must be a whole number from 1 to 365.");
     setSaving(true);
     setStatus(null);
     const { data, error } = await getSupabase()
@@ -82,14 +90,12 @@ function ShopSettings() {
       .eq("id", shop.id)
       .select("id");
     setSaving(false);
-    if (error) return setStatus({ tone: "error", text: friendlyDbError(error) });
-    if (!data?.length)
-      return setStatus({
-        tone: "error",
-        text: "You don't have permission to change these settings.",
-      });
+    if (error) return fail(friendlyDbError(error));
+    if (!data?.length) return fail("You don't have permission to change these settings.");
     setStatus({ tone: "info", text: "Saved." });
+    setSavedState(JSON.stringify({ form, schedule }));
     await router.invalidate();
+    return true;
   }
 
   return (

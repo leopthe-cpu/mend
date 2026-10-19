@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Download, Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { useUnsavedChanges } from "@/lib/unsaved";
 import { BackButton } from "@/components/app/BackButton";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Field, Panel, selectClass } from "@/components/app/Field";
@@ -39,6 +40,8 @@ function CustomerDetail() {
     channel: "sms" as "sms" | "email",
     notes: "",
   });
+  // What was loaded, to tell whether the open form has unsaved edits.
+  const [savedForm, setSavedForm] = useState(form);
   const [tickets, setTickets] = useState<Row[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [message, setMessage] = useState<{ tone: "error" | "info"; text: string } | null>(null);
@@ -82,13 +85,15 @@ function CustomerDetail() {
     setC(cust);
     const contacts = await fetchContacts([cust.id]);
     const ct = contacts.get(cust.id);
-    setForm({
+    const loaded = {
       name: cust.name,
       phone: ct?.phone ?? "",
       email: ct?.email ?? "",
       channel: cust.preferred_channel,
       notes: cust.notes ?? "",
-    });
+    };
+    setForm(loaded);
+    setSavedForm(loaded);
     const { data: t } = await sb
       .from("tickets")
       .select("id, ticket_number, item_name, status_id, created_at")
@@ -101,8 +106,16 @@ function CustomerDetail() {
     void load();
   }, [load]);
 
+  useUnsavedChanges(editing && JSON.stringify(form) !== JSON.stringify(savedForm), () =>
+    saveForm(),
+  );
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    await saveForm();
+  }
+
+  async function saveForm(): Promise<boolean> {
     const { error } = await getSupabase().rpc("save_customer", {
       p_shop_id: membership.shop.id,
       p_customer_id: customerId,
@@ -112,10 +125,14 @@ function CustomerDetail() {
       p_preferred_channel: form.channel,
       p_notes: form.notes || null,
     });
-    if (error) return setMessage({ tone: "error", text: friendlyDbError(error) });
+    if (error) {
+      setMessage({ tone: "error", text: friendlyDbError(error) });
+      return false;
+    }
     setMessage({ tone: "info", text: "Saved." });
     setEditing(false);
     await load();
+    return true;
   }
 
   // Decision 87: for a customer who asks what the shop holds about them.

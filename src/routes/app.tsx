@@ -89,10 +89,10 @@ function AppLayout() {
         Skip to content
       </a>
       {/* Floating rail on tablets and computers, tab bar on phones (decision 92). */}
-      <AppRail onSignOut={signOut} />
+      <AppRail userLabel={displayName} role={membership.role} onSignOut={signOut} />
       <PhoneTabBar shopName={membership.shop.name} userLabel={displayName} onSignOut={signOut} />
       <div className="min-w-0 pb-24 md:pb-0 md:pl-[6.5rem]">
-        <TopBar membership={membership} userLabel={displayName} />
+        <TopBar membership={membership} />
         <main id="main" className="px-4 pb-8 md:pr-6 md:pl-0">
           {showSetup ? (
             <ActionBanner

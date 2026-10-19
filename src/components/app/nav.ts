@@ -20,6 +20,10 @@ export const appNav = [
   { to: "/app/settings", label: "Settings", icon: Settings },
 ] as const;
 
+// The rail's middle icons (19 Oct feedback, items 3 and 16): the logo at the
+// top opens the Board, Settings lives in the profile menu at the bottom.
+export const railNav = appNav.filter((n) => n.to !== "/app/board" && n.to !== "/app/settings");
+
 // Pages that get their own tab on phones; the rest sit under "More" (decision 92).
 export const phoneTabs: readonly string[] = [
   "/app/board",

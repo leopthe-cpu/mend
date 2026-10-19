@@ -27,7 +27,7 @@ function isTyping(target: EventTarget | null): boolean {
   );
 }
 
-export function TopBar({ membership, userLabel }: { membership: Membership; userLabel: string }) {
+export function TopBar({ membership }: { membership: Membership }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -114,18 +114,6 @@ export function TopBar({ membership, userLabel }: { membership: Membership; user
           New ticket
         </span>
       </Button>
-      <div className="hidden h-12 items-center gap-2.5 rounded-full bg-card py-1 pr-4 pl-1 lg:flex">
-        <span
-          aria-hidden
-          className="flex size-10 items-center justify-center rounded-full bg-border text-sm font-semibold"
-        >
-          {initials(userLabel)}
-        </span>
-        <span className="flex flex-col leading-tight">
-          <span className="max-w-40 truncate text-[0.9375rem] font-semibold">{userLabel}</span>
-          <span className="text-sm text-muted-foreground capitalize">{membership.role}</span>
-        </span>
-      </div>
 
       <CommandDialog
         open={searchOpen}
@@ -182,11 +170,4 @@ export function TopBar({ membership, userLabel }: { membership: Membership; user
       <NewTicketDialog open={newOpen} onOpenChange={setNewOpen} membership={membership} />
     </header>
   );
-}
-
-/** "Oz Tester" → "OT"; an email → its first letter. */
-function initials(label: string): string {
-  const words = label.split(/[\s@.]+/).filter(Boolean);
-  if (label.includes("@") || words.length < 2) return (words[0]?.[0] ?? "?").toUpperCase();
-  return ((words[0]?.[0] ?? "") + (words[1]?.[0] ?? "")).toUpperCase();
 }

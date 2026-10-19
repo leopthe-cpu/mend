@@ -51,6 +51,7 @@ function Board() {
   const [notify, setNotify] = useState<NotifyRequest | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -232,8 +233,25 @@ function Board() {
                     <li
                       key={t.id}
                       draggable
-                      onDragStart={(e) => e.dataTransfer.setData("text/ticket-id", t.id)}
-                      className="rounded-2xl bg-background p-3"
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("text/ticket-id", t.id);
+                        e.dataTransfer.effectAllowed = "move";
+                        // Drag the whole card, held where it was grabbed
+                        // (19 Oct feedback, item 2). Without this, grabbing
+                        // the text dragged only the inner link (a URL).
+                        const box = e.currentTarget.getBoundingClientRect();
+                        e.dataTransfer.setDragImage(
+                          e.currentTarget,
+                          e.clientX - box.left,
+                          e.clientY - box.top,
+                        );
+                        setDragging(t.id);
+                      }}
+                      onDragEnd={() => setDragging(null)}
+                      className={cn(
+                        "rounded-2xl bg-background p-3 transition-opacity",
+                        dragging === t.id && "opacity-40",
+                      )}
                     >
                       <div className="flex gap-3">
                         {thumbs.get(t.id) ? (
@@ -242,11 +260,13 @@ function Board() {
                             alt=""
                             className="size-14 shrink-0 rounded-lg object-cover"
                             loading="lazy"
+                            draggable={false}
                           />
                         ) : null}
                         <Link
                           to="/app/tickets/$ticketId"
                           params={{ ticketId: t.id }}
+                          draggable={false}
                           className="min-w-0 flex-1 rounded-lg"
                         >
                           <div className="font-mono text-sm text-muted-foreground">

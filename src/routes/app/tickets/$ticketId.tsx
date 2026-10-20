@@ -217,35 +217,39 @@ function TicketDetail() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start gap-3">
         <BackButton to="/app/tickets" label="Back" />
-        <div className="min-w-0 flex-1">
+        {/* The title keeps at least 14 rem; on phones Print and Delete move
+            to the next line instead of squeezing it (decision 121). */}
+        <div className="min-w-0 flex-1 basis-[14rem]">
           <p className="font-mono text-muted-foreground">#{ticket.ticket_number}</p>
           <h1 className="text-[1.75rem] font-semibold leading-tight">{ticket.item_name}</h1>
           {overdue ? (
             <p className="font-medium text-danger">Overdue (promised {ticket.promised_date})</p>
           ) : null}
         </div>
-        <Button variant="outline" asChild>
-          <Link to="/tag/$ticketId" params={{ ticketId: ticket.id }} target="_blank">
-            <Printer /> Print
-          </Link>
-        </Button>
-        {isAdmin ? (
-          <Button
-            variant="ghost"
-            onClick={() => {
-              if (
-                window.confirm(
-                  `Delete ticket #${ticket.ticket_number}? This is recorded in the audit log.`,
-                )
-              )
-                void rpc("delete_ticket", { p_ticket_id: ticket.id }).then((ok) => {
-                  if (ok) void navigate({ to: "/app/board" });
-                });
-            }}
-          >
-            <Trash2 /> Delete
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/tag/$ticketId" params={{ ticketId: ticket.id }} target="_blank">
+              <Printer /> Print
+            </Link>
           </Button>
-        ) : null}
+          {isAdmin ? (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Delete ticket #${ticket.ticket_number}? This is recorded in the audit log.`,
+                  )
+                )
+                  void rpc("delete_ticket", { p_ticket_id: ticket.id }).then((ok) => {
+                    if (ok) void navigate({ to: "/app/board" });
+                  });
+              }}
+            >
+              <Trash2 /> Delete
+            </Button>
+          ) : null}
+        </div>
       </div>
       {message ? (
         <FormAlert tone={message.tone}>

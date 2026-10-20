@@ -6,6 +6,7 @@ import {
   byDate,
   monthGrid,
   monthLabel,
+  shortDate,
   ticketCount,
   weekDays,
   weekLabel,
@@ -69,5 +70,18 @@ describe("calendar dates", () => {
     );
     expect(m.get("2026-10-19")?.map((t) => t.id)).toEqual([1, 3]);
     expect(m.size).toBe(1);
+  });
+});
+
+describe("shortDate", () => {
+  it("shows month and day", () => {
+    expect(shortDate("2026-10-28")).toBe("Oct 28");
+    expect(shortDate("2026-01-05", "2026-10-20")).toBe("Jan 5");
+  });
+  it("adds the year when it isn't this year", () => {
+    expect(shortDate("2027-02-01", "2026-10-20")).toBe("Feb 1, 2027");
+  });
+  it("leaves anything else as it is", () => {
+    expect(shortDate("soon")).toBe("soon");
   });
 });

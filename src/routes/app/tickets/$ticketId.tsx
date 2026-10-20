@@ -15,6 +15,7 @@ import { TicketPhotosPanel } from "@/components/tickets/TicketPhotosPanel";
 import { TicketTimeline } from "@/components/tickets/TicketTimeline";
 import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
 import { TicketMessages } from "@/components/messages/TicketMessages";
+import { shortDate } from "@/lib/calendar";
 import { friendlyDbError, roleAtLeast } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import {
@@ -223,7 +224,9 @@ function TicketDetail() {
           <p className="font-mono text-muted-foreground">#{ticket.ticket_number}</p>
           <h1 className="text-[1.75rem] font-semibold leading-tight">{ticket.item_name}</h1>
           {overdue ? (
-            <p className="font-medium text-danger">Overdue (promised {ticket.promised_date})</p>
+            <p className="font-medium text-danger">
+              Overdue (promised {shortDate(ticket.promised_date ?? "")})
+            </p>
           ) : null}
         </div>
         <div className="flex gap-2">

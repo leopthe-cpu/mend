@@ -91,6 +91,18 @@ export function monthLabel(iso: string): string {
   return `${MONTHS[m - 1]} ${y}`;
 }
 
+/**
+ * "Oct 28" for a yyyy-mm-dd date; "Oct 28, 2027" when it isn't in the year of
+ * `today` (decision 122). Shorter than the ISO form and never wraps oddly
+ * ("2026- / 10-28") in narrow columns.
+ */
+export function shortDate(iso: string, today?: string): string {
+  const [y, m, d] = parts(iso);
+  if (!y || !m || !d) return iso;
+  const label = `${MONTHS[m - 1]?.slice(0, 3) ?? ""} ${d}`;
+  return today && parts(today)[0] !== y ? `${label}, ${y}` : label;
+}
+
 /** "Oct 19 – 25", or "Oct 26 – Nov 1" across months, or with years across a new year. */
 export function weekLabel(iso: string): string {
   const days = weekDays(iso);

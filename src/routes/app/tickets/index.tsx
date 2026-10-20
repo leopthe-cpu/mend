@@ -238,8 +238,8 @@ function TicketList() {
         placeholder="Search or filter: customer, item, #, status, person…"
       />
 
-      <div className="overflow-x-auto rounded-lg bg-card">
-        <table className="w-full text-left">
+      <div className="relative overflow-x-auto rounded-lg bg-card">
+        <table className="w-full text-left [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
           <thead className="border-b border-border text-sm text-muted-foreground">
             <tr>
               {header("ticket_number", "#")}

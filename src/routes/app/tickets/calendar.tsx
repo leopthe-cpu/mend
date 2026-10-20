@@ -247,7 +247,10 @@ function CalendarPage() {
       ) : view === "week" ? (
         <section
           aria-label="Week"
-          className="grid gap-3 rounded-[1.75rem] bg-card p-3 md:grid-cols-7 md:p-4"
+          // Phones: the days stack. Wider screens: seven columns that share the
+          // width but never go below 9.5 rem; when they don't fit, the week
+          // scrolls sideways inside its card, like the board (decision 119).
+          className="flex flex-col gap-3 rounded-[1.75rem] bg-card p-3 md:snap-x md:scroll-px-4 md:flex-row md:overflow-x-auto md:p-4"
         >
           {weekDays(anchor).map((iso) => {
             const list = perDay.get(iso) ?? [];
@@ -257,7 +260,7 @@ function CalendarPage() {
               <div
                 key={iso}
                 className={cn(
-                  "flex min-w-0 flex-col gap-2 rounded-3xl p-3 md:min-h-[28rem]",
+                  "flex min-w-0 flex-col gap-2 rounded-3xl p-3 md:min-h-[28rem] md:min-w-[9.5rem] md:flex-1 md:basis-0 md:snap-start",
                   isToday ? "bg-primary/10" : "bg-background",
                 )}
               >
@@ -271,13 +274,28 @@ function CalendarPage() {
                       {dayOfMonth(iso)}
                     </span>
                   </span>
+                  {/* The count is just the number in a column ("2 tickets"
+                      on phones, where the day spans the screen), so it never
+                      wraps. */}
                   <span
+                    title={rows ? ticketCount(list.length) : undefined}
                     className={cn(
-                      "rounded-full px-2.5 py-1 text-sm",
+                      "rounded-full px-2.5 py-1 text-sm whitespace-nowrap",
                       isToday ? "bg-primary text-primary-foreground" : "bg-card",
                     )}
                   >
-                    {closed && !list.length ? "Closed" : rows ? ticketCount(list.length) : "…"}
+                    {closed && !list.length ? (
+                      "Closed"
+                    ) : rows ? (
+                      <>
+                        <span className="md:hidden">{ticketCount(list.length)}</span>
+                        <span className="hidden md:inline" aria-label={ticketCount(list.length)}>
+                          {list.length}
+                        </span>
+                      </>
+                    ) : (
+                      "…"
+                    )}
                   </span>
                 </div>
                 {list.map((t) => {
@@ -294,7 +312,7 @@ function CalendarPage() {
                         <span className="font-mono">#{t.ticket_number}</span>
                         {t.customer ? ` · ${t.customer.name}` : ""}
                       </span>
-                      <span className="truncate font-medium">{t.item_name}</span>
+                      <span className="line-clamp-2 font-medium">{t.item_name}</span>
                       <span className="flex items-center gap-1.5 text-sm">
                         {late ? (
                           <span className="font-medium text-danger">! Late</span>

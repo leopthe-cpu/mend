@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { FilterBar, ValueChip, type FilterOption } from "@/components/app/FilterBar";
 import { TicketsTop } from "@/components/tickets/TicketsTop";
+import { shortDate } from "@/lib/calendar";
 import { formatMoney } from "@/lib/money";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
@@ -313,11 +314,11 @@ function TicketList() {
                     />
                   </td>
                   <td className={cn("px-3 py-3", overdueRow && "font-medium text-danger")}>
-                    {t.promised_date ?? ""}
+                    {t.promised_date ? shortDate(t.promised_date, today) : ""}
                     {overdueRow ? " · Overdue" : ""}
                   </td>
-                  <td className="px-3 py-3 font-mono text-sm">
-                    {shopToday(shop.time_zone, new Date(t.created_at))}
+                  <td className="px-3 py-3">
+                    {shortDate(shopToday(shop.time_zone, new Date(t.created_at)), today)}
                   </td>
                   <td className="px-3 py-3">
                     {t.created_by ? (

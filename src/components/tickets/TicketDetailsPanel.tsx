@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CustomFieldInput } from "@/components/tickets/CustomFieldInput";
+import { shortDate } from "@/lib/calendar";
 import type { CustomField, Member, Ticket } from "@/lib/tickets";
 import { useUnsavedChanges } from "@/lib/unsaved";
 
@@ -230,7 +231,7 @@ export function TicketDetailsPanel({
         </div>
         <div>
           <dt className="text-sm text-muted-foreground">Promised date</dt>
-          <dd>{dash(ticket.promised_date)}</dd>
+          <dd>{ticket.promised_date ? shortDate(ticket.promised_date) : "—"}</dd>
         </div>
         <div>
           <dt className="text-sm text-muted-foreground">Assigned to</dt>

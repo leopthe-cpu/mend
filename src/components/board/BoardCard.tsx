@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Bell, Image as ImageIcon } from "lucide-react";
 
+import { shortDate } from "@/lib/calendar";
 import { initials, isOverdue, isUnclaimed, type Status, type Ticket } from "@/lib/tickets";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +60,7 @@ export function BoardCard({
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
         {t.promised_date ? (
-          <span className="text-muted-foreground">Due {t.promised_date}</span>
+          <span className="text-muted-foreground">Due {shortDate(t.promised_date, today)}</span>
         ) : null}
         {thumb ? (
           <ImageIcon className="size-4 text-muted-foreground" aria-label="Has photos" />

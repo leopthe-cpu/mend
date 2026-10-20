@@ -124,7 +124,7 @@ export function TopBar({ membership }: { membership: Membership }) {
           <Search className="size-4" aria-hidden />
         </span>
         <span className="truncate">Search customers, items, dates, ticket #…</span>
-        <kbd className="ml-auto hidden rounded-md border border-border px-2 font-mono text-sm sm:inline">
+        <kbd className="ml-auto hidden rounded-md border border-border px-2 font-mono text-sm whitespace-nowrap sm:inline">
           Ctrl K
         </kbd>
       </button>

@@ -141,7 +141,10 @@ function Tiles({
     <section
       id="ticket-tiles"
       aria-label="Summary"
-      className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5"
+      // One row at every width (decision 118): the tiles share the width and
+      // never go below 12 rem; when five don't fit (phones, tablets, small
+      // windows) the row swipes sideways instead of wrapping to a second row.
+      className="flex snap-x gap-3 overflow-x-auto pb-1"
     >
       <Tile
         label="Due today"
@@ -192,7 +195,7 @@ function Tiles({
       <Link
         to="/app/tickets/calendar"
         search={{ view: "week" }}
-        className="col-span-2 flex flex-col gap-1 rounded-[1.75rem] bg-primary p-4 text-primary-foreground transition-shadow hover:shadow-md md:col-span-1"
+        className="flex min-w-[13rem] flex-1 basis-0 snap-start flex-col gap-1 rounded-[1.75rem] bg-primary p-4 text-primary-foreground transition-shadow hover:shadow-md"
       >
         <span className="flex items-center justify-between gap-2 font-medium">
           This week
@@ -240,7 +243,7 @@ function Tile({
       to={to}
       search={f ? { f } : {}}
       className={cn(
-        "flex flex-col gap-1 rounded-[1.75rem] p-4 transition-shadow hover:shadow-md",
+        "flex min-w-[12rem] flex-1 basis-0 snap-start flex-col gap-1 rounded-[1.75rem] p-4 transition-shadow hover:shadow-md",
         dark ? "surface-dark bg-background text-foreground" : "bg-card",
       )}
     >

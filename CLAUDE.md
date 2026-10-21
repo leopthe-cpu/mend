@@ -62,3 +62,11 @@ Exactly one Owner per shop. Nobody grants a role above their own. The Owner can'
 - Shapes: pill buttons (`rounded-full`; primary filled blue, secondary outlined blue), cards and panels `rounded-[1.75rem]` white on the grey canvas without borders; inputs, text boxes, search, tables and lists `rounded-lg`, the same as the action banners (decision 95). Detail pages start with the round black `BackButton`. Flat: no gradients or heavy shadows in the app (the action banners' wash is the one exception, decision 81).
 - Status colors are always paired with a label and an icon. WCAG AA for every pair (`docs/contrast.md`). Touch targets ≥ 44×44 px, visible focus rings, full keyboard support, respect `prefers-reduced-motion`.
 - Logo: `public/brand/mend-wordmark.png`. Never stretch or recolor it, and keep clear space of at least the period's height around it. Photos: `public/images/`.
+
+## Keep the progress file current
+
+Oz follows progress on the Popmart projects dashboard, which reads `docs/PROGRESS.md` (format: Creative.can `docs/PROGRESS_FORMAT.md`). At the end of every work session:
+1. Update the front matter (`updated`, `summary`).
+2. Move items between Doing, To do and Done, and add new items. Product and Marketing items can be `@me` (Oz) or `@claude`.
+3. Put anything that needs Oz's accounts, keys, decisions or content under To do with `@me`.
+4. Only mark an item Done with evidence (merged PR, passing tests, live page).

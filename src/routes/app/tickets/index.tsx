@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { FilterBar, ValueChip, type FilterOption } from "@/components/app/FilterBar";
@@ -113,10 +113,13 @@ function TicketList() {
   const today = shopToday(shop.time_zone);
   const byStatus = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
 
-  const memberName = (id: string | null) => {
-    const m = members.find((x) => x.user_id === id);
-    return m ? m.name || m.email : "—";
-  };
+  const memberName = useCallback(
+    (id: string | null) => {
+      const m = members.find((x) => x.user_id === id);
+      return m ? m.name || m.email : "—";
+    },
+    [members],
+  );
 
   const options = useMemo<FilterOption[]>(() => {
     const people = members.map((m) => ({ id: m.user_id, name: m.name || m.email }));
@@ -192,7 +195,7 @@ function TicketList() {
     return list.sort(
       (a, b) => (val(a) < val(b) ? -1 : val(a) > val(b) ? 1 : 0) * (sort.asc ? 1 : -1),
     );
-  }, [tickets, totals, byStatus, active, text, sort, today, shop.time_zone, members]);
+  }, [tickets, totals, byStatus, active, text, sort, today, memberName]);
 
   const openTicket = (id: string) =>
     void navigate({ to: "/app/tickets/$ticketId", params: { ticketId: id } });

@@ -31,6 +31,15 @@ TanStack Start (React 19, TS strict, Vite, Tailwind v4, shadcn/ui), built by Nit
 - The browser only ever holds the publishable key (`VITE_SUPABASE_*`). Service-role/secret keys and provider keys live only in Edge Function secrets or CI secrets. Never commit `.env*` (except `.env.example`).
 - Audit log is append-only; nobody can update or delete it.
 
+## Supabase access for AI agents
+- Cloud sessions carry two scoped Supabase access tokens (`sbp_…`, Project access) as env vars. Never print, log, commit or paste either value; refer to them by name only.
+  - `SUPABASE_TOKEN_STAGING`: only `mend-staging` (`guqmpdlervjwhclsndyn`); database read-write, Edge Functions read-write.
+  - `SUPABASE_TOKEN_PROD`: only `mend` (`zasagjabtifpuhayttki`); database read-only, Edge Functions read-write.
+- Use the Management API per project (`https://api.supabase.com/v1/projects/<ref>/…`). `GET /v1/projects` returns 403 (`projects_read` missing) for these tokens; that's expected.
+- Default to `SUPABASE_TOKEN_STAGING` for anything that touches Supabase.
+- **Nothing reaches production without Oz's explicit OK, given in the conversation for that specific action.** That covers any call with `SUPABASE_TOKEN_PROD` (including read-only queries), linking the `mend` project, deploying Edge Functions and changing secrets or settings. Its Edge Functions scope is read-write, so the token alone does not stop a production deploy. Production schema changes still only arrive through the `develop` → `main` PR.
+- The Supabase MCP connector in these sessions is not linked to the Mend projects; don't use it for Mend work. Checked 2026-10-21: decision 125.
+
 ## Permissions matrix (enforced in RLS and RPCs; the UI only hides)
 
 | Action                                                   | Owner | Admin | Staff               |

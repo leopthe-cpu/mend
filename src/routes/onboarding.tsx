@@ -4,7 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AuthLayout, FormAlert } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { getSupabase } from "@/lib/supabase";
-import { countryForTimeZone, fetchMyMembership, friendlyDbError, guessTimeZone } from "@/lib/shop";
+import {
+  countryForTimeZone,
+  fetchMyMembership,
+  forgetAppData,
+  friendlyDbError,
+  guessTimeZone,
+} from "@/lib/shop";
 
 // First entry after confirming the email (decision 53): no questions here.
 // The shop is created with defaults (generated name, trade "Something else",
@@ -50,6 +56,7 @@ function Onboarding() {
     });
     // "already belong to a shop" means a second tab got there first: fine.
     if (error && error.code !== "23505") return setError(friendlyDbError(error));
+    forgetAppData();
     await navigate({ to: "/app/setup", replace: true });
   }, [navigate]);
 

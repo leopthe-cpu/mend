@@ -21,6 +21,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppBoardRouteImport } from './routes/app/board'
+import { Route as AppCalendarRouteImport } from './routes/app/calendar'
 import { Route as AppCatalogRouteImport } from './routes/app/catalog'
 import { Route as AppMessagesRouteImport } from './routes/app/messages'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
@@ -43,6 +44,7 @@ import { Route as AppSettingsTaxesRouteImport } from './routes/app/settings/taxe
 import { Route as AppSettingsTeamRouteImport } from './routes/app/settings/team'
 import { Route as AppTicketsIndexRouteImport } from './routes/app/tickets/index'
 import { Route as AppTicketsTicketIdRouteImport } from './routes/app/tickets/$ticketId'
+import { Route as AppTicketsCalendarRouteImport } from './routes/app/tickets/calendar'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -102,6 +104,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppBoardRoute = AppBoardRouteImport.update({
   id: '/board',
   path: '/board',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCalendarRoute = AppCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCatalogRoute = AppCatalogRouteImport.update({
@@ -214,6 +221,11 @@ const AppTicketsTicketIdRoute = AppTicketsTicketIdRouteImport.update({
   path: '/tickets/$ticketId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTicketsCalendarRoute = AppTicketsCalendarRouteImport.update({
+  id: '/tickets/calendar',
+  path: '/tickets/calendar',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -227,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/app/board': typeof AppBoardRoute
+  '/app/calendar': typeof AppCalendarRoute
   '/app/catalog': typeof AppCatalogRoute
   '/app/messages': typeof AppMessagesRoute
   '/app/settings': typeof AppSettingsRouteWithChildren
@@ -247,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/app/settings/taxes': typeof AppSettingsTaxesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/app/tickets/$ticketId': typeof AppTicketsTicketIdRoute
+  '/app/tickets/calendar': typeof AppTicketsCalendarRoute
   '/app/customers/': typeof AppCustomersIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/app/tickets/': typeof AppTicketsIndexRoute
@@ -262,6 +276,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/app/board': typeof AppBoardRoute
+  '/app/calendar': typeof AppCalendarRoute
   '/app/catalog': typeof AppCatalogRoute
   '/app/messages': typeof AppMessagesRoute
   '/app/setup': typeof AppSetupRoute
@@ -281,6 +296,7 @@ export interface FileRoutesByTo {
   '/app/settings/taxes': typeof AppSettingsTaxesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/app/tickets/$ticketId': typeof AppTicketsTicketIdRoute
+  '/app/tickets/calendar': typeof AppTicketsCalendarRoute
   '/app/customers': typeof AppCustomersIndexRoute
   '/app/settings': typeof AppSettingsIndexRoute
   '/app/tickets': typeof AppTicketsIndexRoute
@@ -298,6 +314,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/app/board': typeof AppBoardRoute
+  '/app/calendar': typeof AppCalendarRoute
   '/app/catalog': typeof AppCatalogRoute
   '/app/messages': typeof AppMessagesRoute
   '/app/settings': typeof AppSettingsRouteWithChildren
@@ -318,6 +335,7 @@ export interface FileRoutesById {
   '/app/settings/taxes': typeof AppSettingsTaxesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/app/tickets/$ticketId': typeof AppTicketsTicketIdRoute
+  '/app/tickets/calendar': typeof AppTicketsCalendarRoute
   '/app/customers/': typeof AppCustomersIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/app/tickets/': typeof AppTicketsIndexRoute
@@ -336,6 +354,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/unsubscribe'
     | '/app/board'
+    | '/app/calendar'
     | '/app/catalog'
     | '/app/messages'
     | '/app/settings'
@@ -356,6 +375,7 @@ export interface FileRouteTypes {
     | '/app/settings/taxes'
     | '/app/settings/team'
     | '/app/tickets/$ticketId'
+    | '/app/tickets/calendar'
     | '/app/customers/'
     | '/app/settings/'
     | '/app/tickets/'
@@ -371,6 +391,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/unsubscribe'
     | '/app/board'
+    | '/app/calendar'
     | '/app/catalog'
     | '/app/messages'
     | '/app/setup'
@@ -390,6 +411,7 @@ export interface FileRouteTypes {
     | '/app/settings/taxes'
     | '/app/settings/team'
     | '/app/tickets/$ticketId'
+    | '/app/tickets/calendar'
     | '/app/customers'
     | '/app/settings'
     | '/app/tickets'
@@ -406,6 +428,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/unsubscribe'
     | '/app/board'
+    | '/app/calendar'
     | '/app/catalog'
     | '/app/messages'
     | '/app/settings'
@@ -426,6 +449,7 @@ export interface FileRouteTypes {
     | '/app/settings/taxes'
     | '/app/settings/team'
     | '/app/tickets/$ticketId'
+    | '/app/tickets/calendar'
     | '/app/customers/'
     | '/app/settings/'
     | '/app/tickets/'
@@ -533,6 +557,13 @@ declare module '@tanstack/react-router' {
       path: '/board'
       fullPath: '/app/board'
       preLoaderRoute: typeof AppBoardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/calendar': {
+      id: '/app/calendar'
+      path: '/calendar'
+      fullPath: '/app/calendar'
+      preLoaderRoute: typeof AppCalendarRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/catalog': {
@@ -689,6 +720,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTicketsTicketIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/tickets/calendar': {
+      id: '/app/tickets/calendar'
+      path: '/tickets/calendar'
+      fullPath: '/app/tickets/calendar'
+      preLoaderRoute: typeof AppTicketsCalendarRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -722,6 +760,7 @@ const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppBoardRoute: typeof AppBoardRoute
+  AppCalendarRoute: typeof AppCalendarRoute
   AppCatalogRoute: typeof AppCatalogRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppSettingsRoute: typeof AppSettingsRouteWithChildren
@@ -729,12 +768,14 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppCustomersCustomerIdRoute: typeof AppCustomersCustomerIdRoute
   AppTicketsTicketIdRoute: typeof AppTicketsTicketIdRoute
+  AppTicketsCalendarRoute: typeof AppTicketsCalendarRoute
   AppCustomersIndexRoute: typeof AppCustomersIndexRoute
   AppTicketsIndexRoute: typeof AppTicketsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppBoardRoute: AppBoardRoute,
+  AppCalendarRoute: AppCalendarRoute,
   AppCatalogRoute: AppCatalogRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppSettingsRoute: AppSettingsRouteWithChildren,
@@ -742,6 +783,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppCustomersCustomerIdRoute: AppCustomersCustomerIdRoute,
   AppTicketsTicketIdRoute: AppTicketsTicketIdRoute,
+  AppTicketsCalendarRoute: AppTicketsCalendarRoute,
   AppCustomersIndexRoute: AppCustomersIndexRoute,
   AppTicketsIndexRoute: AppTicketsIndexRoute,
 }

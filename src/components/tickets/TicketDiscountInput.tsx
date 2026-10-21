@@ -26,7 +26,7 @@ export function TicketDiscountInput({
       <div
         role="group"
         aria-label="Discount type"
-        className="flex shrink-0 overflow-hidden rounded-md border border-input"
+        className="flex shrink-0 overflow-hidden rounded-lg border border-input"
       >
         <button
           type="button"

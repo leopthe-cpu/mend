@@ -200,6 +200,15 @@ export const STATUS_COLOR_CLASS: Record<Status["color"], string> = {
   closed: "bg-status-closed",
 };
 
+/** Soft status tints for value chips in tables (decision 103); text stays near-black. */
+export const STATUS_TINT_CLASS: Record<Status["color"], string> = {
+  received: "bg-status-received/15",
+  "in-progress": "bg-status-in-progress/15",
+  waiting: "bg-status-waiting/15",
+  ready: "bg-status-ready/15",
+  closed: "bg-status-closed/15",
+};
+
 export async function signedPhotoUrls(paths: string[]): Promise<Map<string, string>> {
   if (!paths.length) return new Map();
   const { data, error } = await getSupabase()

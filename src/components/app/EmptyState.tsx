@@ -12,7 +12,7 @@ export function EmptyState({
   eyebrow?: string;
 }) {
   return (
-    <section className="mx-auto flex max-w-xl flex-col items-start gap-3 rounded-lg border border-border bg-card p-8">
+    <section className="mx-auto flex max-w-xl flex-col items-start gap-3 rounded-[1.75rem] bg-card p-8">
       {eyebrow ? (
         <p className="font-mono text-sm uppercase tracking-normal text-muted-foreground">
           {eyebrow}

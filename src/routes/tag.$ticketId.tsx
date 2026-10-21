@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { shortDate } from "@/lib/calendar";
 import { fetchMyMembership, type Shop } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import { fetchTicket, type Ticket } from "@/lib/tickets";
@@ -47,7 +48,7 @@ function ClaimTag() {
       <p className="text-lg font-semibold">{shop.name}</p>
       <p className="font-mono text-3xl font-bold">#{ticket.ticket_number}</p>
       <p>{ticket.item_name}</p>
-      {ticket.promised_date ? <p>Ready by {ticket.promised_date}</p> : null}
+      {ticket.promised_date ? <p>Ready by {shortDate(ticket.promised_date)}</p> : null}
       {shop.phone ? <p>{shop.phone}</p> : null}
     </div>
   );

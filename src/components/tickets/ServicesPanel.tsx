@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Pencil, Plus, X } from "lucide-react";
+import { BookOpen, Check, ChevronDown, Pencil, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { MoneyInput } from "@/components/app/MaskedInputs";
@@ -391,7 +391,7 @@ function ServiceSearch({
   if (custom) {
     return (
       <div
-        className="flex flex-col gap-2 rounded-md border border-input bg-surface-1 p-3"
+        className="flex flex-col gap-2 rounded-lg border border-input bg-surface-1 p-3"
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
@@ -456,7 +456,7 @@ function ServiceSearch({
 
   return (
     <div className="relative">
-      <Plus
+      <BookOpen
         aria-hidden
         className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
       />
@@ -490,8 +490,27 @@ function ServiceSearch({
       {open && (matches.length || isAdmin) ? (
         <ul
           data-picker-list
-          className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-input bg-surface-2 shadow-lg ring-1 ring-black/5"
+          className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 divide-y divide-border overflow-y-auto rounded-lg border border-input bg-surface-2 shadow-lg ring-1 ring-black/5"
         >
+          {isAdmin ? (
+            <li>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  startCustom();
+                }}
+                className="flex min-h-11 w-full items-center gap-2 px-4 text-left font-semibold hover:bg-accent"
+              >
+                <BookOpen aria-hidden className="size-4" />
+                {q.trim() ? (
+                  <>New service &ldquo;{q.trim()}&rdquo;</>
+                ) : (
+                  "New service (not in the catalog)"
+                )}
+              </button>
+            </li>
+          ) : null}
           {matches.map((i) => (
             <li key={i.id}>
               <button
@@ -513,25 +532,6 @@ function ServiceSearch({
               </button>
             </li>
           ))}
-          {isAdmin ? (
-            <li>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  startCustom();
-                }}
-                className="flex min-h-11 w-full items-center gap-2 px-4 text-left font-semibold hover:bg-accent"
-              >
-                <Plus aria-hidden className="size-4" />
-                {q.trim() ? (
-                  <>New service &ldquo;{q.trim()}&rdquo;</>
-                ) : (
-                  "New service (not in the catalog)"
-                )}
-              </button>
-            </li>
-          ) : null}
         </ul>
       ) : null}
     </div>

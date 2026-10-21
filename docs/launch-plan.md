@@ -6,28 +6,29 @@ the legal research is in [legal-compliance.md](legal-compliance.md).
 
 ## Status and order (21 Oct 2026)
 
-Oz, 21 Oct: get a working, tested product first; **Twilio toll-free
-verification and Supabase backups come last**, right before talking to
+Oz, 21 Oct: get a working, tested product first; **plans and billing,
+Twilio toll-free verification and Supabase backups come last**, right before talking to
 customers. So the order is now:
 
 1. **This week: finish and test the product.** Claude: cleanups, the open
    feature decisions below, fixes from Oz's tests. Oz: test on staging (phone,
    iPad, Safari), then release `develop` → `main`.
 2. **Before talking to customers:** L2 (legal package and lawyer review), L7
-   (a full day on a real phone, on production), then L1b toll-free
-   verification and L4 backups, last.
+   (a full day on a real phone, on production), then, last: L8 plans,
+   pricing and billing, L1b toll-free verification and L4 backups.
 
-| Step                      | State (checked by Claude on 21 Oct)                                                                                                                                                                                                                                                                            |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| L1a Interim legal pages   | Done. Live pages pass the Twilio checks: STOP/HELP, message and data rates, frequency, no sharing of numbers, subprocessors, contact email, marked interim.                                                                                                                                                    |
-| L1b Twilio                | Number, webhook and secrets set (trial). **Toll-free verification: last, before customers.**                                                                                                                                                                                                                   |
-| L1c STOP wording          | Done (decision 74). STOP/START handling on a real phone: in Oz's test list.                                                                                                                                                                                                                                    |
-| L2 Legal package          | Not started. Already built from its product list: sign-up acceptance (75), email unsubscribe footer (88), shop address required (76), retention job (86), per-customer export (87). Left: lawyer review, final pages, intake consent wording, Quebec gate (only stated in the terms today, not enforced).      |
-| L3 Customer emails        | Set up by Oz. Delivered status on a real email: in Oz's test list.                                                                                                                                                                                                                                             |
-| L4 Backups (Supabase Pro) | **Last, before customers.**                                                                                                                                                                                                                                                                                    |
-| L5 Custom domain          | www.mendshops.com live; text links use it (migration `20261101090000_custom_domain`). Not checkable by Claude: the Supabase Auth Site URL and redirect URLs for production (dashboard; Claude has no production access by design). In Oz's test list as "sign-up and password-reset links open mendshops.com". |
-| L6 Website wording        | Fixed: the Features card now says the drop-off confirmation is automatic when the customer agrees. Final wording follows L2.                                                                                                                                                                                   |
-| L7 Real-device day        | Before customers, on production.                                                                                                                                                                                                                                                                               |
+| Step                          | State (checked by Claude on 21 Oct)                                                                                                                                                                                                                                                                            |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| L1a Interim legal pages       | Done. Live pages pass the Twilio checks: STOP/HELP, message and data rates, frequency, no sharing of numbers, subprocessors, contact email, marked interim.                                                                                                                                                    |
+| L1b Twilio                    | Number, webhook and secrets set (trial). **Toll-free verification: last, before customers.**                                                                                                                                                                                                                   |
+| L1c STOP wording              | Done (decision 74). STOP/START handling on a real phone: in Oz's test list.                                                                                                                                                                                                                                    |
+| L2 Legal package              | Not started. Already built from its product list: sign-up acceptance (75), email unsubscribe footer (88), shop address required (76), retention job (86), per-customer export (87). Left: lawyer review, final pages, intake consent wording, Quebec gate (only stated in the terms today, not enforced).      |
+| L3 Customer emails            | Set up by Oz. Delivered status on a real email: in Oz's test list.                                                                                                                                                                                                                                             |
+| L4 Backups (Supabase Pro)     | **Last, before customers.**                                                                                                                                                                                                                                                                                    |
+| L5 Custom domain              | www.mendshops.com live; text links use it (migration `20261101090000_custom_domain`). Not checkable by Claude: the Supabase Auth Site URL and redirect URLs for production (dashboard; Claude has no production access by design). In Oz's test list as "sign-up and password-reset links open mendshops.com". |
+| L6 Website wording            | Fixed: the Features card now says the drop-off confirmation is automatic when the customer agrees. Final wording follows L2.                                                                                                                                                                                   |
+| L7 Real-device day            | Before customers, on production.                                                                                                                                                                                                                                                                               |
+| L8 Plans, pricing and billing | **On hold until right before customers** (Oz, 21 Oct): revise the features per plan, the plans and prices, then connect Stripe. Customer replies (decision 107) and the Pro shop logo are decided with it. The website pricing section stays as it is until then.                                              |
 
 Also checked on 21 Oct: all five Edge Functions are deployed in production
 (they answer, a missing function returns 404); production sends the security

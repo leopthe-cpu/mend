@@ -31,11 +31,16 @@ www.mendshops.com after the release:
 - Trade status lists (decision 52) and passcode reveals, 30 per person per hour (decision 60). [Keep.]
 - Decisions 87 (one customer's data export) and 88 (unsubscribe footer): built and live on staging, still marked "proposed". [Accept.]
 - Summary tiles (decision 114): keep the five, or add "Waiting on customer" or "Money due at pickup". [Add "Money due at pickup" later, once shops use payments.]
-- Customer replies (decision 107): option A or B. [A, built together with pricing tiers; not needed for launch.]
-- Website pricing: the page shows $19 / $39 plans and a 14-day trial, but Mend has no plans or billing yet and also says "free while in early access". [Show early access only until billing exists.]
 - Website audience: it names cobblers, leather and watch repair; tailoring, electronics and ski shops can also sign up. [Name tailors too.]
 
 ## Before talking to customers (last)
+
+- **Plans, pricing and billing** (Oz, 21 Oct: on hold until then). Revise the
+  features in each plan, the plans and their prices, and connect Stripe. Decide
+  with it: customer replies (decision 107, option A or B; Claude recommends A)
+  and the Pro shop logo. Until then the website keeps its current pricing
+  section ($19 / $39, 14-day trial, "free while in early access"), even though
+  no plans or billing exist yet.
 
 - Legal package and lawyer review (launch-plan.md L2).
 - A full day on a real phone on production (L7).

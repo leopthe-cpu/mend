@@ -32,11 +32,13 @@ TanStack Start (React 19, TS strict, Vite, Tailwind v4, shadcn/ui), built by Nit
 - Audit log is append-only; nobody can update or delete it.
 
 ## Supabase access for AI agents
-- Cloud sessions carry two Supabase personal access tokens (`sbp_…`) as env vars: `SUPABASE_TOKEN_STAGING` (meant for `mend-staging`, `guqmpdlervjwhclsndyn`) and `SUPABASE_TOKEN_PROD` (meant for `mend`, `zasagjabtifpuhayttki`). Never print, log, commit or paste either value; refer to them by name only.
-- Default to `SUPABASE_TOKEN_STAGING` for anything that touches Supabase (`--project-ref guqmpdlervjwhclsndyn`).
-- **Nothing reaches production without Oz's explicit OK, given in the conversation for that specific action.** That covers using `SUPABASE_TOKEN_PROD` at all, linking or querying the `mend` project, applying migrations, deploying Edge Functions, and changing secrets or settings. Production schema changes still only arrive through the `develop` → `main` PR.
-- A classic personal access token carries the account's full access to every org and project, so a token named "staging" may also reach production. Treat both as production-capable until Oz confirms they are scoped tokens (see Supabase's "Personal Access Tokens" guide).
-- The Supabase MCP connector in these sessions is not linked to the Mend projects; don't use it for Mend work. Status as of 2026-10-21: decision 125.
+- Cloud sessions carry two scoped Supabase access tokens (`sbp_…`, Project access) as env vars. Never print, log, commit or paste either value; refer to them by name only.
+  - `SUPABASE_TOKEN_STAGING`: only `mend-staging` (`guqmpdlervjwhclsndyn`); database read-write, Edge Functions read-write.
+  - `SUPABASE_TOKEN_PROD`: only `mend` (`zasagjabtifpuhayttki`); database read-only, Edge Functions read-write.
+- Use the Management API per project (`https://api.supabase.com/v1/projects/<ref>/…`). `GET /v1/projects` returns 403 (`projects_read` missing) for these tokens; that's expected.
+- Default to `SUPABASE_TOKEN_STAGING` for anything that touches Supabase.
+- **Nothing reaches production without Oz's explicit OK, given in the conversation for that specific action.** That covers any call with `SUPABASE_TOKEN_PROD` (including read-only queries), linking the `mend` project, deploying Edge Functions and changing secrets or settings. Its Edge Functions scope is read-write, so the token alone does not stop a production deploy. Production schema changes still only arrive through the `develop` → `main` PR.
+- The Supabase MCP connector in these sessions is not linked to the Mend projects; don't use it for Mend work. Checked 2026-10-21: decision 125.
 
 ## Permissions matrix (enforced in RLS and RPCs; the UI only hides)
 

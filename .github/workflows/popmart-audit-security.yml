@@ -1,0 +1,185 @@
+# Popmart audit: security — PORTABLE TEMPLATE (from leopthe-cpu/Creative.can,
+# docs/audit-templates/). Copy to .github/workflows/popmart-audit-security.yml in the project's
+# repository (through that project's normal PR flow). Works with package-lock.json (npm audit) or
+# bun.lock (bun audit). Results appear on the Popmart dashboard's "Security audit" tile.
+# Setup and what it checks: docs/AUDITS_SETUP.md in Creative.can. Runs:
+#   - from the dashboard's "Run now" (audit-run → workflow_dispatch with workspace_id and kind);
+#   - every Monday at 07:13 UTC, and on pushes to main that change package*.json (these report to
+#     the POPMART_WORKSPACE_ID repository variable).
+# The audit job holds no secrets. Only the small report job sees AUDIT_REPORT_SECRET, and it runs
+# no project code: it signs the summary (HMAC-SHA256) and posts it to the audit-report function.
+name: Popmart audit (security)
+
+on:
+  workflow_dispatch:
+    inputs:
+      workspace_id:
+        description: Popmart dashboard workspace id (filled in by "Run now")
+        required: false
+        type: string
+      kind:
+        description: Audit kind (this file always runs the security audit)
+        required: false
+        type: string
+        default: security
+  schedule:
+    - cron: '13 7 * * 1'
+  push:
+    branches: [main]
+    paths:
+      - 'package*.json'
+      - '**/package*.json'
+      - 'bun.lock'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: popmart-audit-security-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Audit (no secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      ran_at: ${{ steps.start.outputs.ran_at }}
+      result: ${{ steps.summary.outputs.result }}
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      # sha256 of gitleaks_8.30.1_linux_x64.tar.gz from the release's gitleaks_8.30.1_checksums.txt.
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - id: start
+        run: echo "ran_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history: the secret scan reads every commit
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@v2
+        if: hashFiles('bun.lock') != ''
+        with:
+          bun-version: 1.4.2
+
+      # Reads the lockfile only: no install, so no dependency code runs in this job.
+      # npm audit counts vulnerable packages; bun audit lists advisories (counted per advisory).
+      # Both are normalised to {critical, high, moderate, low, info, total} in npm-audit.json.
+      - name: Dependency audit (npm audit or bun audit)
+        run: |
+          set +e
+          if [ -f package-lock.json ]; then
+            npm audit --json --package-lock-only > "$RUNNER_TEMP/raw-audit.json"
+            echo "npm audit exit code: $? (non-zero also means vulnerabilities were found)"
+            jq -c '.metadata.vulnerabilities' "$RUNNER_TEMP/raw-audit.json" > "$RUNNER_TEMP/v.json"
+          elif [ -f bun.lock ]; then
+            bun audit --json > "$RUNNER_TEMP/raw-audit.json"
+            echo "bun audit exit code: $? (non-zero also means vulnerabilities were found)"
+            jq -c '[.[][] | .severity] as $s
+              | {critical: ($s | map(select(. == "critical")) | length), high: ($s | map(select(. == "high")) | length),
+                 moderate: ($s | map(select(. == "moderate")) | length), low: ($s | map(select(. == "low")) | length),
+                 info: ($s | map(select(. == "info")) | length), total: ($s | length)}' "$RUNNER_TEMP/raw-audit.json" > "$RUNNER_TEMP/v.json"
+          else
+            echo "::warning::No package-lock.json or bun.lock found"
+            echo 'null' > "$RUNNER_TEMP/v.json"
+          fi
+          set -e
+          if jq -e 'type == "object"' "$RUNNER_TEMP/v.json" > /dev/null 2>&1; then
+            jq -c '{metadata: {vulnerabilities: .}}' "$RUNNER_TEMP/v.json" > "$RUNNER_TEMP/npm-audit.json"
+          else
+            echo "::warning::The dependency audit did not return a report"
+            echo 'null' > "$RUNNER_TEMP/npm-audit.json"
+          fi
+
+      - name: Secret scan (gitleaks)
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -sSfL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          cd "$GITHUB_WORKSPACE"
+          "$RUNNER_TEMP/gitleaks" git --no-banner --redact --exit-code 0 --report-format json --report-path "$RUNNER_TEMP/gitleaks.json" .
+          [ -s "$RUNNER_TEMP/gitleaks.json" ] || echo '[]' > "$RUNNER_TEMP/gitleaks.json"
+
+      # fail: any critical or high (a possible leaked secret counts as critical); warn: moderate; else pass.
+      - name: Summarise
+        id: summary
+        run: |
+          result=$(jq -n -c \
+            --slurpfile npm "$RUNNER_TEMP/npm-audit.json" \
+            --slurpfile leaks "$RUNNER_TEMP/gitleaks.json" \
+            --arg gitleaks "$GITLEAKS_VERSION" \
+            --arg npmv "$(npm --version)" \
+            --arg bunv "$(bun --version 2>/dev/null || echo none)" '
+            ($npm[0].metadata.vulnerabilities // null) as $v
+            | ($leaks[0] // []) as $l
+            | ($l | length) as $secrets
+            | {critical: (($v.critical // 0) + $secrets), high: ($v.high // 0), medium: ($v.moderate // 0), low: ($v.low // 0)} as $c
+            | (if $v == null then "error"
+               elif ($c.critical + $c.high) > 0 then "fail"
+               elif $c.medium > 0 then "warn"
+               else "pass" end) as $status
+            | {
+                status: $status,
+                summary: (
+                  (if $v == null then "The dependency audit did not return a report. "
+                   else "Dependencies: \($v.critical // 0) critical, \($v.high // 0) high, \($v.moderate // 0) moderate, \($v.low // 0) low. " end)
+                  + (if $secrets == 0 then "No secrets found in the git history."
+                     else "Secrets: \($secrets) possible leak\(if $secrets == 1 then "" else "s" end) in the git history (gitleaks)." end)
+                ) | .[0:500],
+                counts: $c,
+                details: {
+                  dependencies: $v,
+                  secrets: $secrets,
+                  secretRules: ($l | map(.RuleID) | unique | .[0:20]),
+                  secretFiles: ($l | map(.File) | unique | .[0:20]),
+                  tools: {npm: $npmv, bun: $bunv, gitleaks: $gitleaks}
+                }
+              }')
+          echo "$result" | jq .
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+
+  report:
+    name: Report to the Popmart dashboard
+    needs: audit
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Post the signed result
+        env:
+          KIND: security
+          RESULT: ${{ needs.audit.outputs.result }}
+          RAN_AT: ${{ needs.audit.outputs.ran_at }}
+          AUDIT_JOB: ${{ needs.audit.result }}
+          WORKSPACE_ID: ${{ inputs.workspace_id || vars.POPMART_WORKSPACE_ID }}
+          FUNCTIONS_URL: ${{ vars.POPMART_FUNCTIONS_URL }}
+          AUDIT_REPORT_SECRET: ${{ secrets.AUDIT_REPORT_SECRET }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "$FUNCTIONS_URL" ] || [ -z "$AUDIT_REPORT_SECRET" ] || [ -z "$WORKSPACE_ID" ]; then
+            echo "::warning::Not reported: set the POPMART_FUNCTIONS_URL and POPMART_WORKSPACE_ID variables and the AUDIT_REPORT_SECRET secret (docs/AUDITS_SETUP.md)."
+            exit 0
+          fi
+          case "$FUNCTIONS_URL" in https://*) ;; *) echo "::error::POPMART_FUNCTIONS_URL must start with https://"; exit 1 ;; esac
+          if [ "$AUDIT_JOB" = "success" ] && printf '%s' "$RESULT" | jq -e 'type == "object" and (.status | type == "string")' > /dev/null 2>&1; then
+            partial="$RESULT"
+          else
+            partial=$(jq -n -c --arg r "$AUDIT_JOB" '{status: "error", summary: ("The audit did not finish (" + $r + "). Open the run on GitHub for details."), counts: {}, details: null}')
+          fi
+          body=$(printf '%s' "$partial" | jq -c \
+            --arg ws "$WORKSPACE_ID" --arg kind "$KIND" --arg run "$RUN_URL" --arg repo "$REPOSITORY" \
+            --arg at "${RAN_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" \
+            '{workspace_id: $ws, kind: $kind, status: .status, summary: .summary, counts: (.counts // {}), details: .details, run_url: $run, ran_at: $at, repository: $repo}')
+          sig=$(printf '%s' "$body" | openssl dgst -sha256 -hmac "$AUDIT_REPORT_SECRET" | sed 's/^.*= //')
+          curl -sS --fail-with-body --max-time 30 --retry 3 -X POST "${FUNCTIONS_URL%/}/audit-report" \
+            -H 'Content-Type: application/json' -H "x-popmart-signature: sha256=$sig" --data-binary "$body"
+          echo

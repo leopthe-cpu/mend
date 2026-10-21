@@ -19,27 +19,27 @@ const textOn = (fg: string, use: string): ContrastPair[] =>
 const uiOn = (fg: string, use: string): ContrastPair[] =>
   surfaces.map((bg) => ({ fg, bg, min: 3, use }));
 const textOnDark = (fg: string, use: string): ContrastPair[] =>
-  darkSurfaces.map((bg) => ({ fg, bg, min: 4.5, use: `${use} (charcoal)` }));
+  darkSurfaces.map((bg) => ({ fg, bg, min: 4.5, use: `${use} (dark)` }));
 const uiOnDark = (fg: string, use: string): ContrastPair[] =>
-  darkSurfaces.map((bg) => ({ fg, bg, min: 3, use: `${use} (charcoal)` }));
+  darkSurfaces.map((bg) => ({ fg, bg, min: 3, use: `${use} (dark)` }));
 
 export const contrastPairs: ContrastPair[] = [
-  // Cream canvas, bone panels, white inputs (brand guidelines, decision 50)
+  // Grey canvas, white cards and inputs (Apple-style look, decision 91)
   ...textOn("--mend-text", "Primary text"),
   ...textOn("--mend-text-muted", "Secondary text, hints"),
   ...textOn("--mend-primary", "Links"),
-  ...textOn("--mend-accent-text", "Terracotta text (labels, highlights)"),
+  ...textOn("--mend-accent-text", "Blue highlight text"),
   {
     fg: "--mend-primary-foreground",
     bg: "--mend-primary",
     min: 4.5,
-    use: "Text on black buttons",
+    use: "Text on blue buttons",
   },
   {
     fg: "--mend-accent-foreground",
     bg: "--mend-accent",
     min: 3,
-    use: "Large text on terracotta badges",
+    use: "Text on blue badges",
   },
   { fg: "--mend-primary-foreground", bg: "--danger", min: 4.5, use: "Text on destructive buttons" },
   {
@@ -53,7 +53,7 @@ export const contrastPairs: ContrastPair[] = [
   ...textOn("--danger", "Error message text"),
   ...uiOn("--mend-input-border", "Input and checkbox borders"),
   ...uiOn("--mend-primary", "Focus ring"),
-  ...uiOn("--mend-accent", "Terracotta indicators and badges"),
+  ...uiOn("--mend-accent", "Blue indicators and badges"),
   ...uiOn("--status-received", "Status icon: Received"),
   ...uiOn("--status-in-progress", "Status icon: In progress"),
   ...uiOn("--status-waiting", "Status icon: Waiting"),
@@ -61,13 +61,13 @@ export const contrastPairs: ContrastPair[] = [
   ...uiOn("--status-overdue", "Overdue badge"),
   ...uiOn("--status-closed", "Status icon: Picked up / closed"),
 
-  // Charcoal navigation and dark sections
+  // Near-black cards and dark sections
   ...textOnDark("--dark-text", "Primary text"),
   ...textOnDark("--dark-text-muted", "Secondary text"),
-  ...textOnDark("--dark-accent", "Active nav label, links"),
+  ...textOnDark("--dark-accent", "Links and highlights on dark"),
   ...uiOnDark("--dark-input-border", "Input borders"),
   ...uiOnDark("--dark-accent", "Focus ring"),
-  { fg: "--dark-bg", bg: "--dark-text", min: 4.5, use: "Text on cream buttons (charcoal)" },
+  { fg: "--dark-bg", bg: "--dark-text", min: 4.5, use: "Text on light buttons (dark)" },
 ];
 
 /** Parses `--name: oklch(...); /* #RRGGBB` declarations from styles.css. */

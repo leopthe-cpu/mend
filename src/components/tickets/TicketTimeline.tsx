@@ -17,7 +17,7 @@ type Event = {
   created_at: string;
 };
 
-export function eventText(e: Event, currency: string): string {
+function eventText(e: Event, currency: string): string {
   const d = e.data;
   switch (e.type) {
     case "created":

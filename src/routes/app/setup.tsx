@@ -2,6 +2,7 @@ import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-ro
 import { Check, Copy, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
+import { forgetAppData } from "@/lib/shop";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { PageHeader } from "@/components/app/EmptyState";
 import { Field, selectClass } from "@/components/app/Field";
@@ -129,6 +130,8 @@ function Setup() {
     });
     setSaving(false);
     if (error) return setError(friendlyDbError(error));
+    // The setup banner and shop name come from the cached membership.
+    forgetAppData();
     // Advance to the invite step without navigating (the guard won't re-fire
     // because we stay on the same page).
     setStep(4);
@@ -214,7 +217,7 @@ function Setup() {
           ))}
         </ol>
 
-        <section className="mt-6 flex flex-col gap-5 rounded-lg border border-border bg-card p-6">
+        <section className="mt-6 flex flex-col gap-5 rounded-[1.75rem] bg-card p-6">
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
           {/* ─── Step 0: Names ─── */}
@@ -265,7 +268,7 @@ function Setup() {
                     <label
                       key={v.value}
                       className={cn(
-                        "flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-input p-3 text-center transition-colors",
+                        "flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-input p-3 text-center transition-colors",
                         vertical === v.value ? "border-primary bg-surface-2" : "hover:bg-surface-2",
                       )}
                     >

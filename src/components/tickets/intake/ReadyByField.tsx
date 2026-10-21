@@ -128,7 +128,7 @@ export function ReadyByField({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="flex min-h-14 shrink-0 items-center gap-2 rounded-md border border-input bg-surface-2 px-3 hover:bg-accent"
+              className="flex min-h-14 shrink-0 items-center gap-2 rounded-lg border border-input bg-surface-2 px-3 hover:bg-accent"
             >
               <CalendarDays aria-hidden className="size-5" />
               <span className="whitespace-nowrap">Other date</span>

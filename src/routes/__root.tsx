@@ -10,8 +10,6 @@ import {
 } from "@tanstack/react-router";
 import { type ReactNode } from "react";
 
-import interCss from "@fontsource-variable/inter/index.css?url";
-
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -61,7 +59,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex items-center justify-center rounded-xl border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
             Go home
           </a>
@@ -93,9 +91,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      // Brand font Inter (decision 50), self-hosted from @fontsource-variable/inter
-      // so pages don't depend on, or send visitors' IPs to, a third-party CDN.
-      { rel: "stylesheet", href: interCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),

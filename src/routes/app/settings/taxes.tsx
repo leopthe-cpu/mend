@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { useUnsavedChanges } from "@/lib/unsaved";
 import { Field, Panel } from "@/components/app/Field";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
@@ -169,6 +170,20 @@ function RateRow({
   const dirty = name !== rate.name || Number(value) !== rate.rate;
   const id = `tx-${rate.id}`;
 
+  async function submit(): Promise<boolean> {
+    if (!name.trim()) {
+      setErr("Name the tax.");
+      return false;
+    }
+    if (!RATE_RE.test(value.trim())) {
+      setErr("Enter the rate in percent, e.g. 13.");
+      return false;
+    }
+    setErr(null);
+    return onSave({ name: name.trim(), rate: Number(value) });
+  }
+  useUnsavedChanges(canEdit && dirty, submit);
+
   return (
     <li className="rounded-md border border-border p-4">
       <form
@@ -176,10 +191,7 @@ function RateRow({
         className="grid gap-4 sm:grid-cols-[1fr_8rem_auto] sm:items-end"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!name.trim()) return setErr("Name the tax.");
-          if (!RATE_RE.test(value.trim())) return setErr("Enter the rate in percent, e.g. 13.");
-          setErr(null);
-          void onSave({ name: name.trim(), rate: Number(value) });
+          void submit();
         }}
       >
         <fieldset disabled={!canEdit} className="contents">

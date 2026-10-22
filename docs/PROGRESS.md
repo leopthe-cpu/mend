@@ -33,8 +33,12 @@ summary: The 22 Oct release (PR #90) put the UX rounds F–R, customers, message
 - [ ] Read the security review §2 and §3 @me #security
   Private copy (decision 65): known gaps and the questions for a lawyer.
   Source: docs/oz-todo.md "Before real shops use Mend"
-- [ ] Consider a longer minimum password (8+) @me #auth
-  Source: docs/oz-todo.md "Before real shops use Mend"
+- [ ] Build decision 127: Turnstile CAPTCHA on sign-in, sign-up and reset, and 8+ character passwords @claude #auth #security
+  Code first, then switch CAPTCHA on in staging, then production. Not started.
+  Source: docs/decisions.md 127
+- [ ] Cloudflare Turnstile widget and keys; set the secret key and 8+ minimum in both Supabase projects @me #auth #setup
+  Site key to Claude (public); secret key only in Supabase Auth settings. After the decision 127 code is on staging.
+  Source: docs/decisions.md 127
 - [ ] Two-step sign-in on Oz's Supabase and GitHub accounts @me #security
   Source: docs/oz-todo.md "Before real shops use Mend"
 - [ ] Let people delete their own Mend login @claude #privacy

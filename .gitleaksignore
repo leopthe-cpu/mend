@@ -1,0 +1,5 @@
+# The Supabase publishable key in src/lib/supabase-public-config.ts is public by
+# design (decision 20): every browser receives it and RLS enforces access.
+# gitleaks' generic-api-key rule flags it; this ignores that one finding only.
+# Format: commit:file:rule:line (decision 129).
+fab291bbc2166e79458f7f4e758d3be643e4d3e0:src/lib/supabase-public-config.ts:generic-api-key:11

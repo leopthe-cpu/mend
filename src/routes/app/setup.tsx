@@ -77,6 +77,13 @@ function Setup() {
   const [copied, setCopied] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+  // Bumped on every failed attempt so the alert remounts and scrolls into view
+  // again, even when the message is the same as last time (FormAlert).
+  const [errorSeq, setErrorSeq] = useState(0);
+  const showError = (msg: string) => {
+    setError(msg);
+    setErrorSeq((n) => n + 1);
+  };
   const [saving, setSaving] = useState(false);
 
   if (!roleAtLeast(membership.role, "admin")) {
@@ -103,12 +110,12 @@ function Setup() {
     if (!skipTaxes && taxErrors.some(Boolean)) return;
     if (!shopName.trim()) {
       setStep(0);
-      return setError("The shop needs a name.");
+      return showError("The shop needs a name.");
     }
     const contactMsg = contactError();
     if (contactMsg) {
       setStep(2);
-      return setError(contactMsg);
+      return showError(contactMsg);
     }
     setSaving(true);
     setError(null);
@@ -129,7 +136,7 @@ function Setup() {
             .map((t) => ({ name: t.name.trim(), rate: Number(t.rate) })),
     });
     setSaving(false);
-    if (error) return setError(friendlyDbError(error));
+    if (error) return showError(friendlyDbError(error));
     // The setup banner and shop name come from the cached membership.
     forgetAppData();
     // Advance to the invite step without navigating (the guard won't re-fire
@@ -147,7 +154,7 @@ function Setup() {
       p_email: inviteEmail,
       p_role: inviteRole,
     });
-    if (error) return setError(friendlyDbError(error));
+    if (error) return showError(friendlyDbError(error));
     const token = (data as { token: string }[])[0]?.token;
     if (token) setInviteLink(`${window.location.origin}/invite/${token}`);
     setInviteEmail("");
@@ -166,7 +173,7 @@ function Setup() {
   const next = () => {
     if (step === 2) {
       const msg = contactError();
-      if (msg) return setError(msg);
+      if (msg) return showError(msg);
       setError(null);
     }
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
@@ -218,7 +225,11 @@ function Setup() {
         </ol>
 
         <section className="mt-6 flex flex-col gap-5 rounded-[1.75rem] bg-card p-6">
-          {error ? <FormAlert tone="error">{error}</FormAlert> : null}
+          {error ? (
+            <FormAlert key={errorSeq} tone="error">
+              {error}
+            </FormAlert>
+          ) : null}
 
           {/* ─── Step 0: Names ─── */}
           {step === 0 && (

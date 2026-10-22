@@ -99,6 +99,24 @@ jobs:
           npx --yes "@lhci/cli@${LHCI_VERSION}" collect --url "$PERF_URL" --numberOfRuns 3
           ls .lighthouseci
 
+      # Keeps Lighthouse's full reports (one HTML and one JSON per run) with the run for 30 days, so a
+      # low score can be explained without re-running Lighthouse: run page → Artifacts. They are
+      # copied out of the hidden .lighthouseci folder because upload-artifact skips hidden files.
+      # GitHub's artifact storage only, never Lighthouse's temporary public storage.
+      - name: Collect the Lighthouse reports
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/lighthouse-report"
+          cp "$RUNNER_TEMP"/lhci/.lighthouseci/lhr-*.html "$RUNNER_TEMP"/lhci/.lighthouseci/lhr-*.json "$RUNNER_TEMP/lighthouse-report/" 2>/dev/null || echo "No Lighthouse reports to keep"
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lighthouse-report
+          path: ${{ runner.temp }}/lighthouse-report
+          retention-days: 30
+          if-no-files-found: warn
+
       # Scores 0–100 (median of the runs). fail: any of performance / accessibility / best practices
       # below 50; warn: any below 90; else pass. Build size is reported, not judged.
       - name: Summarise

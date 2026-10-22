@@ -46,7 +46,7 @@ www.mendshops.com after the release:
 - A full day on a real phone on production (L7).
 - Twilio toll-free verification (steps below). Verification takes days; check whether Twilio requires leaving the free trial first.
 - Supabase Pro for backups: no pausing after 7 inactive days, downloadable backups, support, leaked-password checking. Check the current price at supabase.com/pricing.
-- Minimum password length 8+ in Supabase → Authentication → Passwords (local default is 6).
+- Decision 127 (approved): a Cloudflare Turnstile widget and keys, then CAPTCHA and an 8+ character minimum switched on in both Supabase projects, in the order the decision gives (code first). Claude builds the app side first.
 - Read the security review (private copy, decision 65) §2 (known gaps) and §3 (needs a lawyer).
 - Turn on two-step sign-in for your own Supabase and GitHub accounts.
 

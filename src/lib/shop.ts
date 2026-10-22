@@ -120,6 +120,46 @@ export async function fetchMyMembership(userId: string): Promise<Membership | nu
 }
 
 /**
+ * The signed-in person's shop and profile, for the app layout's guard. It
+ * runs on every page change, so the result is kept for a few minutes instead
+ * of costing two database round trips per click (19 Oct round 2, item 10;
+ * decision 108). Anything that changes them calls forgetAppData() before
+ * router.invalidate(); RLS still checks every request, so a stale copy can
+ * only show an old name or role for a moment, never grant access.
+ */
+export type AppData = {
+  membership: Membership | null;
+  profile: { full_name: string | null; terms_version: string | null } | null;
+};
+const APP_DATA_TTL_MS = 5 * 60 * 1000;
+let appData: { userId: string; at: number; value: Promise<AppData> } | null = null;
+
+export function loadAppData(userId: string): Promise<AppData> {
+  if (appData && appData.userId === userId && Date.now() - appData.at < APP_DATA_TTL_MS)
+    return appData.value;
+  // Both at once: one round trip instead of two in a row.
+  const value = Promise.all([
+    fetchMyMembership(userId),
+    getSupabase()
+      .from("profiles")
+      .select("full_name, terms_version")
+      .eq("user_id", userId)
+      .maybeSingle()
+      .then(({ data }) => (data as AppData["profile"]) ?? null),
+  ]).then(([membership, profile]) => ({ membership, profile }));
+  appData = { userId, at: Date.now(), value };
+  // A failed load must not be remembered.
+  value.catch(() => {
+    if (appData?.value === value) appData = null;
+  });
+  return value;
+}
+
+export function forgetAppData(): void {
+  appData = null;
+}
+
+/**
  * Our database functions raise short, plain messages (e.g. "the owner cannot
  * be removed"); show those. Anything else gets a generic message so internal
  * details never leak.

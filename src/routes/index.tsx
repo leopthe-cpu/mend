@@ -272,7 +272,9 @@ function Features() {
     {
       icon: MessageSquare,
       title: "Instant SMS Alerts",
-      body: "Text customers when items are received, in progress or ready. You see every message before it goes.",
+      // Matches decision 72: the "ticket created" text is automatic once the
+      // customer agrees at drop-off; every other message waits for a tap.
+      body: "Text customers when items are received, in progress or ready. The drop-off confirmation goes out on its own when the customer agrees to updates; you see every other message before it goes.",
     },
     {
       icon: FileText,

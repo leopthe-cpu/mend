@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, Printer, Trash2 } from "lucide-react";
+import { Pencil, Printer, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { BackButton } from "@/components/app/BackButton";
+import { EditCustomerDialog } from "@/components/customers/EditCustomerDialog";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Panel } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
@@ -13,6 +15,7 @@ import { TicketPhotosPanel } from "@/components/tickets/TicketPhotosPanel";
 import { TicketTimeline } from "@/components/tickets/TicketTimeline";
 import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
 import { TicketMessages } from "@/components/messages/TicketMessages";
+import { shortDate } from "@/lib/calendar";
 import { friendlyDbError, roleAtLeast } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import {
@@ -56,6 +59,7 @@ function TicketDetail() {
   const navigate = useNavigate();
   const isAdmin = roleAtLeast(membership.role, "admin");
   const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [editCustomer, setEditCustomer] = useState(false);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [fields, setFields] = useState<CustomField[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -212,42 +216,43 @@ function TicketDetail() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Link
-        to="/app/tickets"
-        className="inline-flex min-h-11 w-fit items-center gap-1 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-      >
-        <ChevronLeft className="size-5" aria-hidden /> Tickets
-      </Link>
-      <div className="-mt-4 flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
+      <div className="flex flex-wrap items-start gap-3">
+        <BackButton to="/app/tickets" label="Back" />
+        {/* The title keeps at least 14 rem; on phones Print and Delete move
+            to the next line instead of squeezing it (decision 121). */}
+        <div className="min-w-0 flex-1 basis-[14rem]">
           <p className="font-mono text-muted-foreground">#{ticket.ticket_number}</p>
           <h1 className="text-[1.75rem] font-semibold leading-tight">{ticket.item_name}</h1>
           {overdue ? (
-            <p className="font-medium text-danger">Overdue (promised {ticket.promised_date})</p>
+            <p className="font-medium text-danger">
+              Overdue (promised {shortDate(ticket.promised_date ?? "")})
+            </p>
           ) : null}
         </div>
-        <Button variant="outline" asChild>
-          <Link to="/tag/$ticketId" params={{ ticketId: ticket.id }} target="_blank">
-            <Printer /> Print
-          </Link>
-        </Button>
-        {isAdmin ? (
-          <Button
-            variant="ghost"
-            onClick={() => {
-              if (
-                window.confirm(
-                  `Delete ticket #${ticket.ticket_number}? This is recorded in the audit log.`,
-                )
-              )
-                void rpc("delete_ticket", { p_ticket_id: ticket.id }).then((ok) => {
-                  if (ok) void navigate({ to: "/app/board" });
-                });
-            }}
-          >
-            <Trash2 /> Delete
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/tag/$ticketId" params={{ ticketId: ticket.id }} target="_blank">
+              <Printer /> Print
+            </Link>
           </Button>
-        ) : null}
+          {isAdmin ? (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Delete ticket #${ticket.ticket_number}? This is recorded in the audit log.`,
+                  )
+                )
+                  void rpc("delete_ticket", { p_ticket_id: ticket.id }).then((ok) => {
+                    if (ok) void navigate({ to: "/app/board" });
+                  });
+              }}
+            >
+              <Trash2 /> Delete
+            </Button>
+          ) : null}
+        </div>
       </div>
       {message ? (
         <FormAlert tone={message.tone}>
@@ -297,7 +302,21 @@ function TicketDetail() {
         </div>
 
         <div className="flex flex-col gap-6">
-          <Panel title="Customer">
+          <Panel
+            title="Customer"
+            action={
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-11"
+                aria-label="Edit customer"
+                title="Edit customer"
+                onClick={() => setEditCustomer(true)}
+              >
+                <Pencil />
+              </Button>
+            }
+          >
             <Link
               to="/app/customers/$customerId"
               params={{ customerId: ticket.customer_id }}
@@ -398,6 +417,13 @@ function TicketDetail() {
           />
         </div>
       </div>
+      <EditCustomerDialog
+        open={editCustomer}
+        onOpenChange={setEditCustomer}
+        shopId={ticket.shop_id}
+        customerId={ticket.customer_id}
+        onSaved={load}
+      />
     </div>
   );
 }

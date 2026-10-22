@@ -1,0 +1,170 @@
+# Popmart audit: performance — PORTABLE TEMPLATE (from leopthe-cpu/Creative.can,
+# docs/audit-templates/). Copy to .github/workflows/popmart-audit-performance.yml in the project's
+# repository (through that project's normal PR flow) and set the PERF_URL repository variable.
+# Works with npm (package-lock.json) or bun (bun.lock). Results appear on the Popmart dashboard's
+# "Performance audit" tile. Setup and what it checks: docs/AUDITS_SETUP.md in Creative.can. Runs:
+#   - from the dashboard's "Run now" (audit-run → workflow_dispatch with workspace_id and kind);
+#   - every Monday at 07:43 UTC (reports to the POPMART_WORKSPACE_ID repository variable).
+# Measures the size of the production build (folder: PERF_DIST_DIR variable, default dist; skipped
+# when the build needs secrets it doesn't have) and runs Lighthouse (3 runs, median) on the live
+# site: the PERF_URL repository variable (required).
+# The audit job holds no secrets. Only the small report job sees AUDIT_REPORT_SECRET, and it runs
+# no project code: it signs the summary (HMAC-SHA256) and posts it to the audit-report function.
+name: Popmart audit (performance)
+
+on:
+  workflow_dispatch:
+    inputs:
+      workspace_id:
+        description: Popmart dashboard workspace id (filled in by "Run now")
+        required: false
+        type: string
+      kind:
+        description: Audit kind (this file always runs the performance audit)
+        required: false
+        type: string
+        default: performance
+  schedule:
+    - cron: '43 7 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: popmart-audit-performance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Audit (no secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      ran_at: ${{ steps.start.outputs.ran_at }}
+      result: ${{ steps.summary.outputs.result }}
+    env:
+      LHCI_VERSION: 0.15.1
+      PERF_URL: ${{ vars.PERF_URL }}
+      DIST_DIR: ${{ vars.PERF_DIST_DIR || 'dist' }}
+    steps:
+      - id: start
+        run: echo "ran_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@v2
+        if: hashFiles('bun.lock') != ''
+        with:
+          bun-version: 1.4.2
+
+      # A build that needs environment values this workflow doesn't have may fail: the size is then
+      # left out and Lighthouse still runs.
+      - name: Build
+        continue-on-error: true
+        run: |
+          if [ -f bun.lock ]; then
+            bun install --frozen-lockfile
+            bun run build
+          else
+            npm ci
+            npm run build
+          fi
+
+      - name: Bundle size
+        run: |
+          case "$DIST_DIR" in /*|*..*) echo "::error::PERF_DIST_DIR must be a relative folder"; exit 1 ;; esac
+          if [ ! -d "$DIST_DIR" ]; then echo 'null' > "$RUNNER_TEMP/bundle.json"; echo "No $DIST_DIR folder: size skipped"; exit 0; fi
+          find "$DIST_DIR" -type f -printf '%s %p\n' | jq -R -s -c '
+            split("\n") | map(select(length > 0) | capture("^(?<b>[0-9]+) (?<p>.+)$") | {bytes: (.b | tonumber), path: .p})
+            | {
+                totalBytes: (map(.bytes) | add // 0),
+                jsBytes: (map(select(.path | endswith(".js"))) | map(.bytes) | add // 0),
+                cssBytes: (map(select(.path | endswith(".css"))) | map(.bytes) | add // 0),
+                files: length,
+                largestJs: (map(select(.path | endswith(".js"))) | max_by(.bytes) // null | if . then {path: (.path | ltrimstr(env.DIST_DIR + "/")), bytes} else null end)
+              }' > "$RUNNER_TEMP/bundle.json"
+          cat "$RUNNER_TEMP/bundle.json"
+
+      - name: Lighthouse (live site)
+        run: |
+          case "$PERF_URL" in https://*) ;; *) echo "::error::Set the PERF_URL repository variable to the live site (https://…)"; exit 1 ;; esac
+          mkdir -p "$RUNNER_TEMP/lhci" && cd "$RUNNER_TEMP/lhci"
+          npx --yes "@lhci/cli@${LHCI_VERSION}" collect --url "$PERF_URL" --numberOfRuns 3
+          ls .lighthouseci
+
+      # Scores 0–100 (median of the runs). fail: any of performance / accessibility / best practices
+      # below 50; warn: any below 90; else pass. Build size is reported, not judged.
+      - name: Summarise
+        id: summary
+        run: |
+          result=$(jq -s -c \
+            --slurpfile bundle "$RUNNER_TEMP/bundle.json" \
+            --arg url "$PERF_URL" --arg lhci "$LHCI_VERSION" '
+            def median: map(select(. != null)) | sort | if length == 0 then null else .[(length / 2 | floor)] end;
+            def score($k): map(.categories[$k].score) | median | if . == null then null else (. * 100 | round) end;
+            def kb: . / 1024 | round;
+            (. | length) as $runs
+            | {performance: score("performance"), accessibility: score("accessibility"), bestPractices: score("best-practices"), seo: score("seo")} as $s
+            | [$s.performance, $s.accessibility, $s.bestPractices] as $judged
+            | $bundle[0] as $b
+            | (if ($judged | map(select(. == null)) | length) > 0 then "error"
+               elif ($judged | min) < 50 then "fail"
+               elif ($judged | min) < 90 then "warn"
+               else "pass" end) as $status
+            | {
+                status: $status,
+                summary: (
+                  (if $status == "error" then "Lighthouse did not return every score. "
+                   else "Performance \($s.performance), accessibility \($s.accessibility), best practices \($s.bestPractices) (median of \($runs) Lighthouse runs on \($url)). " end)
+                  + (if $b == null then "Build size not measured." else "Build: \($b.totalBytes | kb) KB, of which JavaScript \($b.jsBytes | kb) KB." end)
+                ) | .[0:500],
+                counts: {},
+                details: {url: $url, runs: $runs, scores: $s, bundle: $b, tools: {lhci: $lhci}}
+              }' "$RUNNER_TEMP"/lhci/.lighthouseci/lhr-*.json)
+          echo "$result" | jq .
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+
+  report:
+    name: Report to the Popmart dashboard
+    needs: audit
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Post the signed result
+        env:
+          KIND: performance
+          RESULT: ${{ needs.audit.outputs.result }}
+          RAN_AT: ${{ needs.audit.outputs.ran_at }}
+          AUDIT_JOB: ${{ needs.audit.result }}
+          WORKSPACE_ID: ${{ inputs.workspace_id || vars.POPMART_WORKSPACE_ID }}
+          FUNCTIONS_URL: ${{ vars.POPMART_FUNCTIONS_URL }}
+          AUDIT_REPORT_SECRET: ${{ secrets.AUDIT_REPORT_SECRET }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "$FUNCTIONS_URL" ] || [ -z "$AUDIT_REPORT_SECRET" ] || [ -z "$WORKSPACE_ID" ]; then
+            echo "::warning::Not reported: set the POPMART_FUNCTIONS_URL and POPMART_WORKSPACE_ID variables and the AUDIT_REPORT_SECRET secret (docs/AUDITS_SETUP.md)."
+            exit 0
+          fi
+          case "$FUNCTIONS_URL" in https://*) ;; *) echo "::error::POPMART_FUNCTIONS_URL must start with https://"; exit 1 ;; esac
+          if [ "$AUDIT_JOB" = "success" ] && printf '%s' "$RESULT" | jq -e 'type == "object" and (.status | type == "string")' > /dev/null 2>&1; then
+            partial="$RESULT"
+          else
+            partial=$(jq -n -c --arg r "$AUDIT_JOB" '{status: "error", summary: ("The audit did not finish (" + $r + "). Open the run on GitHub for details."), counts: {}, details: null}')
+          fi
+          body=$(printf '%s' "$partial" | jq -c \
+            --arg ws "$WORKSPACE_ID" --arg kind "$KIND" --arg run "$RUN_URL" --arg repo "$REPOSITORY" \
+            --arg at "${RAN_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" \
+            '{workspace_id: $ws, kind: $kind, status: .status, summary: .summary, counts: (.counts // {}), details: .details, run_url: $run, ran_at: $at, repository: $repo}')
+          sig=$(printf '%s' "$body" | openssl dgst -sha256 -hmac "$AUDIT_REPORT_SECRET" | sed 's/^.*= //')
+          curl -sS --fail-with-body --max-time 30 --retry 3 -X POST "${FUNCTIONS_URL%/}/audit-report" \
+            -H 'Content-Type: application/json' -H "x-popmart-signature: sha256=$sig" --data-binary "$body"
+          echo

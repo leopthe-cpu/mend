@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, Check, Pencil, Plus, Search, Tag, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Plus, Tag, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/app/EmptyState";
+import { FilterBar, ValueChip, type FilterOption } from "@/components/app/FilterBar";
 import { Field, selectClass } from "@/components/app/Field";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/app/MaskedInputs";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   type CatalogItem,
   centsToInput,
@@ -29,7 +31,8 @@ import {
 } from "@/lib/money";
 import { friendlyDbError, roleAtLeast } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
-import { shopToday } from "@/lib/tickets";
+import { fetchMembers, shopToday, type Member } from "@/lib/tickets";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/catalog")({
   head: () => ({ meta: [{ title: "Catalog · Mend" }] }),
@@ -59,16 +62,25 @@ function CatalogPage() {
   const [items, setItems] = useState<CatalogItem[] | null>(null);
   const [taxes, setTaxes] = useState<TaxRate[]>([]);
   const [query, setQuery] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
+  const [members, setMembers] = useState<Member[]>([]);
+  // FilterBar ids: "flag:archived", "flag:sale", "type:<t>", "tax:<id>", "by:<user>".
+  const [active, setActive] = useState<string[]>([]);
+  const toggle = (id: string) =>
+    setActive((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
   const [editing, setEditing] = useState<CatalogItem | "new" | null>(null);
   const [msg, setMsg] = useState<Msg>(null);
   const today = shopToday(shop.time_zone);
 
   const load = useCallback(async () => {
     try {
-      const [c, t] = await Promise.all([fetchCatalog(shop.id), fetchTaxRates(shop.id)]);
+      const [c, t, m] = await Promise.all([
+        fetchCatalog(shop.id),
+        fetchTaxRates(shop.id),
+        fetchMembers(shop.id),
+      ]);
       setItems(c);
       setTaxes(t);
+      setMembers(m);
     } catch (e) {
       setMsg({ tone: "error", text: friendlyDbError(e) });
     }
@@ -77,12 +89,42 @@ function CatalogPage() {
     void load();
   }, [load]);
 
+  const memberName = useCallback(
+    (id: string) => {
+      const m = members.find((x) => x.user_id === id);
+      return m ? m.name || m.email : "Former member";
+    },
+    [members],
+  );
+
+  const options = useMemo<FilterOption[]>(() => {
+    const adders = [...new Set((items ?? []).map((i) => i.created_by).filter(Boolean))] as string[];
+    return [
+      { id: "flag:sale", group: "Show", label: "On sale now" },
+      { id: "flag:archived", group: "Show", label: "Include archived" },
+      ...TYPES.map((t) => ({ id: `type:${t.value}`, group: "Type", label: t.label })),
+      ...taxes.map((t) => ({ id: `tax:${t.id}`, group: "Tax", label: t.name })),
+      ...adders.map((id) => ({ id: `by:${id}`, group: "Added by", label: memberName(id) })),
+    ];
+  }, [items, taxes, memberName]);
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const pick = (prefix: string) =>
+      new Set(active.filter((a) => a.startsWith(prefix)).map((a) => a.slice(prefix.length)));
+    const types = pick("type:");
+    const tax = pick("tax:");
+    const by = pick("by:");
     return (items ?? []).filter(
-      (i) => (showArchived || !i.archived_at) && (!q || i.name.toLowerCase().includes(q)),
+      (i) =>
+        (active.includes("flag:archived") || !i.archived_at) &&
+        (!active.includes("flag:sale") || (discountActiveOn(i, today) && !!i.discount_type)) &&
+        (!types.size || types.has(i.item_type)) &&
+        (!tax.size || i.tax_rate_ids.some((id) => tax.has(id))) &&
+        (!by.size || (!!i.created_by && by.has(i.created_by))) &&
+        (!q || i.name.toLowerCase().includes(q)),
     );
-  }, [items, query, showArchived]);
+  }, [items, query, active, today]);
 
   async function setArchived(item: CatalogItem, archived: boolean) {
     setMsg(null);
@@ -126,7 +168,7 @@ function CatalogPage() {
           </Button>
         ) : null}
       </PageHeader>
-      <div className="flex max-w-5xl flex-col gap-4">
+      <div className="flex flex-col gap-4">
         {!isAdmin ? (
           <FormAlert tone="info">
             Only Admins can change prices. You can use these items on estimates.
@@ -134,35 +176,19 @@ function CatalogPage() {
         ) : null}
         {msg ? <FormAlert tone={msg.tone}>{msg.text}</FormAlert> : null}
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-60 flex-1">
-            <Search
-              className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              aria-label="Search the catalog"
-              placeholder="Search by name"
-              className="pl-10"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
-          <label className="flex min-h-11 items-center gap-2">
-            <input
-              type="checkbox"
-              className="size-5"
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
-            />
-            Show archived
-          </label>
-        </div>
+        <FilterBar
+          options={options}
+          active={active}
+          onToggle={toggle}
+          text={query}
+          onText={setQuery}
+          placeholder="Search or filter: name, type, tax, on sale, added by…"
+        />
 
         {items === null ? (
           <p className="text-muted-foreground">Loading…</p>
         ) : visible.length === 0 ? (
-          <p className="rounded-lg border border-border bg-card p-6 text-muted-foreground">
+          <p className="rounded-lg bg-card p-6 text-muted-foreground">
             {items.length === 0
               ? isAdmin
                 ? "No items yet. Add the services and parts you sell."
@@ -170,105 +196,159 @@ function CatalogPage() {
               : "Nothing matches."}
           </p>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border bg-card">
-            {visible.map((i) => {
-              // Expired discounts drop out of this view on their own (spec §7.6).
-              const active = discountActiveOn(i, today);
-              const upcoming =
-                !!i.discount_type && !!i.discount_starts_on && i.discount_starts_on > today;
-              const taxNames = taxes
-                .filter((t) => i.tax_rate_ids.includes(t.id))
-                .map((t) => t.name)
-                .join(", ");
-              return (
-                <li
-                  key={i.id}
-                  className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="font-semibold">
-                      {i.name}
-                      {i.archived_at ? (
-                        <span className="ml-2 rounded border border-border px-1.5 text-sm font-normal text-muted-foreground">
-                          Archived
+          <div className="relative overflow-x-auto rounded-lg bg-card">
+            <table className="w-full text-left [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
+              <thead className="border-b border-border text-sm text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-3 font-medium">Name</th>
+                  <th className="px-3 py-3 font-medium">Type</th>
+                  <th className="px-3 py-3 text-right font-medium">Price</th>
+                  <th className="px-3 py-3 font-medium">Discount</th>
+                  <th className="px-3 py-3 font-medium">Tax</th>
+                  <th className="px-3 py-3 font-medium">Added by</th>
+                  {isAdmin ? (
+                    <th className="px-3 py-3 font-medium">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  ) : null}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {visible.map((i) => {
+                  // Expired discounts drop out of this view on their own (spec §7.6).
+                  const onSale = discountActiveOn(i, today) && !!i.discount_type;
+                  const type = TYPES.find((t) => t.value === i.item_type)?.label ?? "Service";
+                  // The whole row opens the item (19 Oct feedback, item 11).
+                  const open = () => (isAdmin ? setEditing(i) : undefined);
+                  return (
+                    <tr
+                      key={i.id}
+                      {...(isAdmin
+                        ? {
+                            role: "button",
+                            tabIndex: 0,
+                            "aria-label": `Edit ${i.name}`,
+                            onClick: open,
+                            onKeyDown: (e: React.KeyboardEvent) => {
+                              if (e.target !== e.currentTarget) return;
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                open();
+                              }
+                            },
+                          }
+                        : {})}
+                      className={cn(isAdmin && "cursor-pointer hover:bg-accent/40")}
+                    >
+                      <td className="px-3 py-3">
+                        <span className="font-semibold">{i.name}</span>
+                        {i.unit === "hour" ? (
+                          <span className="ml-1.5 text-sm text-muted-foreground">per hour</span>
+                        ) : null}
+                        {i.archived_at ? (
+                          <span className="ml-2 rounded-full bg-background px-2 py-0.5 text-sm text-muted-foreground">
+                            Archived
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3">
+                        <ValueChip
+                          label={type}
+                          pressed={active.includes(`type:${i.item_type}`)}
+                          onClick={() => toggle(`type:${i.item_type}`)}
+                        />
+                      </td>
+                      <td className="px-3 py-3 text-right whitespace-nowrap tabular-nums">
+                        {onSale ? (
+                          <>
+                            <span className="mr-2 text-sm text-muted-foreground line-through">
+                              {formatMoney(i.price_cents, shop.currency)}
+                            </span>
+                            <span className="font-semibold">
+                              {formatMoney(salePrice(i), shop.currency)}
+                            </span>
+                          </>
+                        ) : i.price_cents === 0 ? (
+                          <span className="text-muted-foreground">No price yet</span>
+                        ) : (
+                          formatMoney(i.price_cents, shop.currency)
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        <DiscountCell
+                          item={i}
+                          today={today}
+                          currency={shop.currency}
+                          canEdit={isAdmin}
+                          onSaved={async (text) => {
+                            setMsg({ tone: "info", text });
+                            await load();
+                          }}
+                          onError={(text) => setMsg({ tone: "error", text })}
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className="flex flex-wrap gap-1">
+                          {taxes
+                            .filter((t) => i.tax_rate_ids.includes(t.id))
+                            .map((t) => (
+                              <ValueChip
+                                key={t.id}
+                                label={t.name}
+                                pressed={active.includes(`tax:${t.id}`)}
+                                onClick={() => toggle(`tax:${t.id}`)}
+                              />
+                            ))}
+                          {i.tax_rate_ids.length ? null : (
+                            <span className="text-muted-foreground">No tax</span>
+                          )}
                         </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        {i.created_by ? (
+                          <ValueChip
+                            label={memberName(i.created_by)}
+                            pressed={active.includes(`by:${i.created_by}`)}
+                            onClick={() => toggle(`by:${i.created_by}`)}
+                          />
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      {isAdmin ? (
+                        <td className="px-2 py-2">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={i.archived_at ? `Restore ${i.name}` : `Archive ${i.name}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void setArchived(i, !i.archived_at);
+                              }}
+                            >
+                              {i.archived_at ? <ArchiveRestore /> : <Archive />}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Delete ${i.name}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void remove(i);
+                              }}
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                        </td>
                       ) : null}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {[
-                        TYPES.find((t) => t.value === i.item_type)?.label,
-                        i.unit === "hour" ? "per hour" : null,
-                        taxNames || "No tax",
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      {active && i.discount_type ? (
-                        <>
-                          <p className="text-sm text-muted-foreground line-through">
-                            {formatMoney(i.price_cents, shop.currency)}
-                          </p>
-                          <p className="font-semibold">
-                            {formatMoney(salePrice(i), shop.currency)}
-                          </p>
-                          <p className="text-sm text-success">
-                            <Tag className="mr-1 inline size-4" aria-hidden />
-                            {discountLabel(i.discount_type, i.discount_value ?? 0, shop.currency)}
-                            {i.discount_ends_on ? ` until ${i.discount_ends_on}` : ""}
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-semibold">
-                            {i.price_cents === 0
-                              ? "No price yet"
-                              : formatMoney(i.price_cents, shop.currency)}
-                          </p>
-                          {upcoming && i.discount_type ? (
-                            <p className="text-sm text-muted-foreground">
-                              {discountLabel(i.discount_type, i.discount_value ?? 0, shop.currency)}{" "}
-                              from {i.discount_starts_on}
-                            </p>
-                          ) : null}
-                        </>
-                      )}
-                    </div>
-                    {isAdmin ? (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Edit ${i.name}`}
-                          onClick={() => setEditing(i)}
-                        >
-                          <Pencil />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={i.archived_at ? `Restore ${i.name}` : `Archive ${i.name}`}
-                          onClick={() => void setArchived(i, !i.archived_at)}
-                        >
-                          {i.archived_at ? <ArchiveRestore /> : <Archive />}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Delete ${i.name}`}
-                          onClick={() => void remove(i)}
-                        >
-                          <Trash2 />
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -730,5 +810,164 @@ function ItemDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * The discount, set or removed right from the row (19 Oct feedback, item 11).
+ * Start/end dates are kept as they are; the item dialog edits them.
+ */
+function DiscountCell({
+  item,
+  today,
+  currency,
+  canEdit,
+  onSaved,
+  onError,
+}: {
+  item: CatalogItem;
+  today: string;
+  currency: string;
+  canEdit: boolean;
+  onSaved: (text: string) => Promise<void>;
+  onError: (text: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState<DiscountType>(item.discount_type ?? "percent");
+  const [value, setValue] = useState(item.discount_value ? String(item.discount_value) : "");
+  const [saving, setSaving] = useState(false);
+  const active = discountActiveOn(item, today) && !!item.discount_type;
+  const upcoming =
+    !!item.discount_type && !!item.discount_starts_on && item.discount_starts_on > today;
+  const label = item.discount_type
+    ? discountLabel(item.discount_type, item.discount_value ?? 0, currency) +
+      (upcoming
+        ? ` from ${item.discount_starts_on}`
+        : item.discount_ends_on && active
+          ? ` until ${item.discount_ends_on}`
+          : "")
+    : null;
+
+  async function save(remove: boolean) {
+    const n = Number(value.replace(",", "."));
+    if (!remove && (!Number.isFinite(n) || n <= 0 || (type === "percent" && n > 100)))
+      return onError(
+        type === "percent" ? "Enter a percent from 1 to 100." : "Enter an amount above 0.",
+      );
+    setSaving(true);
+    const { data, error } = await getSupabase()
+      .from("catalog_items")
+      .update(
+        remove
+          ? {
+              discount_type: null,
+              discount_value: null,
+              discount_starts_on: null,
+              discount_ends_on: null,
+            }
+          : { discount_type: type, discount_value: Math.round(n * 100) / 100 },
+      )
+      .eq("id", item.id)
+      .select("id");
+    setSaving(false);
+    if (error || !data?.length)
+      return onError(error ? friendlyDbError(error) : "Only Admins can change the catalog.");
+    setOpen(false);
+    await onSaved(remove ? `Discount removed from ${item.name}.` : `${item.name} discount saved.`);
+  }
+
+  const chip = label ? (
+    <span
+      className={cn(
+        "inline-flex min-h-8 items-center gap-1 rounded-full px-2.5 text-sm font-medium",
+        active ? "bg-success/15" : "bg-background text-muted-foreground",
+      )}
+    >
+      <Tag aria-hidden className="size-3.5" />
+      {label}
+    </span>
+  ) : null;
+  if (!canEdit) return chip ?? <span className="text-muted-foreground">—</span>;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={label ? `Change discount (${label})` : `Add a discount to ${item.name}`}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          className="cursor-pointer rounded-full"
+        >
+          {chip ?? (
+            <span className="inline-flex min-h-8 items-center gap-1 rounded-full border border-dashed border-border px-2.5 text-sm text-muted-foreground hover:text-foreground">
+              <Plus aria-hidden className="size-3.5" /> Discount
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-64 rounded-lg"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save(false);
+          }}
+        >
+          <p className="font-semibold">Discount on {item.name}</p>
+          <div className="flex gap-2">
+            <div
+              role="radiogroup"
+              aria-label="Kind"
+              className="flex rounded-full bg-background p-1"
+            >
+              {(["percent", "fixed"] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="radio"
+                  aria-checked={type === k}
+                  onClick={() => setType(k)}
+                  className={cn(
+                    "h-8 cursor-pointer rounded-full px-3 text-sm font-medium",
+                    type === k ? "bg-foreground text-background" : "",
+                  )}
+                >
+                  {k === "percent" ? "%" : "$"}
+                </button>
+              ))}
+            </div>
+            <Input
+              aria-label={type === "percent" ? "Percent off" : "Amount off"}
+              inputMode="decimal"
+              autoFocus
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={type === "percent" ? "10" : "5.00"}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" disabled={saving}>
+              <Check aria-hidden /> Save
+            </Button>
+            {item.discount_type ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={saving}
+                onClick={() => void save(true)}
+              >
+                <X aria-hidden /> Remove
+              </Button>
+            ) : null}
+          </div>
+        </form>
+      </PopoverContent>
+    </Popover>
   );
 }

@@ -52,6 +52,8 @@ export type CatalogItem = {
   discount_starts_on: string | null;
   discount_ends_on: string | null;
   archived_at: string | null;
+  /** Who added it (decision 106); null for older and seeded items. */
+  created_by: string | null;
   tax_rate_ids: string[];
 };
 
@@ -71,7 +73,7 @@ export async function fetchCatalog(shopId: string): Promise<CatalogItem[]> {
     db
       .from("catalog_items")
       .select(
-        "id, name, category, item_type, unit, price_cents, sku, discount_type, discount_value, discount_starts_on, discount_ends_on, archived_at",
+        "id, name, category, item_type, unit, price_cents, sku, discount_type, discount_value, discount_starts_on, discount_ends_on, archived_at, created_by",
       )
       .eq("shop_id", shopId)
       .order("category", { nullsFirst: true })

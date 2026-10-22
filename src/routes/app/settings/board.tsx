@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { useUnsavedChanges } from "@/lib/unsaved";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Field, Panel, selectClass } from "@/components/app/Field";
 import { Button } from "@/components/ui/button";
@@ -335,6 +336,11 @@ function StatusRow({
     form.color !== status.color ||
     form.notify_by_default !== status.notify_by_default;
   const id = `st-${status.id}`;
+  async function submit(): Promise<boolean> {
+    if (!form.name.trim()) return false;
+    return onSave({ ...form, name: form.name.trim() });
+  }
+  useUnsavedChanges(canEdit && dirty, submit);
 
   return (
     <RowShell
@@ -350,8 +356,7 @@ function StatusRow({
         method="post"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!form.name.trim()) return;
-          void onSave({ ...form, name: form.name.trim() });
+          void submit();
         }}
       >
         <fieldset disabled={!canEdit} className="grid gap-4 sm:grid-cols-2">
@@ -459,6 +464,25 @@ function FieldRow({
     form.help_text !== (field.help_text ?? "");
   const id = `cf-${field.id}`;
   const [err, setErr] = useState<string | null>(null);
+  async function submit(): Promise<boolean> {
+    const options = parseOptions(form.options);
+    if (!form.label.trim()) {
+      setErr("The field needs a name.");
+      return false;
+    }
+    if (field.field_type === "select" && options.length === 0) {
+      setErr("Add at least one choice, separated by commas.");
+      return false;
+    }
+    setErr(null);
+    return onSave({
+      label: form.label.trim(),
+      required: form.required,
+      help_text: form.help_text.trim() || null,
+      ...(field.field_type === "select" ? { options } : {}),
+    });
+  }
+  useUnsavedChanges(canEdit && dirty, submit);
 
   return (
     <RowShell
@@ -474,17 +498,7 @@ function FieldRow({
         method="post"
         onSubmit={(e) => {
           e.preventDefault();
-          const options = parseOptions(form.options);
-          if (!form.label.trim()) return setErr("The field needs a name.");
-          if (field.field_type === "select" && options.length === 0)
-            return setErr("Add at least one choice, separated by commas.");
-          setErr(null);
-          void onSave({
-            label: form.label.trim(),
-            required: form.required,
-            help_text: form.help_text.trim() || null,
-            ...(field.field_type === "select" ? { options } : {}),
-          });
+          void submit();
         }}
       >
         <fieldset disabled={!canEdit} className="grid gap-4 sm:grid-cols-2">

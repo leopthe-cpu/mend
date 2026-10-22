@@ -19,7 +19,7 @@ feature/* ──PR──▶ develop ──PR (Oz approves)──▶ main
 | Data                          | throwaway test data          | test data only, **never real customers**    | real shops                               |
 | Texts / email                 | Mailpit (local)              | off, or Twilio/Resend test credentials      | live                                     |
 | Who changes it                | anyone, freely               | merge a PR into `develop` (tests must pass) | merge a PR into `main` (**Oz approves**) |
-| AI agents (Claude, LibreChat) | full access                  | full access, including the staging database | **no direct access**; may open PRs only  |
+| AI agents (Claude)            | full access                  | full access, including the staging database | **no direct access**; may open PRs only  |
 
 ## Addresses
 
@@ -94,7 +94,7 @@ Repository → Settings → **Branches** (or Rules → Rulesets) → add a rule:
   force pushes and deletions. No approval needed (staging is for trying
   things).
 
-From then on, nobody (Claude and LibreChat included) can push straight to
+From then on, nobody (Claude included) can push straight to
 `develop` or `main`.
 
 ## AI agents
@@ -104,4 +104,5 @@ From then on, nobody (Claude and LibreChat included) can push straight to
 - The Supabase connector for agents is pinned to **mend-staging**
   (`project_ref`), never production (Supabase's own guidance: "Don't connect
   to production").
-- LibreChat setup: `docs/librechat-agent.md` (agent account `w0rkstufff`).
+- The LibreChat agent was removed on 22 Oct 2026 (decision 126); its old setup
+  notes stay in `docs/librechat-agent.md` for the record.

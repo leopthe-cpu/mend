@@ -1,7 +1,7 @@
 ---
 project: Mend
-updated: 2026-10-18
-summary: The MVP (phases 1–5) and the UX round (PRs 1–8) are live on www.mendshops.com, and the interim legal pages, unsubscribe, retention and customer export shipped on 17–18 Oct. Texts and customer emails are still off until Oz sets up Twilio and Resend, and the full legal package with a lawyer review comes next.
+updated: 2026-10-22
+summary: The 22 Oct release (PR #90) put the UX rounds F–R, customers, messages and catalog on www.mendshops.com. Texts (Twilio trial) and customer emails (Resend) are set up. Next: Oz's device tests, then the legal package; Twilio verification, backups and billing come right before customers. The LibreChat agent was removed on 22 Oct.
 ---
 
 ## Doing
@@ -98,6 +98,8 @@ summary: The MVP (phases 1–5) and the UX round (PRs 1–8) are live on www.men
   Source: docs/decisions.md 61–62
 - [x] Staging and production environments with protected branches @claude #infra (2026-10-07)
   Source: docs/environments.md; docs/decisions.md 63–65
+- [x] LibreChat coding agent removed, with its Railway services and tokens @me #infra (2026-10-22)
+  Source: docs/librechat-agent.md; docs/decisions.md 126
 - [x] LibreChat coding agent set up with its own GitHub account @me #infra (2026-10-07)
   Source: docs/librechat-agent.md; docs/decisions.md 64
 - [x] UX simplification PRs 1–8, released to production @claude #ux (2026-10-16)

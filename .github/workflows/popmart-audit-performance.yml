@@ -1,4 +1,4 @@
-# Popmart audit: performance — PORTABLE TEMPLATE (from leopthe-cpu/Creative.can,
+# Popmart audit: performance — PORTABLE TEMPLATE (from leopthe-cpu/popmart.studio,
 # docs/audit-templates/). Copy to .github/workflows/popmart-audit-performance.yml in the project's
 # repository (through that project's normal PR flow) and set the PERF_URL repository variable.
 # Works with npm (package-lock.json) or bun (bun.lock). Results appear on the Popmart dashboard's
@@ -50,13 +50,14 @@ jobs:
       - id: start
         run: echo "ran_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
+          package-manager-cache: false # no automatic dependency cache (on by default since v5)
 
       - uses: oven-sh/setup-bun@v2
         if: hashFiles('bun.lock') != ''

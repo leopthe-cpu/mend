@@ -1,7 +1,8 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 
+import { AttentionDot } from "@/components/app/AttentionDot";
 import { PageHeader } from "@/components/app/EmptyState";
-import { roleAtLeast } from "@/lib/shop";
+import { roleAtLeast, shopAttention } from "@/lib/shop";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/settings")({
@@ -13,6 +14,8 @@ function SettingsLayout() {
   const { membership } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = roleAtLeast(membership.role, "admin");
+  // The tab with something to finish gets a dot (Oz, 23 Oct).
+  const shopNeedsAttention = isAdmin && shopAttention(membership.shop).length > 0;
   const tabs = [
     { to: "/app/settings/shop", label: "Shop" },
     { to: "/app/settings/board", label: "Board & fields" },
@@ -39,13 +42,19 @@ function SettingsLayout() {
               to={t.to}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "-mb-px flex h-11 items-center border-b-2 px-4 text-[0.9375rem] font-medium transition-colors",
+                "-mb-px flex h-11 items-center gap-2 border-b-2 px-4 text-[0.9375rem] font-medium transition-colors",
                 active
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
               {t.label}
+              {t.to === "/app/settings/shop" && shopNeedsAttention ? (
+                <>
+                  <span className="sr-only"> (needs attention)</span>
+                  <AttentionDot />
+                </>
+              ) : null}
             </Link>
           );
         })}

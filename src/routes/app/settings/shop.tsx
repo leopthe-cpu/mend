@@ -1,5 +1,5 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 import { useUnsavedChanges } from "@/lib/unsaved";
 import { FormAlert } from "@/components/auth/AuthLayout";
@@ -10,7 +10,15 @@ import { PhoneInput } from "@/components/app/MaskedInputs";
 import { WeeklyHoursEditor } from "@/components/app/WeeklyHoursEditor";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { forgetAppData, friendlyDbError, phoneComplete, roleAtLeast, TIME_ZONES } from "@/lib/shop";
+import {
+  forgetAppData,
+  friendlyDbError,
+  phoneComplete,
+  roleAtLeast,
+  shopAttention,
+  TIME_ZONES,
+  type AttentionField,
+} from "@/lib/shop";
 import { defaultSchedule, scheduleToText, type WeeklySchedule } from "@/lib/hours";
 import { getSupabase } from "@/lib/supabase";
 
@@ -23,6 +31,19 @@ function ShopSettings() {
   const router = useRouter();
   const shop = membership.shop;
   const canEdit = roleAtLeast(membership.role, "admin");
+  const missing = canEdit ? shopAttention(shop) : [];
+
+  // Links like /app/settings/shop#email (from the attention box, the message
+  // dialog or a banner) land on that field: scrolled into view and focused.
+  const hash = useRouterState({ select: (s) => s.location.hash });
+  useEffect(() => {
+    if (!(ATTENTION_FIELDS as readonly string[]).includes(hash)) return;
+    const el = document.getElementById(hash);
+    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+    el.focus({ preventScroll: true });
+  }, [hash]);
   const [schedule, setSchedule] = useState<WeeklySchedule>(
     shop.business_hours?.schedule ?? defaultSchedule(),
   );
@@ -103,6 +124,25 @@ function ShopSettings() {
       <LogoPanel shopId={shop.id} logoPath={shop.logo_path} canEdit={canEdit} />
       <form method="post" onSubmit={save} className="flex flex-col gap-6">
         {!canEdit ? <FormAlert tone="info">Only Admins can change shop settings.</FormAlert> : null}
+        {missing.length ? (
+          <div className="rounded-lg border border-border bg-card px-4 py-3 text-foreground">
+            <p className="font-semibold">Finish your shop profile</p>
+            <ul className="mt-1 flex flex-col gap-1 text-sm">
+              {missing.map((f) => (
+                <li key={f}>
+                  <Link
+                    to="/app/settings/shop"
+                    hash={f}
+                    className="font-medium text-primary underline underline-offset-4"
+                  >
+                    {MISSING_TEXT[f].link}
+                  </Link>{" "}
+                  {MISSING_TEXT[f].why}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <fieldset disabled={!canEdit} className="flex flex-col gap-6">
           <Panel
             title="Shop profile"
@@ -227,7 +267,8 @@ function ShopSettings() {
           </Panel>
 
           <Panel title="Notifications">
-            <div className="grid gap-5 sm:grid-cols-3">
+            {/* items-end: the inputs line up even if a label wraps (Oz, 23 Oct). */}
+            <div className="grid items-end gap-5 sm:grid-cols-3">
               <Field id="qs" label="Quiet hours start">
                 <Input
                   id="qs"
@@ -244,7 +285,7 @@ function ShopSettings() {
                   onChange={set("quiet_hours_end")}
                 />
               </Field>
-              <Field id="ur" label="Unclaimed reminder after (days)">
+              <Field id="ur" label="Unclaimed after (days)">
                 <Input
                   id="ur"
                   inputMode="numeric"
@@ -254,7 +295,8 @@ function ShopSettings() {
               </Field>
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
-              Messages confirmed during quiet hours are sent at the next allowed time.
+              Messages confirmed during quiet hours are sent at the next allowed time. A ticket in
+              Ready longer than the unclaimed days shows "Unclaimed · Send reminder".
             </p>
           </Panel>
         </fieldset>
@@ -270,3 +312,11 @@ function ShopSettings() {
     </div>
   );
 }
+
+const ATTENTION_FIELDS = ["address", "phone", "email"] as const;
+// What each missing detail costs the shop (Oz, 23 Oct; decision 131).
+const MISSING_TEXT: Record<AttentionField, { link: string; why: string }> = {
+  address: { link: "Add the address", why: "to text customers." },
+  phone: { link: "Add the phone", why: "to text customers." },
+  email: { link: "Add the email", why: "so customers can reply to your emails." },
+};

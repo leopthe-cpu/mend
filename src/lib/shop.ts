@@ -43,6 +43,20 @@ export const TEXTS_NEED_CONTACT =
 export function missingTextContact(shop: Pick<Shop, "address" | "phone">): boolean {
   return !shop.address?.trim() || !shop.phone?.trim();
 }
+/** Shop contact details Settings › Shop still needs (field ids on that page). */
+export type AttentionField = "address" | "phone" | "email";
+/**
+ * What customers would notice is missing (Oz, 23 Oct): no address or phone
+ * means no texts (decision 131), no email means customers can't reply to
+ * emails. Drives the attention dots and the links to the exact field.
+ */
+export function shopAttention(shop: Pick<Shop, "address" | "phone" | "email">): AttentionField[] {
+  const missing: AttentionField[] = [];
+  if (!shop.address?.trim()) missing.push("address");
+  if (!shop.phone?.trim()) missing.push("phone");
+  if (!shop.email?.trim()) missing.push("email");
+  return missing;
+}
 /** A phone number is usable when it has at least 10 digits (Canada/US). */
 export function phoneComplete(phone: string): boolean {
   return phone.replace(/\D/g, "").length >= 10;

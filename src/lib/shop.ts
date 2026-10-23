@@ -34,6 +34,20 @@ export type Shop = {
 
 export type Membership = { role: Role; shop: Shop };
 
+// Decision 131 (amends 76): texts must identify the shop (CASL), so the
+// database refuses texts until the address and phone are both set. Setup and
+// Settings no longer demand them; the app shows this reason wherever a text
+// would be sent instead.
+export const TEXTS_NEED_CONTACT =
+  "Add your shop's address and phone in Settings → Shop to send texts.";
+export function missingTextContact(shop: Pick<Shop, "address" | "phone">): boolean {
+  return !shop.address?.trim() || !shop.phone?.trim();
+}
+/** A phone number is usable when it has at least 10 digits (Canada/US). */
+export function phoneComplete(phone: string): boolean {
+  return phone.replace(/\D/g, "").length >= 10;
+}
+
 const RANK: Record<Role, number> = { owner: 3, admin: 2, staff: 1 };
 export function roleAtLeast(role: Role, min: Role): boolean {
   return RANK[role] >= RANK[min];

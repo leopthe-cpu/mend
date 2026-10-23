@@ -10,7 +10,7 @@ import { PhoneInput } from "@/components/app/MaskedInputs";
 import { WeeklyHoursEditor } from "@/components/app/WeeklyHoursEditor";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { forgetAppData, friendlyDbError, roleAtLeast, TIME_ZONES } from "@/lib/shop";
+import { forgetAppData, friendlyDbError, phoneComplete, roleAtLeast, TIME_ZONES } from "@/lib/shop";
 import { defaultSchedule, scheduleToText, type WeeklySchedule } from "@/lib/hours";
 import { getSupabase } from "@/lib/supabase";
 
@@ -60,12 +60,11 @@ function ShopSettings() {
       return false;
     };
     if (!form.name.trim()) return fail("The shop needs a name.");
-    // Decision 76: texts identify the shop (CASL); the database refuses texts
-    // without both.
-    if (!form.address.trim() || form.phone.replace(/\D/g, "").length < 10)
-      return fail(
-        "Add the shop's address and phone. They identify your shop in the texts you send.",
-      );
+    // Decision 131: the address and phone are optional here; the database
+    // refuses texts until both are set (CASL sender identification), and the
+    // app says so. Only a half-typed phone number is refused.
+    if (form.phone.trim() && !phoneComplete(form.phone))
+      return fail("Enter the shop's full phone number, or leave it empty.");
     const days = Number(form.unclaimed_reminder_days);
     if (!Number.isInteger(days) || days < 1 || days > 365)
       return fail("Reminder days must be a whole number from 1 to 365.");
@@ -118,10 +117,11 @@ function ShopSettings() {
               <div className="sm:col-span-2">
                 <Field
                   id="address"
-                  label="Address *"
+                  label="Address"
                   hint={
                     <>
-                      Shown with your phone on your public contact page,{" "}
+                      Needed with the phone to text customers. Shown with your phone on your public
+                      contact page,{" "}
                       <a
                         href={`/s/${shop.public_code}`}
                         target="_blank"
@@ -142,7 +142,7 @@ function ShopSettings() {
                   />
                 </Field>
               </div>
-              <Field id="phone" label="Phone *">
+              <Field id="phone" label="Phone">
                 <PhoneInput
                   id="phone"
                   value={form.phone}

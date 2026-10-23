@@ -13,7 +13,7 @@ import { AppRail, PhoneTabBar } from "@/components/app/AppRail";
 import { TopBar } from "@/components/app/TopBar";
 import { UnsavedChangesDialog } from "@/components/app/UnsavedChangesDialog";
 import { LEGAL } from "@/lib/legal";
-import { forgetAppData, loadAppData, roleAtLeast } from "@/lib/shop";
+import { forgetAppData, loadAppData, missingTextContact, roleAtLeast } from "@/lib/shop";
 import { getSupabase, SupabaseConfigError } from "@/lib/supabase";
 import { UnsavedContext, UnsavedRegistry } from "@/lib/unsaved";
 
@@ -67,6 +67,14 @@ function AppLayout() {
     !membership.shop.setup_completed_at &&
     roleAtLeast(membership.role, "admin") &&
     pathname !== "/app/setup";
+  // Decision 131: setup can be skipped without an address and phone, but the
+  // database refuses texts until both are set. Say so where it can be fixed
+  // (Owner/Admin); Staff see the reason when they try to text.
+  const showTextContact =
+    !showSetup &&
+    missingTextContact(membership.shop) &&
+    roleAtLeast(membership.role, "admin") &&
+    pathname !== "/app/settings/shop";
 
   // Signed out in another tab, or the session ended: leave the app.
   useEffect(() => {
@@ -104,6 +112,16 @@ function AppLayout() {
               >
                 <Link to="/app/setup" className={BANNER_TARGET}>
                   Finish setting up your shop
+                </Link>
+              </ActionBanner>
+            ) : null}
+            {showTextContact ? (
+              <ActionBanner
+                tone="orange"
+                text="Texts to customers are off until then. Your texts link to a page with them."
+              >
+                <Link to="/app/settings/shop" className={BANNER_TARGET}>
+                  Add your shop's address and phone
                 </Link>
               </ActionBanner>
             ) : null}

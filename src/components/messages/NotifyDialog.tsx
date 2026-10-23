@@ -24,7 +24,12 @@ import {
   type Template,
 } from "@/lib/messages";
 import { pickupHoursText, promisedDateText } from "@/lib/hours";
-import { friendlyDbError, type Membership } from "@/lib/shop";
+import {
+  friendlyDbError,
+  missingTextContact,
+  TEXTS_NEED_CONTACT,
+  type Membership,
+} from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import {
   type Customer,
@@ -131,6 +136,8 @@ export function NotifyDialog({
 
   function blockedReason(d: Loaded, ch: Channel): string | null {
     if (ch === "sms") {
+      // Decision 131: the database refuses texts until the shop has both.
+      if (missingTextContact(shop)) return TEXTS_NEED_CONTACT;
       if (d.customer.sms_opted_out) return "Opted out of texts (replied STOP or asked you).";
       if (!d.phone) return "No mobile number on file.";
     } else {

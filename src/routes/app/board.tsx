@@ -16,9 +16,11 @@ import {
   fetchStatuses,
   fetchTickets,
   onBoard,
+  readyContact,
   shopToday,
   signedPhotoUrls,
   STATUS_COLOR_CLASS,
+  type ContactMessage,
   type Member,
   type Status,
   type Ticket,
@@ -96,6 +98,19 @@ function Board() {
   const [loaded, setLoaded] = useState(false);
   const [notify, setNotify] = useState<NotifyRequest | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [contacts, setContacts] = useState<ContactMessage[]>([]);
+
+  // Messages for Ready tickets, so each card can say whether the customer was
+  // told it's ready (Oz, 23 Oct). Read-only; RLS limits them to this shop.
+  const loadContacts = useCallback(async (readyIds: string[]) => {
+    if (!readyIds.length) return setContacts([]);
+    const { data, error } = await getSupabase()
+      .from("messages")
+      .select("ticket_id, channel, status, created_at")
+      .in("ticket_id", readyIds.slice(0, 300))
+      .neq("status", "canceled");
+    if (!error) setContacts((data ?? []) as ContactMessage[]);
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -107,6 +122,8 @@ function Board() {
       setStatuses(s);
       setTickets(t);
       setMembers(m);
+      const ready = new Set(s.filter((x) => x.category === "ready").map((x) => x.id));
+      void loadContacts(t.filter((x) => ready.has(x.status_id)).map((x) => x.id));
       const ids = t.map((x) => x.id);
       if (ids.length) {
         const { data } = await getSupabase()
@@ -126,7 +143,7 @@ function Board() {
     } finally {
       setLoaded(true);
     }
-  }, [shop.id]);
+  }, [shop.id, loadContacts]);
   useEffect(() => {
     try {
       localStorage.setItem("mend:ticketsView", "board");
@@ -226,7 +243,12 @@ function Board() {
         membership={membership}
         onClose={(result) => {
           setNotify(null);
-          if (result) setNotice(result);
+          if (result) {
+            setNotice(result);
+            // A message went out: refresh the "told / not told" tags.
+            const ready = new Set(statuses.filter((x) => x.category === "ready").map((x) => x.id));
+            void loadContacts(tickets.filter((x) => ready.has(x.status_id)).map((x) => x.id));
+          }
         }}
       />
       {loaded && !tickets.length ? (
@@ -309,7 +331,10 @@ function Board() {
                       unclaimedDays={shop.unclaimed_reminder_days}
                       thumb={thumbs.get(t.id)}
                       assignee={memberName(t.assigned_to)}
+                      contact={readyContact(t, contacts)}
+                      timeZone={shop.time_zone}
                       onRemind={() => setNotify({ ticketId: t.id, kind: "reminder" })}
+                      onTell={() => setNotify({ ticketId: t.id, kind: "status", statusId: s.id })}
                     />
                   </li>
                 ))}
@@ -335,6 +360,8 @@ function Board() {
             unclaimedDays={shop.unclaimed_reminder_days}
             thumb={thumbs.get(dragged.id)}
             assignee={memberName(dragged.assigned_to)}
+            contact={readyContact(dragged, contacts)}
+            timeZone={shop.time_zone}
           />
         </div>
       ) : null}

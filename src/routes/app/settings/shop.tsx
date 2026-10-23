@@ -267,7 +267,8 @@ function ShopSettings() {
           </Panel>
 
           <Panel title="Notifications">
-            <div className="grid gap-5 sm:grid-cols-3">
+            {/* items-end: the inputs line up even if a label wraps (Oz, 23 Oct). */}
+            <div className="grid items-end gap-5 sm:grid-cols-3">
               <Field id="qs" label="Quiet hours start">
                 <Input
                   id="qs"
@@ -284,7 +285,7 @@ function ShopSettings() {
                   onChange={set("quiet_hours_end")}
                 />
               </Field>
-              <Field id="ur" label="Unclaimed reminder after (days)">
+              <Field id="ur" label="Unclaimed after (days)">
                 <Input
                   id="ur"
                   inputMode="numeric"
@@ -294,7 +295,8 @@ function ShopSettings() {
               </Field>
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
-              Messages confirmed during quiet hours are sent at the next allowed time.
+              Messages confirmed during quiet hours are sent at the next allowed time. A ticket in
+              Ready longer than the unclaimed days shows "Unclaimed · Send reminder".
             </p>
           </Panel>
         </fieldset>

@@ -38,6 +38,7 @@ import {
   fetchContacts,
   fetchStatuses,
   fetchTicket,
+  memberName,
   type Ticket,
 } from "@/lib/tickets";
 import { cn } from "@/lib/utils";
@@ -104,10 +105,13 @@ export function NotifyDialog({
       if (m.sent_by) {
         const { data: p } = await db
           .from("profiles")
-          .select("full_name")
+          .select("full_name, email")
           .eq("user_id", m.sent_by)
           .maybeSingle();
-        who = (p?.full_name as string) || "A team member";
+        who = memberName({
+          name: (p?.full_name as string) ?? "",
+          email: (p?.email as string) ?? "",
+        });
       }
       const what =
         m.kind === "reminder" ? "a reminder" : m.channel === "sms" ? "a text" : "an email";

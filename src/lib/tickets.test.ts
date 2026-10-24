@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { readyContact, type ContactMessage } from "@/lib/tickets";
+import { memberName, readyContact, type ContactMessage } from "@/lib/tickets";
 
 const ticket = { id: "t1", status_changed_at: "2026-10-22T15:00:00Z" };
 const msg = (over: Partial<ContactMessage>): ContactMessage => ({
@@ -47,5 +47,13 @@ describe("readyContact: was the customer told the item is ready?", () => {
       msg({ channel: "email", created_at: "2026-10-23T09:00:00Z" }),
     ]);
     expect(r).toEqual({ state: "sent", channel: "email", at: "2026-10-23T09:00:00Z" });
+  });
+});
+
+describe("memberName", () => {
+  it("uses the name, else the part of the email before the @", () => {
+    expect(memberName({ name: "Ana Lopez", email: "ana@shop.ca" })).toBe("Ana Lopez");
+    expect(memberName({ name: "  ", email: "ana.lopez@shop.ca" })).toBe("ana.lopez");
+    expect(memberName({ name: "", email: "" })).toBe("A team member");
   });
 });

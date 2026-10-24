@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CustomFieldInput } from "@/components/tickets/CustomFieldInput";
 import { shortDate } from "@/lib/calendar";
-import type { CustomField, Member, Ticket } from "@/lib/tickets";
+import { memberName, type CustomField, type Member, type Ticket } from "@/lib/tickets";
 import { useUnsavedChanges } from "@/lib/unsaved";
 
 type EditingState = {
@@ -39,7 +39,7 @@ function dash(v: string | null | undefined): string {
 function assignedName(members: Member[], userId: string | null): string {
   if (!userId) return "—";
   const m = members.find((x) => x.user_id === userId);
-  return m ? m.name || m.email : "—";
+  return m ? memberName(m) : "—";
 }
 
 export function TicketDetailsPanel({
@@ -143,7 +143,7 @@ export function TicketDetailsPanel({
                 <option value="">Nobody</option>
                 {members.map((m) => (
                   <option key={m.user_id} value={m.user_id}>
-                    {m.name || m.email}
+                    {memberName(m)}
                   </option>
                 ))}
               </select>
@@ -214,7 +214,7 @@ export function TicketDetailsPanel({
     >
       {saved ? <p className="mb-4 text-sm text-success">Saved.</p> : null}
       {status}
-      <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+      <dl className="mt-5 grid grid-cols-1 gap-4 wrap-anywhere sm:grid-cols-2">
         <div className="sm:col-span-2">
           <dt className="text-sm text-muted-foreground">Item</dt>
           <dd>{dash(ticket.item_name)}</dd>

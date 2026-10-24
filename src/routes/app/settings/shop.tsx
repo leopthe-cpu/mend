@@ -123,7 +123,9 @@ function ShopSettings() {
     <div className="flex max-w-2xl flex-col gap-6">
       <LogoPanel shopId={shop.id} logoPath={shop.logo_path} canEdit={canEdit} />
       <form method="post" onSubmit={save} className="flex flex-col gap-6">
-        {!canEdit ? <FormAlert tone="info">Only Admins can change shop settings.</FormAlert> : null}
+        {!canEdit ? (
+          <FormAlert tone="info">Only Owners and Admins can change shop settings.</FormAlert>
+        ) : null}
         {missing.length ? (
           <div className="rounded-lg border border-border bg-card px-4 py-3 text-foreground">
             <p className="font-semibold">Finish your shop profile</p>

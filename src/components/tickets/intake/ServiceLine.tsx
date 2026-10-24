@@ -301,7 +301,7 @@ function InlineTaxCreator({
       .single();
     setCreating(false);
     if (err || !data) {
-      setError(err ? friendlyDbError(err) : "Only Admins can add taxes.");
+      setError(err ? friendlyDbError(err) : "Only Owners and Admins can add taxes.");
       return;
     }
     onCreated(data as TaxRate);

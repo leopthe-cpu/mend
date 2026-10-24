@@ -81,8 +81,11 @@ export function ServiceLine({
     <li
       className="flex flex-col gap-2 px-3 py-2"
       onBlur={(e) => {
-        if (editing && done && !e.currentTarget.contains(e.relatedTarget as Node | null))
-          setEditing(false);
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        // Clicking away from an untouched new-service row closes it (Oz, 24 Oct):
+        // otherwise the only way out was to fill it in or start over.
+        if (!l.item && !l.name.trim() && !l.price.trim()) return onRemove();
+        if (editing && done) setEditing(false);
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") {

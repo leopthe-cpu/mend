@@ -69,6 +69,15 @@ export type Ticket = {
 };
 export type Member = { user_id: string; role: string; name: string; email: string };
 
+/**
+ * How a team member is shown: their name, or the part of their email before
+ * the @ when they haven't set one (Oz, 24 Oct: short enough for a phone, and
+ * two people without names can still be told apart). Same rule everywhere.
+ */
+export function memberName(m: Pick<Member, "name" | "email">): string {
+  return m.name?.trim() || m.email?.split("@")[0] || "A team member";
+}
+
 const TICKET_COLUMNS =
   "id, shop_id, ticket_number, customer_id, item_name, item_description, issue_description, status_id, status_changed_at, assigned_to, promised_date, custom_fields, has_passcode, internal_notes, customer_notes, terms_accepted_at, picked_up_at, created_by, updates_consent, updates_consent_at, updates_consent_by, created_at, customer:customers(id, name, sms_opted_out, email_opted_out, sms_opted_out_at, sms_opt_out_source)";
 

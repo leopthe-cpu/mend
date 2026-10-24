@@ -136,7 +136,7 @@ function CatalogPage() {
     if (error || !data?.length)
       return setMsg({
         tone: "error",
-        text: error ? friendlyDbError(error) : "Only Admins can change the catalog.",
+        text: error ? friendlyDbError(error) : "Only Owners and Admins can change the catalog.",
       });
     setMsg({ tone: "info", text: archived ? `${item.name} archived.` : `${item.name} restored.` });
     await load();
@@ -153,7 +153,7 @@ function CatalogPage() {
     if (error || !data?.length)
       return setMsg({
         tone: "error",
-        text: error ? friendlyDbError(error) : "Only Admins can change the catalog.",
+        text: error ? friendlyDbError(error) : "Only Owners and Admins can change the catalog.",
       });
     setMsg({ tone: "info", text: `${item.name} deleted.` });
     await load();
@@ -171,7 +171,7 @@ function CatalogPage() {
       <div className="flex flex-col gap-4">
         {!isAdmin ? (
           <FormAlert tone="info">
-            Only Admins can change prices. You can use these items on estimates.
+            Only Owners and Admins can change prices. You can use these items on estimates.
           </FormAlert>
         ) : null}
         {msg ? <FormAlert tone={msg.tone}>{msg.text}</FormAlert> : null}
@@ -449,7 +449,7 @@ function ItemDialog({
     if (error || !data) {
       setErrors({
         ...errors,
-        tax: error ? friendlyDbError(error) : "Only Admins can add taxes.",
+        tax: error ? friendlyDbError(error) : "Only Owners and Admins can add taxes.",
       });
       return;
     }
@@ -871,7 +871,9 @@ function DiscountCell({
       .select("id");
     setSaving(false);
     if (error || !data?.length)
-      return onError(error ? friendlyDbError(error) : "Only Admins can change the catalog.");
+      return onError(
+        error ? friendlyDbError(error) : "Only Owners and Admins can change the catalog.",
+      );
     setOpen(false);
     await onSaved(remove ? `Discount removed from ${item.name}.` : `${item.name} discount saved.`);
   }

@@ -33,6 +33,7 @@ import { parseTicketDiscount, type TicketDiscountDraft } from "@/lib/ticketDisco
 import {
   fetchCustomFields,
   fetchMembers,
+  memberName,
   shopToday,
   uploadPhotos,
   type CustomField,
@@ -772,7 +773,7 @@ export function NewTicketDialog({
               >
                 {members.map((m) => (
                   <option key={m.user_id} value={m.user_id}>
-                    {m.user_id === myId ? `Me (${m.name || m.email})` : m.name || m.email}
+                    {m.user_id === myId ? `Me (${memberName(m)})` : memberName(m)}
                   </option>
                 ))}
                 <option value="">Nobody yet</option>

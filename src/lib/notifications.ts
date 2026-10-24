@@ -5,6 +5,7 @@
 // "Ana sent a reminder to Maria Lopez".
 
 import {
+  memberName,
   readyContact,
   type ContactMessage,
   type Member,
@@ -94,8 +95,11 @@ export function buildActivity(
   limit = 50,
 ): ActivityItem[] {
   const ticket = new Map(tickets.map((t) => [t.id, t]));
-  const who = (id: string | null) =>
-    (id && (members.find((m) => m.user_id === id)?.name || "A team member")) || "Mend";
+  const who = (id: string | null) => {
+    if (!id) return "Mend";
+    const m = members.find((x) => x.user_id === id);
+    return m ? memberName(m) : "A team member";
+  };
   const ref = (id: string) => {
     const t = ticket.get(id);
     return t ? `#${t.ticket_number} (${t.customer?.name ?? "customer"})` : "a ticket";

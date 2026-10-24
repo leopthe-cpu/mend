@@ -24,6 +24,7 @@ import {
   type Role,
 } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
+import { memberName } from "@/lib/tickets";
 
 export const Route = createFileRoute("/app/settings/team")({
   component: TeamSettings,
@@ -141,18 +142,16 @@ function TeamSettings() {
             <li key={m.user_id} className="flex flex-wrap items-center gap-3 py-3">
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">
-                  {m.name || m.email}
+                  {memberName(m)}
                   {m.user_id === user.id ? (
                     <span className="text-muted-foreground"> (you)</span>
                   ) : null}
                 </div>
-                {m.name ? (
-                  <div className="truncate text-sm text-muted-foreground">{m.email}</div>
-                ) : null}
+                <div className="truncate text-sm text-muted-foreground">{m.email}</div>
               </div>
               {isOwner && canManage(m) ? (
                 <select
-                  aria-label={`Role for ${m.name || m.email}`}
+                  aria-label={`Role for ${memberName(m)}`}
                   className={`${selectClass} w-32`}
                   value={m.role}
                   onChange={(e) =>
@@ -185,7 +184,7 @@ function TeamSettings() {
                   onClick={() => {
                     if (
                       window.confirm(
-                        `Remove ${m.name || m.email} from ${membership.shop.name}? They lose access right away.`,
+                        `Remove ${memberName(m)} from ${membership.shop.name}? They lose access right away.`,
                       )
                     )
                       void run(
@@ -341,7 +340,7 @@ function TransferDialog({
 }) {
   return (
     <ReauthDialog
-      title={`Transfer ownership to ${member.name || member.email}?`}
+      title={`Transfer ownership to ${memberName(member)}?`}
       description="They get full control, including billing and deleting the shop. You become an Admin (co-manager). Only the new owner can undo this."
       email={email}
       confirmLabel="Transfer ownership"

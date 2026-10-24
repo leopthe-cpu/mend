@@ -16,6 +16,7 @@ import {
   fetchStatuses,
   fetchTickets,
   onBoard,
+  memberName as nameOf,
   readyContact,
   shopToday,
   signedPhotoUrls,
@@ -191,7 +192,7 @@ function Board() {
   const dragStatus = dragged ? statuses.find((s) => s.id === dragged.status_id) : undefined;
   const memberName = (id: string | null) => {
     const m = members.find((x) => x.user_id === id);
-    return m ? m.name || m.email : "";
+    return m ? nameOf(m) : "";
   };
 
   return (
@@ -255,7 +256,7 @@ function Board() {
         <p className="mb-4 text-muted-foreground">
           No tickets yet. Press{" "}
           <kbd className="rounded border border-border px-1.5 font-mono">N</kbd> or click{" "}
-          <strong>+ Ticket</strong> to log your first job.
+          <strong>New ticket</strong> to log your first job.
         </p>
       ) : null}
       {/* Columns share the width (19 Oct round 2, item 1; decision 112): each

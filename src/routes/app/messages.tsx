@@ -444,7 +444,7 @@ function Conversation({
                 {/* The shop's messages sit on the right (decision 104). */}
                 <div
                   className={cn(
-                    "max-w-[85%] rounded-lg rounded-br-sm px-3.5 py-2.5 whitespace-pre-wrap md:max-w-[70%]",
+                    "max-w-[85%] rounded-lg rounded-br-sm px-3.5 py-2.5 whitespace-pre-wrap wrap-anywhere md:max-w-[70%]",
                     failed ? "bg-danger/10 ring-1 ring-danger/40" : "bg-primary/12",
                   )}
                 >

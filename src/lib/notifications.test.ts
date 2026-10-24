@@ -4,6 +4,9 @@ import {
   ago,
   buildActivity,
   buildTodos,
+  countdown,
+  messageWhat,
+  sendLockedUntil,
   type CentreEvent,
   type CentreMessage,
 } from "@/lib/notifications";
@@ -144,5 +147,28 @@ describe("ago", () => {
     expect(ago("2026-10-23T12:00:00Z", now)).toBe("3 h ago");
     expect(ago("2026-10-22T14:00:00Z", now)).toBe("1 day ago");
     expect(ago("2026-10-20T15:00:00Z", now)).toBe("3 days ago");
+  });
+});
+
+describe("two minutes between messages", () => {
+  it("locks Send until the last message is 2 minutes old", () => {
+    expect(sendLockedUntil("2026-10-23T14:59:00Z", now)).toBe(
+      new Date("2026-10-23T15:01:00Z").getTime(),
+    );
+    expect(sendLockedUntil("2026-10-23T14:58:00Z", now)).toBeNull();
+    expect(sendLockedUntil(null, now)).toBeNull();
+  });
+  it("counts down in minutes and seconds", () => {
+    expect(countdown(84_000)).toBe("1:24");
+    expect(countdown(500)).toBe("0:01");
+  });
+  it("names the automatic message", () => {
+    expect(messageWhat("created", "sms")).toBe("the automatic “ticket created” text");
+    expect(messageWhat("status", "email")).toBe("an email");
+  });
+  it("shows the automatic message as Mend's in Activity", () => {
+    const tickets = [ticket("t1", "ready", "2026-10-22T10:00:00Z", 1043)];
+    const items = buildActivity([], [msg({ kind: "created" })], tickets, members);
+    expect(items[0]?.text).toBe("Mend sent a text to Maria Lopez (#1043)");
   });
 });

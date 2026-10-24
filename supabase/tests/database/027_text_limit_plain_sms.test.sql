@@ -9,6 +9,11 @@ create temp table t (k text primary key, v text);
 grant all on t to authenticated;
 create function pg_temp.v(p text) returns uuid language sql as $$ select v::uuid from t where k = p $$;
 grant execute on function pg_temp.v(text) to authenticated;
+-- Each test runs in one transaction, so now() doesn't move: move earlier
+-- messages back past the 2-minute gap between messages (decision 137).
+create function pg_temp.age_messages() returns void language sql security definer as $$
+  update public.messages set created_at = created_at - interval '3 minutes' $$;
+grant execute on function pg_temp.age_messages() to authenticated;
 
 select set_config('request.jwt.claims', '{"sub":"ac000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
@@ -23,6 +28,7 @@ select is((select sms_monthly_cap from public.shops where id = pg_temp.v('shop')
 set local role authenticated;
 insert into t select 'm1', message_id::text from public.queue_message(pg_temp.v('tk'), 'sms',
   E'It’s ready – open 9am–5pm… “thanks”, Zoë');
+select pg_temp.age_messages();
 insert into t select 'm2', message_id::text from public.queue_message(pg_temp.v('tk'), 'email',
   E'Open 9am–5pm', 'Ready');
 reset role;

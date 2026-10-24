@@ -81,7 +81,9 @@ export type ActivityItem = { at: string; text: string; ticketId: string | null }
 
 /**
  * What people did in the last days, newest first: tickets logged, moved
- * (including picked up), and messages sent or failed, with who did it.
+ * (including picked up), and messages sent, waiting to send or failed, with
+ * who did it. A waiting message counts: someone took care of the ticket, and
+ * "Already taken care of" should say so (Oz, 24 Oct).
  * Shown in the centre without raising the red count (Oz, 23 Oct).
  */
 export function buildActivity(
@@ -120,7 +122,7 @@ export function buildActivity(
     }
   }
   for (const m of messages) {
-    if (m.status === "queued" || m.status === "sending" || m.status === "canceled") continue;
+    if (m.status === "canceled") continue;
     const what = m.kind === "reminder" ? "a reminder" : m.channel === "sms" ? "a text" : "an email";
     const num = ticket.get(m.ticket_id)?.ticket_number;
     const suffix = num ? ` (#${num})` : "";
@@ -130,7 +132,9 @@ export function buildActivity(
       text:
         m.status === "failed"
           ? `${who(m.sent_by)}'s ${what.replace(/^an? /, "")} to ${customer(m.ticket_id)}${suffix} failed`
-          : `${who(m.sent_by)} sent ${what} to ${customer(m.ticket_id)}${suffix}`,
+          : m.status === "queued" || m.status === "sending"
+            ? `${who(m.sent_by)}'s ${what.replace(/^an? /, "")} to ${customer(m.ticket_id)}${suffix} is waiting to send`
+            : `${who(m.sent_by)} sent ${what} to ${customer(m.ticket_id)}${suffix}`,
     });
   }
   return items.sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);

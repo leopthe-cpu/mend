@@ -119,8 +119,21 @@ describe("buildActivity", () => {
     ]);
   });
 
-  it("leaves out messages that haven't gone out yet", () => {
-    expect(buildActivity([], [msg({ status: "queued" })], tickets, members)).toEqual([]);
+  it("lists messages waiting to send, but not canceled ones", () => {
+    const items = buildActivity(
+      [],
+      [
+        msg({ status: "queued", kind: "reminder", channel: "email" }),
+        msg({ status: "sending" }),
+        msg({ status: "canceled" }),
+      ],
+      tickets,
+      members,
+    );
+    expect(items.map((i) => i.text)).toEqual([
+      "Ana's reminder to Maria Lopez (#1043) is waiting to send",
+      "Ana's text to Maria Lopez (#1043) is waiting to send",
+    ]);
   });
 });
 

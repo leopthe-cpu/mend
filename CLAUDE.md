@@ -70,7 +70,8 @@ TanStack Start (React 19, TS strict, Vite, Tailwind v4, shadcn/ui), built by Nit
 | Shop settings, statuses, custom fields, templates, taxes | ✓     | ✓     | ✗                   |
 | Invite and remove Staff                                  | ✓     | ✓     | ✗                   |
 | View audit log                                           | ✓     | ✓     | ✗                   |
-| Catalog items and catalog discounts                      | ✓     | ✗     | ✗                   |
+| Catalog items and catalog discounts (decision 67)        | ✓     | ✓     | ✗                   |
+| Catalog internal costs (not in the app yet, decision 66) | ✓     | ✗     | ✗                   |
 | Invite/remove/promote/demote Admins                      | ✓     | ✗     | ✗                   |
 | Bulk export customer data                                | ✓     | ✗     | ✗                   |
 | Billing, delete shop, transfer ownership                 | ✓     | ✗     | ✗                   |

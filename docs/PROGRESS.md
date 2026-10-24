@@ -1,12 +1,24 @@
 ---
 project: Mend
-updated: 2026-10-22
-summary: The 22 Oct release (PR #90) put the UX rounds F–R, customers, messages and catalog on www.mendshops.com. Texts (Twilio trial) and customer emails (Resend) are set up. Next: Oz's device tests, then the legal package; Twilio verification, backups and billing come right before customers. The LibreChat agent was removed on 22 Oct.
+updated: 2026-10-24
+summary: The 24 Oct release (PR #108) puts the notification centre, Ready "told / not told" tags, setup Skip, attention dots and 44 px close buttons on www.mendshops.com, after a browser test of every scenario on staging. Next: Oz tests texts on production, answers the UX-round questions, and adds a Resend key to staging; the legal package and launch steps follow.
 ---
 
 ## Doing
+- [ ] UX round 2 (board look, toolbar, card menu, edit board in place, stage messages, ticket page, contact checkboxes, Messages page) @claude #ux
+  Planned in 8 phases, one PR each. Waiting on Oz's answers below; Phases 1–2 first (no data changes).
 
 ## To do
+- [ ] Test texts on production after the 24 Oct release @me #testing
+  C3: a text after Ready shows "Texted …" on the card. F2: Staff sends a text; Activity shows who sent it. F7: "Send reminder" by text. Staging has no Twilio, so these can't be tested there.
+- [ ] Re-run the performance audit and explain the score @claude #performance
+  Compare with the last score of 80, using the run's "lighthouse-report" artifact.
+- [ ] Release #109 (team member names, phone width, "Owners and Admins" wording) @claude #release
+  Merged to develop and on staging; goes in the next develop → main release PR.
+- [ ] Check whether any button calls the send-messages function from the browser @claude #email
+  Its pre-check (OPTIONS) request gets a 405 on staging; automatic sending works. Optional.
+- [ ] New-ticket form: say the automatic text is skipped while the shop has no address or phone @claude #ux
+  Optional.
 - [ ] Legal package drafts: privacy policy, terms, DPA, subprocessor list @claude #legal
   D1–D4. Comes after Twilio is submitted and Oz has answered §8.
   Source: docs/launch-plan.md L2.2; docs/legal-compliance.md §2–§7
@@ -51,6 +63,14 @@ summary: The 22 Oct release (PR #90) put the UX rounds F–R, customers, message
   Source: docs/launch-plan.md "Later"
 
 ## Waiting
+- [ ] Answer the UX-round questions @me #ux #decision
+  Thin borders instead of decision 95? Keep 14 px minimum text? Stage messages one-click or automatic? Message types and free text? What "type of service" means for the filter? Send the reference recording or screenshots.
+- [ ] Add a Resend key to staging so email steps can be tested there @me #email #setup
+  No Twilio on staging (Oz, 24 Oct). Claude then re-tests the email steps.
+- [ ] Say when to delete the staging test accounts and "Kind Fix Shop" @me #testing
+  Kept for now (decision 135).
+- [ ] Allow the production read-only log check ("OK prod read-only") @me #security
+  Logs, auth settings, Edge Function list, select queries, and confirming the 6 @example.org spam accounts are gone.
 - [ ] Connect Resend as custom SMTP so sign-up emails reach everyone @me #email #setup
   Still open in oz-todo.md ("Tomorrow"). The built-in Supabase sender only reaches team members.
   Source: docs/oz-todo.md "connect Resend"
@@ -85,6 +105,31 @@ summary: The 22 Oct release (PR #90) put the UX rounds F–R, customers, message
   Source: docs/oz-todo.md "Decide"; docs/decisions.md 44, 48, 84
 
 ## Done
+- [x] Release 24 Oct: develop → main @claude #release (2026-10-24)
+  PRs #91–#107: notification centre, board tags, setup Skip, attention dots, 44 px close buttons, CI and docs. No database changes.
+  Railway production deploy of 8cf3a1e succeeded at 22:24 UTC.
+  Source: PR #108
+- [x] Team members named one way; long words can't widen a phone page @claude #ux (2026-10-24)
+  On staging; production with the next release.
+  Source: PR #109; docs/decisions.md 136
+- [x] 44 px close buttons on every sheet and dialog @claude #a11y (2026-10-24)
+  Source: PRs #106, #107
+- [x] Notification centre: to-dos and team activity behind a bell @claude #ux (2026-10-24)
+  "Already taken care of" names the waiting message (PR #105); "Picked up" confirms only with a saved passcode.
+  Source: PRs #102, #105; docs/decisions.md 134
+- [x] Browser test of staging scenarios A–F with Owner and Staff test accounts @claude #testing (2026-10-24)
+  All pass except steps that need a real text or email (no providers on staging).
+  Source: PR #104; docs/decisions.md 135
+- [x] Attention dots and "Finish your shop profile" box @claude #ux (2026-10-23)
+  Source: PR #101; docs/decisions.md 133
+- [x] Board card chips; Ready cards say whether the customer was told @claude #ux (2026-10-23)
+  Source: PR #100; docs/decisions.md 132
+- [x] Setup's Skip always skips; address and phone needed only to text @claude #ux (2026-10-23)
+  Source: PR #99; docs/decisions.md 131
+- [x] Form errors scroll into view @claude #ux (2026-10-23)
+  Source: PR #98; docs/decisions.md 130
+- [x] Context7 required for library details @claude #docs (2026-10-24)
+  Source: PR #103
 - [x] Phase 1A foundation: CI, pgTAP, design tokens, app shell, auth @claude #app (2026-10-06)
   Source: git log 6 Oct; docs/decisions.md "Decided during Phase 1A"
 - [x] Phase 1B: shops, roles, invites, audit log, two-step sign-in @claude #app (2026-10-06)

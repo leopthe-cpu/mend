@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Plus, Search, Ticket, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { NotificationCentre } from "@/components/app/NotificationCentre";
 import { NewTicketDialog } from "@/components/tickets/NewTicketDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -128,6 +129,8 @@ export function TopBar({ membership }: { membership: Membership }) {
           Ctrl K
         </kbd>
       </button>
+      {/* Notification centre (decision 134): to-dos and team activity. */}
+      <NotificationCentre membership={membership} />
       {/* The one filled button in the bar. The label shortens to "+" on
           phones, so the accessible name stays "New ticket" either way. */}
       <div className="flex justify-end lg:flex-1">

@@ -25,6 +25,7 @@ import {
   type Template,
 } from "@/lib/messages";
 import { pickupHoursText, promisedDateText } from "@/lib/hours";
+import { ago } from "@/lib/notifications";
 import {
   friendlyDbError,
   missingTextContact,
@@ -79,6 +80,43 @@ export function NotifyDialog({
   const [edited, setEdited] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  // No double messages (Oz, 23 Oct): say so when this ticket's customer
+  // already got a message in the last 24 hours, and from whom.
+  const [recent, setRecent] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRecent(null);
+    if (!request) return;
+    let alive = true;
+    void (async () => {
+      const db = getSupabase();
+      const { data: rows } = await db
+        .from("messages")
+        .select("kind, channel, created_at, sent_by")
+        .eq("ticket_id", request.ticketId)
+        .not("status", "in", "(canceled,failed)")
+        .gte("created_at", new Date(Date.now() - 86_400_000).toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const m = rows?.[0];
+      if (!m || !alive) return;
+      let who = "Mend";
+      if (m.sent_by) {
+        const { data: p } = await db
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", m.sent_by)
+          .maybeSingle();
+        who = (p?.full_name as string) || "A team member";
+      }
+      const what =
+        m.kind === "reminder" ? "a reminder" : m.channel === "sms" ? "a text" : "an email";
+      if (alive) setRecent(`${who} sent ${what} for this ticket ${ago(m.created_at as string)}.`);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [request]);
 
   useEffect(() => {
     if (!request) return;
@@ -250,6 +288,15 @@ export function NotifyDialog({
               void send();
             }}
           >
+            {recent ? (
+              <p
+                role="status"
+                className="rounded-lg border border-status-waiting bg-card px-3 py-2 text-sm text-foreground"
+              >
+                <strong className="font-semibold">Already contacted:</strong> {recent} Send another
+                only if it's needed.
+              </p>
+            ) : null}
             <fieldset className="grid grid-cols-2 gap-2">
               <legend className="sr-only">Channel</legend>
               {(["sms", "email"] as Channel[]).map((ch) => {

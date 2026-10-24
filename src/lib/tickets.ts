@@ -178,6 +178,47 @@ export function isUnclaimed(
   return now.getTime() - new Date(t.status_changed_at).getTime() > days * 86_400_000;
 }
 
+/** A message as the Board needs it to tell whether a Ready customer was told. */
+export type ContactMessage = {
+  ticket_id: string;
+  channel: "sms" | "email";
+  status: "queued" | "sending" | "sent" | "delivered" | "failed" | "canceled";
+  created_at: string;
+};
+export type ReadyContact =
+  | { state: "none" }
+  | { state: "sent" | "pending" | "failed"; channel: "sms" | "email"; at: string };
+
+/**
+ * Whether the customer heard from the shop since the ticket became Ready
+ * (Oz, 23 Oct): a sent or delivered message wins, then one still waiting to
+ * go (quiet hours, retry), then a failed one. Canceled messages don't count.
+ */
+export function readyContact(
+  t: Pick<Ticket, "id" | "status_changed_at">,
+  messages: ContactMessage[],
+): ReadyContact {
+  const since = new Date(t.status_changed_at).getTime();
+  const mine = messages
+    .filter(
+      (m) =>
+        m.ticket_id === t.id &&
+        m.status !== "canceled" &&
+        new Date(m.created_at).getTime() >= since,
+    )
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const pick = (states: ContactMessage["status"][]) => mine.find((m) => states.includes(m.status));
+  for (const [state, states] of [
+    ["sent", ["sent", "delivered"]],
+    ["pending", ["queued", "sending"]],
+    ["failed", ["failed"]],
+  ] as const) {
+    const m = pick([...states]);
+    if (m) return { state, channel: m.channel, at: m.created_at };
+  }
+  return { state: "none" };
+}
+
 export function onBoard(
   t: Pick<Ticket, "status_changed_at">,
   status: Status | undefined,

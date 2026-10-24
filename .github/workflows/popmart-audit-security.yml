@@ -1,4 +1,4 @@
-# Popmart audit: security — PORTABLE TEMPLATE (from leopthe-cpu/Creative.can,
+# Popmart audit: security — PORTABLE TEMPLATE (from leopthe-cpu/popmart.studio,
 # docs/audit-templates/). Copy to .github/workflows/popmart-audit-security.yml in the project's
 # repository (through that project's normal PR flow). Works with package-lock.json (npm audit) or
 # bun.lock (bun audit). Results appear on the Popmart dashboard's "Security audit" tile.
@@ -54,14 +54,15 @@ jobs:
       - id: start
         run: echo "ran_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history: the secret scan reads every commit
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
+          package-manager-cache: false # no automatic dependency cache (on by default since v5)
 
       - uses: oven-sh/setup-bun@v2
         if: hashFiles('bun.lock') != ''

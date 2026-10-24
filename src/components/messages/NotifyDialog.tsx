@@ -1,4 +1,5 @@
 import { Mail, MessageSquare, Send } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { Field } from "@/components/app/Field";
@@ -24,7 +25,13 @@ import {
   type Template,
 } from "@/lib/messages";
 import { pickupHoursText, promisedDateText } from "@/lib/hours";
-import { friendlyDbError, type Membership } from "@/lib/shop";
+import { ago } from "@/lib/notifications";
+import {
+  friendlyDbError,
+  missingTextContact,
+  TEXTS_NEED_CONTACT,
+  type Membership,
+} from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import {
   type Customer,
@@ -73,6 +80,43 @@ export function NotifyDialog({
   const [edited, setEdited] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  // No double messages (Oz, 23 Oct): say so when this ticket's customer
+  // already got a message in the last 24 hours, and from whom.
+  const [recent, setRecent] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRecent(null);
+    if (!request) return;
+    let alive = true;
+    void (async () => {
+      const db = getSupabase();
+      const { data: rows } = await db
+        .from("messages")
+        .select("kind, channel, created_at, sent_by")
+        .eq("ticket_id", request.ticketId)
+        .not("status", "in", "(canceled,failed)")
+        .gte("created_at", new Date(Date.now() - 86_400_000).toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const m = rows?.[0];
+      if (!m || !alive) return;
+      let who = "Mend";
+      if (m.sent_by) {
+        const { data: p } = await db
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", m.sent_by)
+          .maybeSingle();
+        who = (p?.full_name as string) || "A team member";
+      }
+      const what =
+        m.kind === "reminder" ? "a reminder" : m.channel === "sms" ? "a text" : "an email";
+      if (alive) setRecent(`${who} sent ${what} for this ticket ${ago(m.created_at as string)}.`);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [request]);
 
   useEffect(() => {
     if (!request) return;
@@ -131,6 +175,8 @@ export function NotifyDialog({
 
   function blockedReason(d: Loaded, ch: Channel): string | null {
     if (ch === "sms") {
+      // Decision 131: the database refuses texts until the shop has both.
+      if (missingTextContact(shop)) return TEXTS_NEED_CONTACT;
       if (d.customer.sms_opted_out) return "Opted out of texts (replied STOP or asked you).";
       if (!d.phone) return "No mobile number on file.";
     } else {
@@ -242,6 +288,15 @@ export function NotifyDialog({
               void send();
             }}
           >
+            {recent ? (
+              <p
+                role="status"
+                className="rounded-lg border border-status-waiting bg-card px-3 py-2 text-sm text-foreground"
+              >
+                <strong className="font-semibold">Already contacted:</strong> {recent} Send another
+                only if it's needed.
+              </p>
+            ) : null}
             <fieldset className="grid grid-cols-2 gap-2">
               <legend className="sr-only">Channel</legend>
               {(["sms", "email"] as Channel[]).map((ch) => {
@@ -317,9 +372,19 @@ export function NotifyDialog({
             {channel === "email" && shop.email ? (
               <p className="text-sm text-muted-foreground">Replies go to {shop.email}.</p>
             ) : channel === "email" ? (
-              <p className="text-sm text-muted-foreground">
-                Add your shop email in Settings so customers can reply.
-              </p>
+              // Oz, 23 Oct: a boxed note in body colour, linking to the exact
+              // field rather than "Settings" in general.
+              <div className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground">
+                Customers can't reply to this email until your shop has an email address.{" "}
+                <Link
+                  to="/app/settings/shop"
+                  hash="email"
+                  onClick={() => onClose()}
+                  className="font-medium text-primary underline underline-offset-4"
+                >
+                  Add shop email
+                </Link>
+              </div>
             ) : null}
 
             {error ? <FormAlert tone="error">{error}</FormAlert> : null}

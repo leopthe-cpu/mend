@@ -17,6 +17,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { AttentionDot } from "@/components/app/AttentionDot";
 import { cn } from "@/lib/utils";
 import { appNav, phoneTabs, railNav } from "./nav";
 
@@ -34,10 +35,13 @@ function useActive() {
 export function AppRail({
   userLabel,
   role,
+  attention,
   onSignOut,
 }: {
   userLabel: string;
   role: string;
+  /** Settings needs the user's attention (shows a dot, Oz 23 Oct). */
+  attention: boolean;
   onSignOut: () => void;
 }) {
   const isActive = useActive();
@@ -89,6 +93,7 @@ export function AppRail({
         userLabel={userLabel}
         role={role}
         settingsActive={isActive("/app/settings")}
+        attention={attention}
         onSignOut={onSignOut}
       />
     </nav>
@@ -100,25 +105,28 @@ function ProfileMenu({
   userLabel,
   role,
   settingsActive,
+  attention,
   onSignOut,
 }: {
   userLabel: string;
   role: string;
   settingsActive: boolean;
+  attention: boolean;
   onSignOut: () => void;
 }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label={`Account: ${userLabel}`}
+        aria-label={`Account: ${userLabel}${attention ? ". Settings needs attention" : ""}`}
         className={cn(
-          "flex size-14 cursor-pointer items-center justify-center rounded-full text-base font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+          "relative flex size-14 cursor-pointer items-center justify-center rounded-full text-base font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
           settingsActive
             ? "bg-primary text-primary-foreground"
             : "bg-border text-foreground hover:bg-border/70",
         )}
       >
         {initials(userLabel)}
+        {attention ? <AttentionDot className="absolute top-0.5 right-0.5" /> : null}
       </DropdownMenuTrigger>
       <DropdownMenuContent
         side="right"
@@ -135,6 +143,12 @@ function ProfileMenu({
           <Link to="/app/settings">
             <Settings aria-hidden className="size-5" />
             Settings
+            {attention ? (
+              <>
+                <span className="sr-only"> (needs attention)</span>
+                <AttentionDot className="ml-auto" />
+              </>
+            ) : null}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem
@@ -180,10 +194,13 @@ function RailItem({ label, children }: { label: string; children: React.ReactNod
 export function PhoneTabBar({
   shopName,
   userLabel,
+  attention,
   onSignOut,
 }: {
   shopName: string;
   userLabel: string;
+  /** Settings (under More) needs the user's attention. */
+  attention: boolean;
   onSignOut: () => void;
 }) {
   const isActive = useActive();
@@ -224,11 +241,15 @@ export function PhoneTabBar({
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
-          className={cn(tabClass(moreActive), "cursor-pointer")}
+          className={cn(tabClass(moreActive), "relative cursor-pointer")}
           aria-haspopup="dialog"
         >
-          <MoreHorizontal aria-hidden className="size-6" />
+          <span className="relative">
+            <MoreHorizontal aria-hidden className="size-6" />
+            {attention ? <AttentionDot className="absolute -top-0.5 -right-1" /> : null}
+          </span>
           More
+          {attention ? <span className="sr-only"> (Settings needs attention)</span> : null}
         </button>
       </nav>
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
@@ -248,6 +269,12 @@ export function PhoneTabBar({
                 >
                   <Icon aria-hidden className="size-6" />
                   {label}
+                  {attention && to === "/app/settings" ? (
+                    <>
+                      <span className="sr-only"> (needs attention)</span>
+                      <AttentionDot className="ml-auto" />
+                    </>
+                  ) : null}
                 </Link>
               </li>
             ))}

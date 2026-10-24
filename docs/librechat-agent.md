@@ -1,5 +1,12 @@
 # LibreChat coding agent for Mend
 
+> **Removed on 22 Oct 2026 (decision 126).** The LibreChat agent and its
+> Railway services (LibreChat, RAG API, MongoDB, Meilisearch, VectorDB) are
+> gone, and its GitHub and Supabase access tokens are revoked. This file stays
+> as a record. Still in force: the **Hard rules for every PR** (for any coding
+> agent) and the branch rulesets in §2. Sections 1 and 3–7 describe the old
+> agent setup; don't follow them.
+
 Decision 64. A LibreChat agent (OpenRouter → DeepSeek V4.1 Flash) that can
 read the code, push to feature branches, open pull requests, read CI results,
 and use the **staging** database. It can never push to `develop` or `main`,

@@ -1,4 +1,4 @@
-# Popmart audit: performance — PORTABLE TEMPLATE (from leopthe-cpu/Creative.can,
+# Popmart audit: performance — PORTABLE TEMPLATE (from leopthe-cpu/popmart.studio,
 # docs/audit-templates/). Copy to .github/workflows/popmart-audit-performance.yml in the project's
 # repository (through that project's normal PR flow) and set the PERF_URL repository variable.
 # Works with npm (package-lock.json) or bun (bun.lock). Results appear on the Popmart dashboard's
@@ -50,13 +50,14 @@ jobs:
       - id: start
         run: echo "ran_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
+          package-manager-cache: false # no automatic dependency cache (on by default since v5)
 
       - uses: oven-sh/setup-bun@v2
         if: hashFiles('bun.lock') != ''
@@ -97,6 +98,24 @@ jobs:
           mkdir -p "$RUNNER_TEMP/lhci" && cd "$RUNNER_TEMP/lhci"
           npx --yes "@lhci/cli@${LHCI_VERSION}" collect --url "$PERF_URL" --numberOfRuns 3
           ls .lighthouseci
+
+      # Keeps Lighthouse's full reports (one HTML and one JSON per run) with the run for 30 days, so a
+      # low score can be explained without re-running Lighthouse: run page → Artifacts. They are
+      # copied out of the hidden .lighthouseci folder because upload-artifact skips hidden files.
+      # GitHub's artifact storage only, never Lighthouse's temporary public storage.
+      - name: Collect the Lighthouse reports
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/lighthouse-report"
+          cp "$RUNNER_TEMP"/lhci/.lighthouseci/lhr-*.html "$RUNNER_TEMP"/lhci/.lighthouseci/lhr-*.json "$RUNNER_TEMP/lighthouse-report/" 2>/dev/null || echo "No Lighthouse reports to keep"
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lighthouse-report
+          path: ${{ runner.temp }}/lighthouse-report
+          retention-days: 30
+          if-no-files-found: warn
 
       # Scores 0–100 (median of the runs). fail: any of performance / accessibility / best practices
       # below 50; warn: any below 90; else pass. Build size is reported, not judged.

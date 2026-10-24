@@ -1,0 +1,12 @@
+# gitleaks configuration, read from the repository root by the Popmart
+# security audit (decision 129). It keeps all of gitleaks' default rules and
+# adds one exception: Supabase publishable keys (sb_publishable_...), which are
+# public by design (decision 20): every browser receives them and RLS enforces
+# access. Secret keys (sb_secret_...) and every other key are still reported.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Supabase publishable keys are public by design (decision 20)"
+regexTarget = "match"
+regexes = ['''sb_publishable_[A-Za-z0-9_-]+''']

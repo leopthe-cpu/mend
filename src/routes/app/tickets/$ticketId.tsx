@@ -25,6 +25,7 @@ import {
   fetchStatuses,
   fetchTicket,
   isOverdue,
+  memberName,
   shopToday,
   signedPhotoUrls,
   type CustomField,
@@ -151,7 +152,7 @@ function TicketDetail() {
   const canReveal = isAdmin || ticket.assigned_to === user.id;
   const who = (id: string | null) => {
     const m = members.find((x) => x.user_id === id);
-    return m ? m.name || m.email : "Someone";
+    return m ? memberName(m) : "Someone";
   };
 
   async function rpc(name: string, args: Record<string, unknown>, done?: string) {
@@ -270,7 +271,8 @@ function TicketDetail() {
         </FormAlert>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+      {/* grid-cols-1 sizes the column to the screen, so a long word can't widen the page. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <TicketDetailsPanel
             ticket={ticket}

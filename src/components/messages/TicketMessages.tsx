@@ -90,7 +90,7 @@ export function TicketMessages({
                     </span>
                   </div>
                   {m.subject ? <p className="mt-1 font-medium">{m.subject}</p> : null}
-                  <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
+                  <p className="mt-1 whitespace-pre-wrap wrap-anywhere">{m.body}</p>
                   {failed && m.error ? <p className="mt-1 text-sm text-danger">{m.error}</p> : null}
                   {m.status === "canceled" && m.error ? (
                     <p className="mt-1 text-sm text-muted-foreground">{m.error}</p>

@@ -1,7 +1,7 @@
 ---
 project: Mend
-updated: 2026-10-18
-summary: The MVP (phases 1–5) and the UX round (PRs 1–8) are live on www.mendshops.com, and the interim legal pages, unsubscribe, retention and customer export shipped on 17–18 Oct. Texts and customer emails are still off until Oz sets up Twilio and Resend, and the full legal package with a lawyer review comes next.
+updated: 2026-10-22
+summary: The 22 Oct release (PR #90) put the UX rounds F–R, customers, messages and catalog on www.mendshops.com. Texts (Twilio trial) and customer emails (Resend) are set up. Next: Oz's device tests, then the legal package; Twilio verification, backups and billing come right before customers. The LibreChat agent was removed on 22 Oct.
 ---
 
 ## Doing
@@ -33,8 +33,12 @@ summary: The MVP (phases 1–5) and the UX round (PRs 1–8) are live on www.men
 - [ ] Read the security review §2 and §3 @me #security
   Private copy (decision 65): known gaps and the questions for a lawyer.
   Source: docs/oz-todo.md "Before real shops use Mend"
-- [ ] Consider a longer minimum password (8+) @me #auth
-  Source: docs/oz-todo.md "Before real shops use Mend"
+- [ ] Build decision 127: Turnstile CAPTCHA on sign-in, sign-up and reset, and 8+ character passwords @claude #auth #security
+  Code first, then switch CAPTCHA on in staging, then production. Not started.
+  Source: docs/decisions.md 127
+- [ ] Cloudflare Turnstile widget and keys; set the secret key and 8+ minimum in both Supabase projects @me #auth #setup
+  Site key to Claude (public); secret key only in Supabase Auth settings. After the decision 127 code is on staging.
+  Source: docs/decisions.md 127
 - [ ] Two-step sign-in on Oz's Supabase and GitHub accounts @me #security
   Source: docs/oz-todo.md "Before real shops use Mend"
 - [ ] Let people delete their own Mend login @claude #privacy
@@ -98,6 +102,8 @@ summary: The MVP (phases 1–5) and the UX round (PRs 1–8) are live on www.men
   Source: docs/decisions.md 61–62
 - [x] Staging and production environments with protected branches @claude #infra (2026-10-07)
   Source: docs/environments.md; docs/decisions.md 63–65
+- [x] LibreChat coding agent removed, with its Railway services and tokens @me #infra (2026-10-22)
+  Source: docs/librechat-agent.md; docs/decisions.md 126
 - [x] LibreChat coding agent set up with its own GitHub account @me #infra (2026-10-07)
   Source: docs/librechat-agent.md; docs/decisions.md 64
 - [x] UX simplification PRs 1–8, released to production @claude #ux (2026-10-16)

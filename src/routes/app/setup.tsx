@@ -17,6 +17,7 @@ import {
   countryForTimeZone,
   friendlyDbError,
   guessTimeZone,
+  phoneComplete,
   roleAtLeast,
   ROLE_LABEL,
   TIME_ZONES,
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/app/setup")({
 });
 
 type TaxRow = { name: string; rate: string };
+const PHONE_INCOMPLETE = "Enter the shop's full phone number, or leave it empty for now.";
 const STEPS = ["Names", "Your trade", "Location & hours", "Taxes", "Invite your team"] as const;
 
 function Setup() {
@@ -77,6 +79,13 @@ function Setup() {
   const [copied, setCopied] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+  // Bumped on every failed attempt so the alert remounts and scrolls into view
+  // again, even when the message is the same as last time (FormAlert).
+  const [errorSeq, setErrorSeq] = useState(0);
+  const showError = (msg: string) => {
+    setError(msg);
+    setErrorSeq((n) => n + 1);
+  };
   const [saving, setSaving] = useState(false);
 
   if (!roleAtLeast(membership.role, "admin")) {
@@ -103,12 +112,11 @@ function Setup() {
     if (!skipTaxes && taxErrors.some(Boolean)) return;
     if (!shopName.trim()) {
       setStep(0);
-      return setError("The shop needs a name.");
+      return showError("The shop needs a name.");
     }
-    const contactMsg = contactError();
-    if (contactMsg) {
+    if (phone.trim() && !phoneComplete(phone)) {
       setStep(2);
-      return setError(contactMsg);
+      return showError(PHONE_INCOMPLETE);
     }
     setSaving(true);
     setError(null);
@@ -119,8 +127,10 @@ function Setup() {
       p_vertical: vertical,
       p_country: country,
       p_time_zone: timeZone,
-      p_address: address.trim(),
-      p_phone: phone.trim(),
+      // Null keeps what the shop has: the address and phone are optional here
+      // and only needed to text customers (decision 131).
+      p_address: address.trim() || null,
+      p_phone: phoneComplete(phone) ? phone.trim() : null,
       p_business_hours: { text: scheduleToText(schedule), schedule },
       p_tax_rates: skipTaxes
         ? []
@@ -129,7 +139,7 @@ function Setup() {
             .map((t) => ({ name: t.name.trim(), rate: Number(t.rate) })),
     });
     setSaving(false);
-    if (error) return setError(friendlyDbError(error));
+    if (error) return showError(friendlyDbError(error));
     // The setup banner and shop name come from the cached membership.
     forgetAppData();
     // Advance to the invite step without navigating (the guard won't re-fire
@@ -147,7 +157,7 @@ function Setup() {
       p_email: inviteEmail,
       p_role: inviteRole,
     });
-    if (error) return setError(friendlyDbError(error));
+    if (error) return showError(friendlyDbError(error));
     const token = (data as { token: string }[])[0]?.token;
     if (token) setInviteLink(`${window.location.origin}/invite/${token}`);
     setInviteEmail("");
@@ -157,23 +167,31 @@ function Setup() {
     await navigate({ to: "/app/board", replace: true });
   }
 
-  // Decision 76: texts identify the shop (CASL), so address and phone are
-  // required before leaving the "Location & hours" step.
-  const contactError = () =>
-    !address.trim() || phone.replace(/\D/g, "").length < 10
-      ? "Add your shop's address and phone. Customers see them on your shop's contact page, linked from your texts."
-      : null;
+  // Continue only stops for input that can't be saved. The address and phone
+  // are optional here (decision 131): without them the shop can't text
+  // customers yet, which the step and the app say.
   const next = () => {
-    if (step === 2) {
-      const msg = contactError();
-      if (msg) return setError(msg);
-      setError(null);
-    }
+    if (step === 0 && !shopName.trim()) return showError("The shop needs a name.");
+    if (step === 2 && phone.trim() && !phoneComplete(phone)) return showError(PHONE_INCOMPLETE);
+    setError(null);
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   };
   const back = () => setStep((s) => Math.max(s - 1, 0));
+  // "Skip this step" always moves on (Oz, 22 Oct: a skip that can't skip is
+  // a dead end). It keeps the shop's current values for the step's required
+  // inputs and drops input that can't be saved.
   const skip = () => {
     setError(null);
+    if (step === 0) {
+      if (!shopName.trim()) setShopName(shop.name);
+      setStep(1);
+      return;
+    }
+    if (step === 2) {
+      if (phone.trim() && !phoneComplete(phone)) setPhone(shop.phone ?? "");
+      setStep(3);
+      return;
+    }
     if (step === 3) {
       // Taxes: save everything with no tax rates, then invite step.
       void finishSetup(true);
@@ -218,7 +236,11 @@ function Setup() {
         </ol>
 
         <section className="mt-6 flex flex-col gap-5 rounded-[1.75rem] bg-card p-6">
-          {error ? <FormAlert tone="error">{error}</FormAlert> : null}
+          {error ? (
+            <FormAlert key={errorSeq} tone="error">
+              {error}
+            </FormAlert>
+          ) : null}
 
           {/* ─── Step 0: Names ─── */}
           {step === 0 && (
@@ -373,7 +395,7 @@ function Setup() {
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="address">Address *</Label>
+                <Label htmlFor="address">Address</Label>
                 <Input
                   id="address"
                   value={address}
@@ -383,8 +405,12 @@ function Setup() {
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="phone">Shop phone *</Label>
+                <Label htmlFor="phone">Shop phone</Label>
                 <PhoneInput id="phone" value={phone} onValueChange={setPhone} />
+                <p className="text-sm text-muted-foreground">
+                  Needed to text customers: your texts link to a page with your address and phone.
+                  You can add them later in Settings.
+                </p>
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Shop hours</Label>

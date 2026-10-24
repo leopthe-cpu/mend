@@ -17,7 +17,7 @@ import {
   smsSegments,
   STATUS_TEXT,
 } from "@/lib/messages";
-import { friendlyDbError } from "@/lib/shop";
+import { friendlyDbError, missingTextContact, TEXTS_NEED_CONTACT } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import { fetchContacts } from "@/lib/tickets";
 import { cn } from "@/lib/utils";
@@ -271,6 +271,7 @@ function MessagesPage() {
                 customerId={selected}
                 shopId={shop.id}
                 timeZone={shop.time_zone}
+                textsOff={missingTextContact(shop)}
                 onBack={() => open(undefined)}
                 onSent={loadThreads}
               />
@@ -290,12 +291,15 @@ function Conversation({
   customerId,
   shopId,
   timeZone,
+  textsOff,
   onBack,
   onSent,
 }: {
   customerId: string;
   shopId: string;
   timeZone: string;
+  /** The shop has no address or phone yet, so texts can't go out (decision 131). */
+  textsOff: boolean;
   onBack: () => void;
   onSent: () => void | Promise<void>;
 }) {
@@ -353,12 +357,14 @@ function Conversation({
       if (!picked.current) {
         picked.current = true;
         const pref = p.preferred_channel;
-        setChannel(blocked(p, pref) && !blocked(p, other(pref)) ? other(pref) : pref);
+        setChannel(
+          blocked(p, pref, textsOff) && !blocked(p, other(pref), textsOff) ? other(pref) : pref,
+        );
       }
     } catch (e) {
       setNotice({ tone: "error", text: friendlyDbError(e) });
     }
-  }, [customerId, shopId]);
+  }, [customerId, shopId, textsOff]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -392,7 +398,7 @@ function Conversation({
     await onSent();
   }
 
-  const reason = person ? blocked(person, channel) : null;
+  const reason = person ? blocked(person, channel, textsOff) : null;
   const seg = smsSegments(body);
 
   return (
@@ -504,7 +510,7 @@ function Conversation({
               className="flex rounded-full bg-background p-1"
             >
               {(["sms", "email"] as const).map((ch) => {
-                const why = person ? blocked(person, ch) : null;
+                const why = person ? blocked(person, ch, textsOff) : null;
                 return (
                   <button
                     key={ch}
@@ -586,8 +592,9 @@ function other(ch: Channel): Channel {
 }
 
 /** Why this customer can't get a message on this channel, or null. */
-function blocked(p: Person, ch: Channel): string | null {
+function blocked(p: Person, ch: Channel, textsOff: boolean): string | null {
   if (ch === "sms") {
+    if (textsOff) return TEXTS_NEED_CONTACT;
     if (p.sms_opted_out) return "Texts are off for this customer (replied STOP or asked you).";
     if (!p.phone) return "No mobile number on file.";
   } else {

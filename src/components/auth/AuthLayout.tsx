@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 import { Logo } from "@/components/brand/Logo";
 
@@ -44,8 +44,27 @@ export function AuthLayout({
 }
 
 export function FormAlert({ tone, children }: { tone: "error" | "info"; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const shownText = useRef<string | null>(null);
+  // Oz, 22 Oct: an error drawn above the fold (e.g. setup's required address,
+  // reached from "Skip this step" at the bottom) looked like a dead button.
+  // When an error appears or its text changes and it is off screen, bring it
+  // into view. Runs after every render but only acts on a new text, so typing
+  // elsewhere never scrolls the page back.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || tone !== "error") return;
+    const text = el.textContent ?? "";
+    if (text === shownText.current) return;
+    shownText.current = text;
+    const box = el.getBoundingClientRect();
+    if (box.top >= 0 && box.bottom <= window.innerHeight) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+  });
   return (
     <div
+      ref={ref}
       role={tone === "error" ? "alert" : "status"}
       className={
         tone === "error"

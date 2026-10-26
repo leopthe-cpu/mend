@@ -646,11 +646,10 @@ export function NewTicketDialog({
                   <div
                     className="flex flex-wrap items-center gap-3 rounded-md bg-surface-1 px-3 py-2"
                     onBlur={(e) => {
-                      if (
-                        parsedDiscount?.ok &&
-                        !e.currentTarget.contains(e.relatedTarget as Node | null)
-                      )
-                        setDiscountLocked(true);
+                      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+                      // An empty discount closes on click-away, like the ✕ (Oz, 24 Oct).
+                      if (!discount.value.trim()) return setDiscount(null);
+                      if (parsedDiscount?.ok) setDiscountLocked(true);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && parsedDiscount?.ok) setDiscountLocked(true);
@@ -661,6 +660,7 @@ export function NewTicketDialog({
                     </span>
                     <TicketDiscountInput
                       id="ticket-discount"
+                      autoFocus
                       draft={discount}
                       onChange={(d) => {
                         setDiscount(d);

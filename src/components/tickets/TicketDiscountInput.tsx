@@ -11,10 +11,12 @@ export function TicketDiscountInput({
   id,
   draft,
   onChange,
+  autoFocus,
 }: {
   id: string;
   draft: TicketDiscountDraft;
   onChange: (d: TicketDiscountDraft) => void;
+  autoFocus?: boolean;
 }) {
   const seg = (on: boolean) =>
     cn(
@@ -50,6 +52,7 @@ export function TicketDiscountInput({
           id={id}
           aria-label="Discount amount"
           className="w-28"
+          autoFocus={autoFocus}
           value={draft.value}
           onValueChange={(value) => onChange({ ...draft, value })}
         />
@@ -59,6 +62,7 @@ export function TicketDiscountInput({
           aria-label="Discount percent"
           inputMode="decimal"
           className="w-24 text-right"
+          autoFocus={autoFocus}
           value={draft.value}
           onChange={(e) => onChange({ ...draft, value: e.target.value })}
         />

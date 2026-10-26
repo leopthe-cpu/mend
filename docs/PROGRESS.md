@@ -9,6 +9,9 @@ summary: The 24 Oct release (PR #108) puts the notification centre, Ready "told 
   Planned in 8 phases, one PR each. Waiting on Oz's answers below; Phases 1–2 first (no data changes).
 
 ## To do
+- [ ] Customer list import: CSV upload, other common formats if needed @claude #customers #later
+  Day-1 requirement right after the MVP (Oz, 26 Oct). Open points: formats, column matching, duplicates, preview, who may import, consent stays off.
+  Source: docs/decisions.md 139
 - [ ] Test texts on production after the 24 Oct release @me #testing
   C3: a text after Ready shows "Texted …" on the card. F2: Staff sends a text; Activity shows who sent it. F7: "Send reminder" by text. Staging has no Twilio, so these can't be tested there.
 - [ ] Re-run the performance audit and explain the score @claude #performance

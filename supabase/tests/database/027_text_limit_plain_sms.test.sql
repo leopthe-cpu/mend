@@ -12,7 +12,9 @@ grant execute on function pg_temp.v(text) to authenticated;
 -- Each test runs in one transaction, so now() doesn't move: move earlier
 -- messages back past the 2-minute gap between messages (decision 137).
 create function pg_temp.age_messages() returns void language sql security definer as $$
-  update public.messages set created_at = created_at - interval '3 minutes' $$;
+  update public.messages set created_at = created_at - interval '3 minutes', after_cooldown = false,
+    scheduled_for = case when queued_for_quiet_hours then scheduled_for
+                         else least(scheduled_for, now()) - interval '3 minutes' end $$;
 grant execute on function pg_temp.age_messages() to authenticated;
 
 select set_config('request.jwt.claims', '{"sub":"ac000000-0000-0000-0000-000000000001","role":"authenticated"}', true);

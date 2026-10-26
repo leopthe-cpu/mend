@@ -1,4 +1,4 @@
-import { Mail, MessageSquare, Send } from "lucide-react";
+import { CalendarClock, Mail, MessageSquare, Send } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
@@ -17,7 +17,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   type Channel,
   fetchTemplates,
-  kickSender,
   REMINDER_TEMPLATE,
   renderTemplate,
   shopTime,
@@ -25,7 +24,7 @@ import {
   type Template,
 } from "@/lib/messages";
 import { pickupHoursText, promisedDateText } from "@/lib/hours";
-import { ago, countdown, messageWhat, sendLockedUntil } from "@/lib/notifications";
+import { messageWhat, sendPlan, type PlanMessage, type SendPlan } from "@/lib/notifications";
 import {
   friendlyDbError,
   missingTextContact,
@@ -42,6 +41,8 @@ import {
   type Ticket,
 } from "@/lib/tickets";
 import { cn } from "@/lib/utils";
+
+import { toastQueued } from "./messageToasts";
 
 export type NotifyRequest = {
   ticketId: string;
@@ -71,7 +72,8 @@ export function NotifyDialog({
 }: {
   request: NotifyRequest | null;
   membership: Membership;
-  onClose: (result?: string) => void;
+  /** `true` when a message was queued (the caller refreshes; the toast says so). */
+  onClose: (sent?: boolean) => void;
 }) {
   const shop = membership.shop;
   const [data, setData] = useState<Loaded | null>(null);
@@ -81,61 +83,43 @@ export function NotifyDialog({
   const [edited, setEdited] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  // No double messages (Oz, 23 Oct): say so when this ticket's customer
-  // already got a message in the last 24 hours, and from whom.
-  const [recent, setRecent] = useState<string | null>(null);
-  // Two minutes between messages on one ticket (decision 137): Send waits,
-  // with a countdown, until the last message is 2 minutes old.
-  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!lockedUntil) return;
-    const id = window.setInterval(() => {
-      setNow(Date.now());
-      if (Date.now() >= lockedUntil) setLockedUntil(null);
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [lockedUntil]);
+  // Decision 138: every message waits 20 s; the next goes 2 minutes after the
+  // previous one (Schedule), one at a time; a repeat needs a second click.
+  const [plan, setPlan] = useState<SendPlan>({ mode: "send" });
+  const [repeat, setRepeat] = useState<string | null>(null);
+  // A different text or channel is checked again.
+  useEffect(() => setRepeat(null), [channel, body]);
 
   useEffect(() => {
-    setRecent(null);
-    setLockedUntil(null);
+    setPlan({ mode: "send" });
+    setRepeat(null);
     if (!request) return;
     let alive = true;
     void (async () => {
-      const db = getSupabase();
-      const { data: rows } = await db
+      const { data: rows } = await getSupabase()
         .from("messages")
-        .select("kind, channel, created_at, sent_by")
+        .select("status, sent_at, scheduled_for, after_cooldown")
         .eq("ticket_id", request.ticketId)
         .not("status", "in", "(canceled,failed)")
-        .gte("created_at", new Date(Date.now() - 86_400_000).toISOString())
         .order("created_at", { ascending: false })
-        .limit(1);
-      const m = rows?.[0];
-      if (!m || !alive) return;
-      setLockedUntil(sendLockedUntil(m.created_at as string));
-      setNow(Date.now());
-      // The automatic "ticket created" message is Mend's, whoever logged the ticket.
-      let who = "Mend";
-      if (m.sent_by && m.kind !== "created") {
-        const { data: p } = await db
-          .from("profiles")
-          .select("full_name, email")
-          .eq("user_id", m.sent_by)
-          .maybeSingle();
-        who = memberName({
-          name: (p?.full_name as string) ?? "",
-          email: (p?.email as string) ?? "",
-        });
-      }
-      const what = messageWhat(m.kind as string, m.channel as "sms" | "email");
-      if (alive) setRecent(`${who} sent ${what} for this ticket ${ago(m.created_at as string)}.`);
+        .limit(20);
+      if (alive) setPlan(sendPlan((rows ?? []) as PlanMessage[]));
     })();
     return () => {
       alive = false;
     };
   }, [request]);
+
+  // Who sent an earlier message, for the repeat note.
+  async function senderName(id: string | null, kind: string): Promise<string> {
+    if (!id || kind === "created") return "Mend";
+    const { data: p } = await getSupabase()
+      .from("profiles")
+      .select("full_name, email")
+      .eq("user_id", id)
+      .maybeSingle();
+    return memberName({ name: (p?.full_name as string) ?? "", email: (p?.email as string) ?? "" });
+  }
 
   useEffect(() => {
     if (!request) return;
@@ -256,7 +240,29 @@ export function NotifyDialog({
     if (!request || !data) return;
     setSending(true);
     setError(null);
-    const { data: rows, error: err } = await getSupabase().rpc("queue_message", {
+    const db = getSupabase();
+    // The same status update, or the same text, again: say so and ask once.
+    if (!repeat) {
+      const { data: prev } = await db.rpc("find_repeat_message", {
+        p_ticket_id: request.ticketId,
+        p_kind: request.kind,
+        p_channel: channel,
+        p_body: body,
+      });
+      const p = (
+        prev as
+          { created_at: string; channel: Channel; kind: string; sent_by: string | null }[] | null
+      )?.[0];
+      if (p) {
+        const who = await senderName(p.sent_by, p.kind);
+        setRepeat(
+          `${who} already sent ${messageWhat(p.kind, p.channel)} like this (${shopTime(p.created_at, shop.time_zone)}).`,
+        );
+        setSending(false);
+        return;
+      }
+    }
+    const { data: rows, error: err } = await db.rpc("queue_message", {
       p_ticket_id: request.ticketId,
       p_channel: channel,
       p_body: body,
@@ -265,15 +271,19 @@ export function NotifyDialog({
     });
     setSending(false);
     if (err) return setError(friendlyDbError(err));
-    const r = (rows as { scheduled_for: string; quiet_hours: boolean }[] | null)?.[0];
-    kickSender();
-    const first = data.customer.name.split(" ")[0] || data.customer.name;
-    const what = channel === "sms" ? "Text" : "Email";
-    onClose(
-      r?.quiet_hours
-        ? `Quiet hours: the ${what.toLowerCase()} to ${first} will go out ${shopTime(r.scheduled_for, shop.time_zone)}.`
-        : `${what} to ${first} is on its way.`,
-    );
+    const r = (
+      rows as { message_id: string; scheduled_for: string; quiet_hours: boolean }[] | null
+    )?.[0];
+    if (r)
+      toastQueued({
+        messageId: r.message_id,
+        channel,
+        who: data.customer.name.split(" ")[0] || data.customer.name,
+        scheduledFor: r.scheduled_for,
+        quietHours: r.quiet_hours,
+        timeZone: shop.time_zone,
+      });
+    onClose(true);
   }
 
   const seg = smsSegments(body);
@@ -282,7 +292,14 @@ export function NotifyDialog({
 
   return (
     <Dialog open={!!request} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-lg">
+      <DialogContent
+        className="max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-lg"
+        // A held-message toast may be open below: answering it must not close
+        // this dialog (decision 138).
+        onInteractOutside={(e) => {
+          if ((e.target as Element | null)?.closest?.("[data-sonner-toaster]")) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="text-2xl">
             {data
@@ -307,15 +324,32 @@ export function NotifyDialog({
               void send();
             }}
           >
-            {recent ? (
+            {plan.mode !== "send" ? (
               <p
                 role="status"
                 className="rounded-lg border border-status-waiting bg-card px-3 py-2 text-sm text-foreground"
               >
-                <strong className="font-semibold">Already contacted:</strong> {recent}{" "}
-                {lockedUntil
-                  ? "To avoid double messages, Send opens 2 minutes after the last one."
-                  : "Send another only if it's needed."}
+                {plan.mode === "schedule" ? (
+                  <>
+                    <strong className="font-semibold">Scheduled:</strong> a message to {first} just
+                    went out or is on its way. This one goes 2 minutes after it (
+                    {shopTime(new Date(plan.at).toISOString(), shop.time_zone)})
+                  </>
+                ) : (
+                  <>
+                    <strong className="font-semibold">One message is already scheduled</strong> (
+                    {shopTime(new Date(plan.at).toISOString(), shop.time_zone)}). Send this after it
+                    goes out, or cancel it under the ticket's Messages.
+                  </>
+                )}
+              </p>
+            ) : null}
+            {repeat ? (
+              <p
+                role="alert"
+                className="rounded-lg border border-status-waiting bg-card px-3 py-2 text-sm text-foreground"
+              >
+                <strong className="font-semibold">Already sent:</strong> {repeat} Send it again?
               </p>
             ) : null}
             <fieldset className="grid grid-cols-2 gap-2">
@@ -415,14 +449,14 @@ export function NotifyDialog({
               </Button>
               <Button
                 type="submit"
-                disabled={sending || !!blocked || !body.trim() || !!lockedUntil}
+                disabled={sending || !!blocked || !body.trim() || plan.mode === "full"}
               >
-                <Send />{" "}
+                {plan.mode === "send" ? <Send /> : <CalendarClock />}{" "}
                 {sending
                   ? "Sending…"
-                  : lockedUntil
-                    ? `Send in ${countdown(lockedUntil - now)}`
-                    : "Send"}
+                  : plan.mode === "full"
+                    ? "1 scheduled"
+                    : `${plan.mode === "schedule" ? "Schedule" : "Send"}${repeat ? " again" : ""}`}
               </Button>
             </div>
           </form>

@@ -193,6 +193,9 @@ export type ContactMessage = {
   channel: "sms" | "email";
   status: "queued" | "sending" | "sent" | "delivered" | "failed" | "canceled";
   created_at: string;
+  /** For status updates (decision 138): the status the message was about. */
+  kind?: string;
+  status_id?: string | null;
 };
 export type ReadyContact =
   | { state: "none" }
@@ -202,9 +205,12 @@ export type ReadyContact =
  * Whether the customer heard from the shop since the ticket became Ready
  * (Oz, 23 Oct): a sent or delivered message wins, then one still waiting to
  * go (quiet hours, retry), then a failed one. Canceled messages don't count.
+ * The update about this status itself counts even if it was sent before the
+ * ticket last arrived here, so a quick trip out of Ready and back doesn't
+ * undo "told" (Oz, 26 Oct; decision 138).
  */
 export function readyContact(
-  t: Pick<Ticket, "id" | "status_changed_at">,
+  t: Pick<Ticket, "id" | "status_changed_at"> & { status_id?: string },
   messages: ContactMessage[],
 ): ReadyContact {
   const since = new Date(t.status_changed_at).getTime();
@@ -213,7 +219,8 @@ export function readyContact(
       (m) =>
         m.ticket_id === t.id &&
         m.status !== "canceled" &&
-        new Date(m.created_at).getTime() >= since,
+        (new Date(m.created_at).getTime() >= since ||
+          (m.kind === "status" && !!m.status_id && m.status_id === t.status_id)),
     )
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
   const pick = (states: ContactMessage["status"][]) => mine.find((m) => states.includes(m.status));

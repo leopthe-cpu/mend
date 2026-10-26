@@ -4,9 +4,8 @@ import {
   ago,
   buildActivity,
   buildTodos,
-  countdown,
   messageWhat,
-  sendLockedUntil,
+  sendPlan,
   type CentreEvent,
   type CentreMessage,
 } from "@/lib/notifications";
@@ -150,17 +149,44 @@ describe("ago", () => {
   });
 });
 
-describe("two minutes between messages", () => {
-  it("locks Send until the last message is 2 minutes old", () => {
-    expect(sendLockedUntil("2026-10-23T14:59:00Z", now)).toBe(
-      new Date("2026-10-23T15:01:00Z").getTime(),
-    );
-    expect(sendLockedUntil("2026-10-23T14:58:00Z", now)).toBeNull();
-    expect(sendLockedUntil(null, now)).toBeNull();
+describe("send plan (decision 138)", () => {
+  const n = new Date("2026-10-23T15:00:00Z").getTime();
+  const m = (over: Partial<Parameters<typeof sendPlan>[0][number]>) => ({
+    status: "sent",
+    sent_at: "2026-10-23T14:50:00Z",
+    scheduled_for: "2026-10-23T14:50:00Z",
+    after_cooldown: false,
+    ...over,
   });
-  it("counts down in minutes and seconds", () => {
-    expect(countdown(84_000)).toBe("1:24");
-    expect(countdown(500)).toBe("0:01");
+  it("sends when nothing went out in the last 2 minutes", () => {
+    expect(sendPlan([m({})], n)).toEqual({ mode: "send" });
+    expect(sendPlan([], n)).toEqual({ mode: "send" });
+  });
+  it("schedules 2 minutes after the last message", () => {
+    const sent = m({ sent_at: "2026-10-23T14:59:30Z" });
+    expect(sendPlan([sent], n)).toEqual({
+      mode: "schedule",
+      at: new Date("2026-10-23T15:01:30Z").getTime(),
+    });
+    const waiting = m({ status: "queued", sent_at: null, scheduled_for: "2026-10-23T15:00:20Z" });
+    expect(sendPlan([waiting], n).mode).toBe("schedule");
+  });
+  it("is full while one message waits behind another", () => {
+    const queued = m({
+      status: "queued",
+      sent_at: null,
+      scheduled_for: "2026-10-23T15:02:00Z",
+      after_cooldown: true,
+    });
+    expect(sendPlan([queued], n)).toEqual({
+      mode: "full",
+      at: new Date("2026-10-23T15:02:00Z").getTime(),
+    });
+  });
+  it("ignores failed and canceled messages", () => {
+    expect(
+      sendPlan([m({ status: "failed", sent_at: null, scheduled_for: "2026-10-23T14:59:59Z" })], n),
+    ).toEqual({ mode: "send" });
   });
   it("names the automatic message", () => {
     expect(messageWhat("created", "sms")).toBe("the automatic “ticket created” text");

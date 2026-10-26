@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Bell, MessageSquareWarning, PackageCheck, Store } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
+import { promptHeldMessages } from "@/components/messages/messageToasts";
 import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -31,7 +32,7 @@ import { cn } from "@/lib/utils";
 // and the team's activity (listed, never counted). Everything comes from the
 // shop's own data, so a to-do someone else finished disappears for everyone.
 
-const MESSAGE_COLUMNS = "ticket_id, channel, kind, status, created_at, sent_by";
+const MESSAGE_COLUMNS = "ticket_id, channel, kind, status, status_id, created_at, sent_by";
 const REFRESH_MS = 120_000;
 
 type Data = {
@@ -169,6 +170,12 @@ export function NotificationCentre({ membership }: { membership: Membership }) {
     setNotice({
       tone: "info",
       text: `#${todo.ticket.ticket_number} marked ${final.name.toLowerCase()}.`,
+    });
+    void promptHeldMessages({
+      ticketId: todo.ticket.id,
+      ticketNumber: todo.ticket.ticket_number,
+      statusName: final.name,
+      who: todo.ticket.customer?.name.split(" ")[0] || "the customer",
     });
     void load();
   }
@@ -316,9 +323,8 @@ export function NotificationCentre({ membership }: { membership: Membership }) {
       <NotifyDialog
         request={notify}
         membership={membership}
-        onClose={(result) => {
+        onClose={() => {
           setNotify(null);
-          if (result) setNotice({ tone: "info", text: result });
           void load();
         }}
       />

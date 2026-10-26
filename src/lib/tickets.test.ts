@@ -57,3 +57,19 @@ describe("memberName", () => {
     expect(memberName({ name: "", email: "" })).toBe("A team member");
   });
 });
+
+describe("readyContact follows the log (decision 138)", () => {
+  it("keeps 'told' when the ticket left Ready and came back", () => {
+    const t = { id: "t1", status_changed_at: "2026-10-24T22:36:59Z", status_id: "ready" };
+    const sentBefore = {
+      ticket_id: "t1",
+      channel: "sms" as const,
+      status: "delivered" as const,
+      created_at: "2026-10-24T22:36:40Z",
+      kind: "status",
+      status_id: "ready",
+    };
+    expect(readyContact(t, [sentBefore]).state).toBe("sent");
+    expect(readyContact(t, [{ ...sentBefore, status_id: "in_progress" }]).state).toBe("none");
+  });
+});

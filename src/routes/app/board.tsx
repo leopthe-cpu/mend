@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 
 import { StopAlerts } from "@/components/messages/StopAlerts";
 import { FormAlert } from "@/components/auth/AuthLayout";
+import { promptHeldMessages } from "@/components/messages/messageToasts";
 import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
 import { BoardCard } from "@/components/board/BoardCard";
 import { usePointerDrag } from "@/components/board/usePointerDrag";
@@ -14,6 +15,7 @@ import { getSupabase } from "@/lib/supabase";
 import {
   fetchMembers,
   fetchStatuses,
+  fetchTicket,
   fetchTickets,
   onBoard,
   memberName as nameOf,
@@ -98,7 +100,6 @@ function Board() {
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [notify, setNotify] = useState<NotifyRequest | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [contacts, setContacts] = useState<ContactMessage[]>([]);
 
   // Messages for Ready tickets, so each card can say whether the customer was
@@ -107,7 +108,7 @@ function Board() {
     if (!readyIds.length) return setContacts([]);
     const { data, error } = await getSupabase()
       .from("messages")
-      .select("ticket_id, channel, status, created_at")
+      .select("ticket_id, channel, status, created_at, kind, status_id")
       .in("ticket_id", readyIds.slice(0, 300))
       .neq("status", "canceled");
     if (!error) setContacts((data ?? []) as ContactMessage[]);
@@ -174,8 +175,22 @@ function Board() {
       setError(friendlyDbError(error));
       return;
     }
+    // The server's "Ready since" time, not this computer's clock: the card's
+    // told / not told tag compares it with message times.
+    const fresh = await fetchTicket(ticketId);
+    if (fresh) setTickets((ts) => ts.map((t) => (t.id === ticketId ? fresh : t)));
+    const moved = prev.find((t) => t.id === ticketId);
+    const status = statuses.find((s) => s.id === statusId);
+    // Messages that hadn't gone out are held; ask whether to still send them.
+    if (moved)
+      void promptHeldMessages({
+        ticketId,
+        ticketNumber: moved.ticket_number,
+        statusName: status?.name ?? "a new status",
+        who: moved.customer?.name.split(" ")[0] || "the customer",
+      });
     // Statuses that notify by default ask first; nothing is sent automatically.
-    if (statuses.find((s) => s.id === statusId)?.notify_by_default) {
+    if (status?.notify_by_default) {
       setNotify({ ticketId, kind: "status", statusId });
     }
   }
@@ -234,19 +249,13 @@ function Board() {
           </FormAlert>
         </div>
       ) : null}
-      {notice ? (
-        <div className="mb-4">
-          <FormAlert tone="info">{notice}</FormAlert>
-        </div>
-      ) : null}
       <NotifyDialog
         request={notify}
         membership={membership}
-        onClose={(result) => {
+        onClose={(sent) => {
           setNotify(null);
-          if (result) {
-            setNotice(result);
-            // A message went out: refresh the "told / not told" tags.
+          if (sent) {
+            // A message was queued: refresh the "told / not told" tags.
             const ready = new Set(statuses.filter((x) => x.category === "ready").map((x) => x.id));
             void loadContacts(tickets.filter((x) => ready.has(x.status_id)).map((x) => x.id));
           }

@@ -17,7 +17,9 @@ grant execute on function pg_temp.v(text) to authenticated, service_role;
 -- Each test runs in one transaction, so now() doesn't move: move earlier
 -- messages back past the 2-minute gap between messages (decision 137).
 create function pg_temp.age_messages() returns void language sql security definer as $$
-  update public.messages set created_at = created_at - interval '3 minutes' $$;
+  update public.messages set created_at = created_at - interval '3 minutes', after_cooldown = false,
+    scheduled_for = case when queued_for_quiet_hours then scheduled_for
+                         else least(scheduled_for, now()) - interval '3 minutes' end $$;
 grant execute on function pg_temp.age_messages() to authenticated, service_role;
 
 select set_config('request.jwt.claims', '{"sub":"f1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
@@ -57,8 +59,8 @@ select is(private.next_send_at('2026-10-07 02:30+00', 'America/Toronto', '00:00'
 select set_config('request.jwt.claims', '{"sub":"f1000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 set local role authenticated;
 insert into t select 'm1', message_id::text from public.queue_message(pg_temp.v('tk'), 'sms', 'Hi Maria, your Coat is ready.');
-select results_eq($$ select status::text, scheduled_for <= now(), queued_for_quiet_hours from public.messages where id = pg_temp.v('m1') $$,
-  $$ values ('queued'::text, true, false) $$, 'staff queues an SMS for now');
+select results_eq($$ select status::text, scheduled_for = now() + interval '20 seconds', queued_for_quiet_hours from public.messages where id = pg_temp.v('m1') $$,
+  $$ values ('queued'::text, true, false) $$, 'staff queues an SMS; it waits 20 seconds (decision 138)');
 select throws_ok($$ select public.queue_message(pg_temp.v('tk'), 'email', 'Body only') $$, '22023', null, 'email needs a subject');
 select throws_ok($$ select public.queue_message(pg_temp.v('tk2'), 'email', 'Hello', 'Ready') $$, '22023', null,
   'no email address, no email');
@@ -189,7 +191,7 @@ reset role;
 select ok((select email_opted_out from public.customers where id = pg_temp.v('maria')), 'a spam complaint opts the customer out of email');
 select ok(exists (select 1 from public.audit_log where action = 'customer.email_complaint'), 'and is audited');
 select lives_ok($$ select private.dispatch_due_messages() $$, 'the dispatcher is a no-op without its Vault settings');
-select ok(exists (select 1 from cron.job where jobname = 'mend-send-due-messages' and schedule = '* * * * *'), 'the dispatcher runs every minute');
+select ok(exists (select 1 from cron.job where jobname = 'mend-send-due-messages' and schedule = '10 seconds'), 'the dispatcher runs every 10 seconds (decision 138)');
 select ok(not has_function_privilege('authenticated', 'public.provider_message_id_for(uuid)', 'execute')
       and not has_function_privilege('authenticated', 'public.record_email_complaint(text)', 'execute'),
   'webhook helpers are not callable by users');

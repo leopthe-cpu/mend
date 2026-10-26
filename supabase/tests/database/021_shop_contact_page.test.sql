@@ -10,6 +10,11 @@ create temp table t (k text primary key, v text);
 grant all on t to authenticated, anon;
 create function pg_temp.v(p text) returns uuid language sql as $$ select v::uuid from t where k = p $$;
 grant execute on function pg_temp.v(text) to authenticated, anon;
+-- Each test runs in one transaction, so now() doesn't move: move earlier
+-- messages back past the 2-minute gap between messages (decision 137).
+create function pg_temp.age_messages() returns void language sql security definer as $$
+  update public.messages set created_at = created_at - interval '3 minutes' $$;
+grant execute on function pg_temp.age_messages() to authenticated;
 
 select set_config('request.jwt.claims', '{"sub":"bb000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
@@ -27,9 +32,11 @@ select throws_ok($$ select public.queue_message(pg_temp.v('tk'), 'sms', 'Ready.'
   'add your shop''s address and phone in Settings → Shop before texting customers', 'no address/phone: texts refused');
 select lives_ok($$ select public.queue_message(pg_temp.v('tk'), 'email', 'Ready.', 'Ready') $$, 'emails still allowed');
 update public.shops set address = '1 Main St, Toronto ON' where id = pg_temp.v('shop');
+select pg_temp.age_messages();
 select throws_ok($$ select public.queue_message(pg_temp.v('tk'), 'sms', 'Ready.') $$, '22023', null, 'address alone is not enough');
 update public.shops set phone = '416 555 0000' where id = pg_temp.v('shop');
 
+select pg_temp.age_messages();
 insert into t select 'm1', message_id::text from public.queue_message(pg_temp.v('tk'), 'sms', 'Ready.');
 reset role;
 select is((select body from public.messages where id = pg_temp.v('m1')),

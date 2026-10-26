@@ -14,6 +14,11 @@ create temp table t (k text primary key, v text);
 grant all on t to authenticated, service_role;
 create function pg_temp.v(p text) returns uuid language sql as $$ select v::uuid from t where k = p $$;
 grant execute on function pg_temp.v(text) to authenticated, service_role;
+-- Each test runs in one transaction, so now() doesn't move: move earlier
+-- messages back past the 2-minute gap between messages (decision 137).
+create function pg_temp.age_messages() returns void language sql security definer as $$
+  update public.messages set created_at = created_at - interval '3 minutes' $$;
+grant execute on function pg_temp.age_messages() to authenticated, service_role;
 
 select set_config('request.jwt.claims', '{"sub":"f1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
@@ -94,6 +99,7 @@ update public.shops set
  where id = pg_temp.v('shop');
 select set_config('request.jwt.claims', '{"sub":"f1000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 set local role authenticated;
+select pg_temp.age_messages();
 insert into t select 'mq', message_id::text from public.queue_message(pg_temp.v('tk'), 'email', 'Your coat is ready', 'Ready for pickup');
 select results_eq($$ select queued_for_quiet_hours, scheduled_for > now(),
                        to_char(scheduled_for at time zone 'America/Toronto', 'HH24:MI')
@@ -106,8 +112,15 @@ update public.shops set quiet_hours_start = '00:00', quiet_hours_end = '00:00' w
 -- Rate limit per ticket (5 per hour; 2 already counted: m1 and mq).
 select set_config('request.jwt.claims', '{"sub":"f1000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 set local role authenticated;
-select public.queue_message(pg_temp.v('tk'), 'email', 'Note ' || g, 'Update') from generate_series(1, 3) g;
-select throws_ok($$ select public.queue_message(pg_temp.v('tk'), 'email', 'One more', 'Update') $$, '54000', null,
+select pg_temp.age_messages();
+select public.queue_message(pg_temp.v('tk'), 'email', 'Note 1', 'Update');
+select pg_temp.age_messages();
+select public.queue_message(pg_temp.v('tk'), 'email', 'Note 2', 'Update');
+select pg_temp.age_messages();
+select public.queue_message(pg_temp.v('tk'), 'email', 'Note 3', 'Update');
+select pg_temp.age_messages();
+select throws_ok($$ select public.queue_message(pg_temp.v('tk'), 'email', 'One more', 'Update') $$, '54000',
+  'this ticket already had 5 messages in the last hour',
   'a 6th message on one ticket within an hour is refused');
 reset role;
 -- Monthly SMS cap.
@@ -115,6 +128,7 @@ update public.shops set sms_monthly_cap = 1 where id = pg_temp.v('shop');
 select set_config('request.jwt.claims', '{"sub":"f1000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 set local role authenticated;
 insert into t select 'm_pat', message_id::text from public.queue_message(pg_temp.v('tk2'), 'sms', 'Skis ready');
+select pg_temp.age_messages();
 select throws_ok($$ select public.queue_message(pg_temp.v('tk2'), 'sms', 'Skis ready again') $$, '54000', null,
   'the monthly SMS cap is enforced');
 select throws_ok($$ update public.shops set sms_monthly_cap = 9999 where id = pg_temp.v('shop') $$, '42501', null,

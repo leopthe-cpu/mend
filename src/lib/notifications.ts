@@ -17,7 +17,7 @@ import {
 export const PICKUP_CHECK_HOURS = 24;
 
 export type CentreMessage = ContactMessage & {
-  kind: "status" | "reminder" | "manual";
+  kind: "status" | "reminder" | "manual" | "created";
   sent_by: string | null;
 };
 export type CentreEvent = {
@@ -128,6 +128,9 @@ export function buildActivity(
   for (const m of messages) {
     if (m.status === "canceled") continue;
     const what = m.kind === "reminder" ? "a reminder" : m.channel === "sms" ? "a text" : "an email";
+    // The automatic "ticket created" message is queued under the person who
+    // logged the ticket; it's Mend's, as decision 134 says.
+    const by = m.kind === "created" ? "Mend" : who(m.sent_by);
     const num = ticket.get(m.ticket_id)?.ticket_number;
     const suffix = num ? ` (#${num})` : "";
     items.push({
@@ -135,10 +138,10 @@ export function buildActivity(
       ticketId: m.ticket_id,
       text:
         m.status === "failed"
-          ? `${who(m.sent_by)}'s ${what.replace(/^an? /, "")} to ${customer(m.ticket_id)}${suffix} failed`
+          ? `${by}'s ${what.replace(/^an? /, "")} to ${customer(m.ticket_id)}${suffix} failed`
           : m.status === "queued" || m.status === "sending"
-            ? `${who(m.sent_by)}'s ${what.replace(/^an? /, "")} to ${customer(m.ticket_id)}${suffix} is waiting to send`
-            : `${who(m.sent_by)} sent ${what} to ${customer(m.ticket_id)}${suffix}`,
+            ? `${by}'s ${what.replace(/^an? /, "")} to ${customer(m.ticket_id)}${suffix} is waiting to send`
+            : `${by} sent ${what} to ${customer(m.ticket_id)}${suffix}`,
     });
   }
   return items.sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
@@ -153,4 +156,33 @@ export function ago(iso: string, now = new Date()): string {
   if (h < 24) return `${h} h ago`;
   const d = Math.floor(h / 24);
   return d === 1 ? "1 day ago" : `${d} days ago`;
+}
+
+/** Two minutes between messages on one ticket (decision 137); the server's
+ *  queue_message enforces the same gap. */
+export const SEND_GAP_MS = 2 * 60_000;
+
+/** When Send can be used again after a message created at `lastAt`, or null
+ *  when it already can. */
+export function sendLockedUntil(lastAt: string | null, now = new Date()): number | null {
+  if (!lastAt) return null;
+  const until = new Date(lastAt).getTime() + SEND_GAP_MS;
+  return until > now.getTime() ? until : null;
+}
+
+/** "1:24" for a countdown in milliseconds. */
+export function countdown(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** What a message was, in words: the automatic one is named, so "Already
+ *  contacted" can't be mistaken for someone telling the customer it's ready. */
+export function messageWhat(kind: string, channel: "sms" | "email"): string {
+  if (kind === "created")
+    return channel === "sms"
+      ? "the automatic “ticket created” text"
+      : "the automatic “ticket created” email";
+  if (kind === "reminder") return "a reminder";
+  return channel === "sms" ? "a text" : "an email";
 }

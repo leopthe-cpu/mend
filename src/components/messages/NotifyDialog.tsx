@@ -25,7 +25,7 @@ import {
   type Template,
 } from "@/lib/messages";
 import { pickupHoursText, promisedDateText } from "@/lib/hours";
-import { ago } from "@/lib/notifications";
+import { ago, countdown, messageWhat, sendLockedUntil } from "@/lib/notifications";
 import {
   friendlyDbError,
   missingTextContact,
@@ -84,9 +84,22 @@ export function NotifyDialog({
   // No double messages (Oz, 23 Oct): say so when this ticket's customer
   // already got a message in the last 24 hours, and from whom.
   const [recent, setRecent] = useState<string | null>(null);
+  // Two minutes between messages on one ticket (decision 137): Send waits,
+  // with a countdown, until the last message is 2 minutes old.
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const id = window.setInterval(() => {
+      setNow(Date.now());
+      if (Date.now() >= lockedUntil) setLockedUntil(null);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [lockedUntil]);
 
   useEffect(() => {
     setRecent(null);
+    setLockedUntil(null);
     if (!request) return;
     let alive = true;
     void (async () => {
@@ -101,8 +114,11 @@ export function NotifyDialog({
         .limit(1);
       const m = rows?.[0];
       if (!m || !alive) return;
+      setLockedUntil(sendLockedUntil(m.created_at as string));
+      setNow(Date.now());
+      // The automatic "ticket created" message is Mend's, whoever logged the ticket.
       let who = "Mend";
-      if (m.sent_by) {
+      if (m.sent_by && m.kind !== "created") {
         const { data: p } = await db
           .from("profiles")
           .select("full_name, email")
@@ -113,8 +129,7 @@ export function NotifyDialog({
           email: (p?.email as string) ?? "",
         });
       }
-      const what =
-        m.kind === "reminder" ? "a reminder" : m.channel === "sms" ? "a text" : "an email";
+      const what = messageWhat(m.kind as string, m.channel as "sms" | "email");
       if (alive) setRecent(`${who} sent ${what} for this ticket ${ago(m.created_at as string)}.`);
     })();
     return () => {
@@ -297,8 +312,10 @@ export function NotifyDialog({
                 role="status"
                 className="rounded-lg border border-status-waiting bg-card px-3 py-2 text-sm text-foreground"
               >
-                <strong className="font-semibold">Already contacted:</strong> {recent} Send another
-                only if it's needed.
+                <strong className="font-semibold">Already contacted:</strong> {recent}{" "}
+                {lockedUntil
+                  ? "To avoid double messages, Send opens 2 minutes after the last one."
+                  : "Send another only if it's needed."}
               </p>
             ) : null}
             <fieldset className="grid grid-cols-2 gap-2">
@@ -396,8 +413,16 @@ export function NotifyDialog({
               <Button type="button" variant="outline" onClick={() => onClose()}>
                 Skip
               </Button>
-              <Button type="submit" disabled={sending || !!blocked || !body.trim()}>
-                <Send /> {sending ? "Sending…" : "Send"}
+              <Button
+                type="submit"
+                disabled={sending || !!blocked || !body.trim() || !!lockedUntil}
+              >
+                <Send />{" "}
+                {sending
+                  ? "Sending…"
+                  : lockedUntil
+                    ? `Send in ${countdown(lockedUntil - now)}`
+                    : "Send"}
               </Button>
             </div>
           </form>

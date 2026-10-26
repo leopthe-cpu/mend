@@ -7,10 +7,10 @@ import { selectClass } from "@/components/app/Field";
 import { FormAlert } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toastQueued } from "@/components/messages/messageToasts";
 import { Textarea } from "@/components/ui/textarea";
 import {
   type Channel,
-  kickSender,
   type Message,
   type MessageStatus,
   shopTime,
@@ -385,14 +385,19 @@ function Conversation({
     });
     setSending(false);
     if (error) return setNotice({ tone: "error", text: friendlyDbError(error) });
-    const r = (data as { scheduled_for: string; quiet_hours: boolean }[] | null)?.[0];
-    kickSender();
+    const r = (
+      data as { message_id: string; scheduled_for: string; quiet_hours: boolean }[] | null
+    )?.[0];
     setBody("");
     setSubject("");
-    if (r?.quiet_hours)
-      setNotice({
-        tone: "info",
-        text: `Quiet hours: it will go out ${shopTime(r.scheduled_for, timeZone)}.`,
+    if (r)
+      toastQueued({
+        messageId: r.message_id,
+        channel,
+        who: person.name.split(" ")[0] || person.name,
+        scheduledFor: r.scheduled_for,
+        quietHours: r.quiet_hours,
+        timeZone,
       });
     await load();
     await onSent();

@@ -190,12 +190,6 @@ export async function fetchTicketMessages(ticketId: string): Promise<Message[]> 
   return (data ?? []) as Message[];
 }
 
-export function kickSender(): void {
-  void getSupabase()
-    .functions.invoke("send-messages", { body: {} })
-    .catch(() => undefined);
-}
-
 export function shopTime(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone,

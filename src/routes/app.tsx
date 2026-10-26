@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 
 import { ActionBanner } from "@/components/app/ActionBanner";
 import { AppRail, PhoneTabBar } from "@/components/app/AppRail";
+import { Toaster } from "@/components/ui/sonner";
 import { TopBar } from "@/components/app/TopBar";
 import { UnsavedChangesDialog } from "@/components/app/UnsavedChangesDialog";
 import { LEGAL } from "@/lib/legal";
@@ -153,6 +154,14 @@ function AppLayout() {
           </main>
         </div>
         <UnsavedChangesDialog registry={unsaved} />
+        {/* Message confirmations (decision 138): bottom left, clear of the
+            rail on computers and of the tab bar on phones. */}
+        <Toaster
+          position="bottom-left"
+          duration={5000}
+          offset={{ left: "7rem", bottom: "1.5rem" }}
+          mobileOffset={{ left: "1rem", right: "1rem", bottom: "6.5rem" }}
+        />
       </div>
     </UnsavedContext.Provider>
   );

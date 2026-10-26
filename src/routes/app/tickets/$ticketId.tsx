@@ -13,6 +13,7 @@ import { StatusMenu } from "@/components/tickets/StatusMenu";
 import { TicketDetailsPanel } from "@/components/tickets/TicketDetailsPanel";
 import { TicketPhotosPanel } from "@/components/tickets/TicketPhotosPanel";
 import { TicketTimeline } from "@/components/tickets/TicketTimeline";
+import { promptHeldMessages } from "@/components/messages/messageToasts";
 import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
 import { TicketMessages } from "@/components/messages/TicketMessages";
 import { shortDate } from "@/lib/calendar";
@@ -179,7 +180,15 @@ function TicketDetail() {
       { p_ticket_id: ticket!.id, p_status_id: statusId },
       `Moved to ${target?.name}.`,
     );
-    if (ok && target?.notify_by_default) {
+    if (!ok) return;
+    // Messages that hadn't gone out are held; ask whether to still send them.
+    void promptHeldMessages({
+      ticketId: ticket!.id,
+      ticketNumber: ticket!.ticket_number,
+      statusName: target?.name ?? "a new status",
+      who: ticket!.customer?.name.split(" ")[0] || "the customer",
+    }).then(() => setMessagesKey((k) => k + 1));
+    if (target?.notify_by_default) {
       setNotify({ ticketId: ticket!.id, kind: "status", statusId });
     }
   }
@@ -399,10 +408,9 @@ function TicketDetail() {
           <NotifyDialog
             request={notify}
             membership={membership}
-            onClose={(result) => {
+            onClose={(sent) => {
               setNotify(null);
-              if (result) {
-                setMessage({ tone: "info", text: result });
+              if (sent) {
                 setMessagesKey((k) => k + 1);
                 reloadEvents();
               }

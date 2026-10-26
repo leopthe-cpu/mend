@@ -158,22 +158,34 @@ export function ago(iso: string, now = new Date()): string {
   return d === 1 ? "1 day ago" : `${d} days ago`;
 }
 
-/** Two minutes between messages on one ticket (decision 137); the server's
- *  queue_message enforces the same gap. */
+/** Every message waits 20 seconds; the next goes 2 minutes after the previous
+ *  one, and only one may wait behind another (decision 138; queue_message
+ *  enforces the same). */
+export const SEND_DELAY_MS = 20_000;
 export const SEND_GAP_MS = 2 * 60_000;
 
-/** When Send can be used again after a message created at `lastAt`, or null
- *  when it already can. */
-export function sendLockedUntil(lastAt: string | null, now = new Date()): number | null {
-  if (!lastAt) return null;
-  const until = new Date(lastAt).getTime() + SEND_GAP_MS;
-  return until > now.getTime() ? until : null;
-}
+export type PlanMessage = {
+  status: string;
+  sent_at: string | null;
+  scheduled_for: string;
+  after_cooldown: boolean;
+};
+export type SendPlan =
+  { mode: "send" } | { mode: "schedule"; at: number } | { mode: "full"; at: number };
 
-/** "1:24" for a countdown in milliseconds. */
-export function countdown(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+/** What the dialog's button does now: Send, Schedule (with when), or nothing
+ *  because one message is already scheduled. */
+export function sendPlan(messages: PlanMessage[], now = Date.now()): SendPlan {
+  const live = messages.filter((m) => m.status !== "failed" && m.status !== "canceled");
+  const waiting = live.filter((m) => m.status === "queued" || m.status === "sending");
+  const scheduled = waiting.find((m) => m.after_cooldown);
+  if (scheduled) return { mode: "full", at: new Date(scheduled.scheduled_for).getTime() };
+  const last = Math.max(
+    -Infinity,
+    ...live.map((m) => new Date(m.sent_at ?? m.scheduled_for).getTime()),
+  );
+  const at = last + SEND_GAP_MS;
+  return at > now + SEND_DELAY_MS ? { mode: "schedule", at } : { mode: "send" };
 }
 
 /** What a message was, in words: the automatic one is named, so "Already

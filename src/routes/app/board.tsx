@@ -17,8 +17,10 @@ import {
   fetchStatuses,
   fetchTicket,
   fetchTickets,
+  BOARD_CLOSED_LIMIT,
+  boardColumn,
+  isDueSoon,
   isOverdue,
-  onBoard,
   memberName as nameOf,
   readyContact,
   shopToday,
@@ -33,16 +35,13 @@ import { cn } from "@/lib/utils";
 
 /**
  * Height that takes the board from where it starts down to the bottom of the
- * window, keeping `below` (the hint under it) and the page's bottom padding in
+ * window, keeping the page's bottom padding in
  * view (19 Oct round 3; decision 116). Each column then scrolls on its own
  * instead of the whole page. Re-measured whenever anything above changes
  * size (summary hidden or shown, a banner appears) or the window resizes.
  * Computers only: on phones the page scrolls as before, under the tab bar.
  */
-function useFillHeight(
-  board: React.RefObject<HTMLElement | null>,
-  below: React.RefObject<HTMLElement | null>,
-): number | undefined {
+function useFillHeight(board: React.RefObject<HTMLElement | null>): number | undefined {
   const [height, setHeight] = useState<number>();
   useLayoutEffect(() => {
     const wide = window.matchMedia("(min-width: 768px)");
@@ -53,7 +52,7 @@ function useFillHeight(
         const el = board.current;
         if (!el || !wide.matches) return setHeight(undefined);
         const top = el.getBoundingClientRect().top + window.scrollY;
-        const rest = (below.current?.offsetHeight ?? 0) + 8 + 32; // hint margin + main's pb-8
+        const rest = 32; // main's pb-8
         const h = Math.max(384, Math.round(window.innerHeight - top - rest));
         // Only a real change sets state, so the board's own resize settles.
         setHeight((old) => (old !== undefined && Math.abs(old - h) < 2 ? old : h));
@@ -73,7 +72,7 @@ function useFillHeight(
       window.removeEventListener("resize", measure);
       wide.removeEventListener("change", measure);
     };
-  }, [board, below]);
+  }, [board]);
   return height;
 }
 
@@ -203,8 +202,7 @@ function Board() {
   const follow = (from: HTMLElement | null, to: HTMLElement | null) => {
     if (from && to && to.scrollLeft !== from.scrollLeft) to.scrollLeft = from.scrollLeft;
   };
-  const hintRef = useRef<HTMLParagraphElement>(null);
-  const boardHeight = useFillHeight(boardRef, hintRef);
+  const boardHeight = useFillHeight(boardRef);
 
   const today = shopToday(shop.time_zone);
   const { drag, cardProps } = usePointerDrag((id, statusId) => {
@@ -291,8 +289,9 @@ function Board() {
           className="board-scroll flex shrink-0 overflow-x-auto border-b border-border"
         >
           {statuses.map((s, i) => {
-            const col = tickets.filter((t) => t.status_id === s.id && onBoard(t, s));
-            const late = s.is_final ? 0 : col.filter((t) => isOverdue(t, s, today)).length;
+            const { shown: col, total } = boardColumn(tickets, s);
+            const late = col.filter((t) => isOverdue(t, s, today)).length;
+            const soon = col.filter((t) => isDueSoon(t, s, today)).length;
             return (
               <div
                 key={s.id}
@@ -300,8 +299,8 @@ function Board() {
               >
                 <h2 className="flex items-center gap-2 font-semibold">
                   {/* The title opens the List with only this status (decision
-                      117), including picked-up tickets older than the board's
-                      7 days. */}
+                      117), including picked-up tickets past the board's latest
+                      10. */}
                   <Link
                     to="/app/tickets"
                     search={{ f: `status:${s.id}` }}
@@ -314,9 +313,7 @@ function Board() {
                     />
                     <span className="truncate">{s.name}</span>
                   </Link>
-                  <span className="ml-auto font-mono text-sm text-muted-foreground">
-                    {col.length}
-                  </span>
+                  <span className="ml-auto font-mono text-sm text-muted-foreground">{total}</span>
                   {/* New tickets start in the first column, so it gets the
                       same + as the top bar (decision 115). */}
                   {i === 0 ? (
@@ -332,13 +329,17 @@ function Board() {
                   ) : null}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {s.is_final
-                    ? "Last 7 days"
-                    : late
-                      ? `${late} overdue`
-                      : col.length
-                        ? "None overdue"
-                        : "Empty"}
+                  {!total
+                    ? "Empty"
+                    : s.category === "closed"
+                      ? total > BOARD_CLOSED_LIMIT
+                        ? `Latest ${BOARD_CLOSED_LIMIT}`
+                        : "Latest first"
+                      : late || soon
+                        ? [late && `${late} overdue`, soon && `${soon} due soon`]
+                            .filter(Boolean)
+                            .join(" · ")
+                        : "None overdue"}
                 </p>
               </div>
             );
@@ -350,12 +351,12 @@ function Board() {
           className="flex min-h-0 flex-1 overflow-x-auto bg-background [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {statuses.map((s) => {
-            const col = tickets.filter((t) => t.status_id === s.id && onBoard(t, s));
+            const { shown: col, total } = boardColumn(tickets, s);
             return (
               <section
                 key={s.id}
                 data-drop-id={s.id}
-                aria-label={`${s.name}, ${col.length} tickets`}
+                aria-label={`${s.name}, ${total} tickets`}
                 className={cn(
                   "flex min-w-[17rem] flex-1 basis-0 flex-col border-r border-border last:border-r-0",
                   drag?.over === s.id && "bg-accent/60",
@@ -385,6 +386,17 @@ function Board() {
                       />
                     </li>
                   ))}
+                  {total > col.length ? (
+                    <li>
+                      <Link
+                        to="/app/tickets"
+                        search={{ f: `status:${s.id}` }}
+                        className="flex min-h-11 items-center justify-center rounded-lg text-sm font-medium text-primary hover:bg-card"
+                      >
+                        See all {total} in the list
+                      </Link>
+                    </li>
+                  ) : null}
                 </ol>
               </section>
             );
@@ -412,16 +424,6 @@ function Board() {
             timeZone={shop.time_zone}
           />
         </div>
-      ) : null}
-      {statuses.length ? (
-        <p ref={hintRef} className="mt-2 text-sm text-muted-foreground">
-          Drag a card to another column to move it, or open the ticket to change its status.
-          Picked-up tickets leave the board after 7 days; they stay in{" "}
-          <Link to="/app/tickets" className="underline">
-            Tickets
-          </Link>
-          .
-        </p>
       ) : null}
     </>
   );

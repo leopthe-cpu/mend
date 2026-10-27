@@ -11,6 +11,7 @@ import {
 import { shortDate } from "@/lib/calendar";
 import {
   initials,
+  isDueSoon,
   isOverdue,
   isUnclaimed,
   shopToday,
@@ -50,9 +51,18 @@ export function BoardCard({
   className?: string;
 }) {
   const overdue = isOverdue(t, status, today);
+  const dueSoon = isDueSoon(t, status, today);
   const unclaimed = isUnclaimed(t, status, unclaimedDays);
+  // Flagged cards (Oz, 27 Oct): red border once overdue, yellow when due
+  // today or tomorrow and not Ready yet; the chips below carry label and icon.
   return (
-    <div className={cn("rounded-lg border border-border bg-card p-3", className)}>
+    <div
+      className={cn(
+        "rounded-lg border bg-card p-3",
+        overdue ? "border-status-overdue" : dueSoon ? "border-status-waiting" : "border-border",
+        className,
+      )}
+    >
       <div className="flex gap-3">
         {thumb ? (
           <img
@@ -83,7 +93,12 @@ export function BoardCard({
         ) : null}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-        {t.promised_date ? (
+        {dueSoon && t.promised_date ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-status-waiting px-2 font-medium text-warning">
+            <Clock className="size-3.5" aria-hidden /> Due{" "}
+            {t.promised_date === today ? "today" : "tomorrow"}
+          </span>
+        ) : t.promised_date ? (
           <span className={CHIP}>Due {shortDate(t.promised_date, today)}</span>
         ) : null}
         {status.category === "ready" && contact ? (

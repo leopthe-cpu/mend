@@ -177,6 +177,22 @@ export function isOverdue(
   return t.promised_date < today;
 }
 
+/**
+ * Due today or tomorrow and not Ready yet (Oz, 27 Oct): the card turns yellow.
+ * Once the date has passed it is overdue (red) instead.
+ */
+export function isDueSoon(
+  t: Pick<Ticket, "promised_date">,
+  status: Status | undefined,
+  today: string,
+): boolean {
+  if (!t.promised_date || !status) return false;
+  if (status.category === "ready" || status.category === "closed") return false;
+  const [y, m, d] = today.split("-").map(Number);
+  const tomorrow = new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10);
+  return t.promised_date >= today && t.promised_date <= tomorrow;
+}
+
 export function isUnclaimed(
   t: Pick<Ticket, "status_changed_at">,
   status: Status | undefined,
@@ -235,13 +251,22 @@ export function readyContact(
   return { state: "none" };
 }
 
-export function onBoard(
-  t: Pick<Ticket, "status_changed_at">,
-  status: Status | undefined,
-  now = new Date(),
-): boolean {
-  if (!status || status.category !== "closed") return true;
-  return now.getTime() - new Date(t.status_changed_at).getTime() <= 7 * 86_400_000;
+/** How many picked-up tickets the board shows; the rest are in the List (Oz, 27 Oct). */
+export const BOARD_CLOSED_LIMIT = 10;
+
+/**
+ * A status's cards on the board. Open columns show every ticket; a closed
+ * column (Picked up) shows the latest BOARD_CLOSED_LIMIT by when they moved
+ * there (Oz, 27 Oct: replaces the 7-day rule). `total` counts them all.
+ */
+export function boardColumn<T extends Pick<Ticket, "status_id" | "status_changed_at">>(
+  tickets: T[],
+  status: Status,
+): { shown: T[]; total: number } {
+  const all = tickets.filter((t) => t.status_id === status.id);
+  if (status.category !== "closed") return { shown: all, total: all.length };
+  const latest = [...all].sort((a, b) => b.status_changed_at.localeCompare(a.status_changed_at));
+  return { shown: latest.slice(0, BOARD_CLOSED_LIMIT), total: all.length };
 }
 
 export function initials(nameOrEmail: string): string {

@@ -235,7 +235,7 @@ function Setup() {
           ))}
         </ol>
 
-        <section className="mt-6 flex flex-col gap-5 rounded-[1.75rem] bg-card p-6">
+        <section className="mt-6 flex flex-col gap-5 rounded-[1.75rem] border border-border bg-card p-6">
           {error ? (
             <FormAlert key={errorSeq} tone="error">
               {error}

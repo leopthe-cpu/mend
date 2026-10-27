@@ -35,7 +35,7 @@ export function TicketPhotosPanel({
         type="button"
         aria-expanded={false}
         onClick={() => setOpen(true)}
-        className="flex min-h-14 w-full items-center gap-3 rounded-[1.75rem] bg-card px-6 text-left hover:bg-accent"
+        className="flex min-h-14 w-full items-center gap-3 rounded-[1.75rem] border border-border bg-card px-6 text-left hover:bg-accent"
       >
         <ChevronRight className="size-5 shrink-0" aria-hidden />
         <span className="text-xl font-semibold">Photos</span>

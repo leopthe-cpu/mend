@@ -257,3 +257,25 @@ select:not([multiple]):not([size]) {
   background-size: 1.125rem;
   padding-right: 2.5rem;
 }
+
+/* The board's header strip (decision 140): its sideways scroll bar sits right
+   under the column headers and stays visible, like the reference. Chrome and
+   Safari draw this styled bar even where scroll bars are hidden until used;
+   Firefox gets the standard thin bar (in Chrome the standard properties would
+   switch the styled bar off, hence @supports). */
+.board-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.board-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.board-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .board-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+}

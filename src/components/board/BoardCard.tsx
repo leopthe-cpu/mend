@@ -52,7 +52,7 @@ export function BoardCard({
   const overdue = isOverdue(t, status, today);
   const unclaimed = isUnclaimed(t, status, unclaimedDays);
   return (
-    <div className={cn("rounded-2xl bg-background p-3", className)}>
+    <div className={cn("rounded-lg border border-border bg-card p-3", className)}>
       <div className="flex gap-3">
         {thumb ? (
           <img
@@ -76,7 +76,7 @@ export function BoardCard({
         {assignee ? (
           <span
             title={assignee}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card font-mono text-sm"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background font-mono text-sm"
           >
             {initials(assignee)}
           </span>
@@ -118,10 +118,10 @@ export function BoardCard({
   );
 }
 
-// Ticket number and dates sit in chips (Oz, 23 Oct). White on the grey card;
-// colours from the contrast list (secondary text on surfaces).
+// Ticket number and dates sit in chips (Oz, 23 Oct). Grey on the white card
+// (decision 140); colours from the contrast list (secondary text on surfaces).
 const CHIP =
-  "inline-flex items-center rounded-full bg-card px-2 py-0.5 text-sm text-muted-foreground tabular-nums";
+  "inline-flex items-center rounded-full bg-background px-2 py-0.5 text-sm text-muted-foreground tabular-nums";
 
 /**
  * Ready cards say whether the customer was told (Oz, 23 Oct): "Not told yet"

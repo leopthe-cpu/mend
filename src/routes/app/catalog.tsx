@@ -196,9 +196,9 @@ function CatalogPage() {
               : "Nothing matches."}
           </p>
         ) : (
-          <div className="relative overflow-x-auto rounded-lg bg-card">
+          <div className="relative overflow-x-auto rounded-lg border border-border bg-card">
             <table className="w-full text-left [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
-              <thead className="border-b border-border text-sm text-muted-foreground">
+              <thead className="border-b border-border bg-background text-sm text-muted-foreground">
                 <tr>
                   <th className="px-3 py-3 font-medium">Name</th>
                   <th className="px-3 py-3 font-medium">Type</th>

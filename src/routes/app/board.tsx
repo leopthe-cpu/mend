@@ -17,6 +17,7 @@ import {
   fetchStatuses,
   fetchTicket,
   fetchTickets,
+  isOverdue,
   onBoard,
   memberName as nameOf,
   readyContact,
@@ -196,6 +197,12 @@ function Board() {
   }
 
   const boardRef = useRef<HTMLDivElement>(null);
+  const headRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // Header and cards scroll sideways together.
+  const follow = (from: HTMLElement | null, to: HTMLElement | null) => {
+    if (from && to && to.scrollLeft !== from.scrollLeft) to.scrollLeft = from.scrollLeft;
+  };
   const hintRef = useRef<HTMLParagraphElement>(null);
   const boardHeight = useFillHeight(boardRef, hintRef);
 
@@ -268,96 +275,127 @@ function Board() {
           <strong>New ticket</strong> to log your first job.
         </p>
       ) : null}
-      {/* Columns share the width (19 Oct round 2, item 1; decision 112): each
-          grows between 20rem and 25rem, so four fill a 14" MacBook and more
-          scroll sideways inside the board. Past 25rem the leftover space goes
-          to the auto margins, evenly between and around the columns, keeping
-          them centred; auto margins collapse to 0 when the columns overflow,
-          so the first one never gets cut off. */}
+      {/* One board, columns joined edge to edge (decision 140, after Oz's
+          reference): a header strip with every column's name and count, its
+          scroll bar right under it, and the cards below. Header and body
+          scroll sideways together; only the header shows a scroll bar. Each
+          column takes an equal share of the width, at least 17rem. */}
       <div
         ref={boardRef}
         style={boardHeight ? { height: boardHeight } : undefined}
-        className="flex snap-x gap-4 overflow-x-auto pb-4"
+        className="flex flex-col overflow-hidden rounded-lg border border-border bg-card"
       >
-        {statuses.map((s, i) => {
-          const col = tickets.filter((t) => t.status_id === s.id && onBoard(t, s));
-          return (
-            <section
-              key={s.id}
-              data-drop-id={s.id}
-              aria-label={`${s.name}, ${col.length} tickets`}
-              className={cn(
-                "mx-auto flex max-w-[25rem] min-w-[20rem] flex-1 basis-0 snap-start flex-col rounded-[1.75rem] bg-card",
-                drag?.over === s.id && "ring-2 ring-ring",
-              )}
-            >
-              <h2 className="flex items-center gap-2 px-5 pt-4 pb-1 font-semibold">
-                {/* The title opens the List with only this status (decision
-                    117), including picked-up tickets older than the board's
-                    7 days. */}
-                <Link
-                  to="/app/tickets"
-                  search={{ f: `status:${s.id}` }}
-                  title={`See all ${s.name} tickets in the list`}
-                  className="-mx-2 flex items-center gap-2 rounded-full px-2 py-0.5 hover:bg-background"
-                >
-                  <span
-                    aria-hidden
-                    className={cn("size-2.5 rounded-full", STATUS_COLOR_CLASS[s.color])}
-                  />
-                  {s.name}
-                </Link>
-                <span className="ml-auto font-mono text-sm text-muted-foreground">
-                  {col.length}
-                </span>
-                {/* New tickets start in the first column, so it gets the
-                    same + as the top bar (decision 115). */}
-                {i === 0 ? (
-                  <button
-                    type="button"
-                    onClick={openNewTicket}
-                    aria-label="New ticket"
-                    title="New ticket"
-                    className="-my-1 -mr-2 flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+        <div
+          ref={headRef}
+          onScroll={() => follow(headRef.current, bodyRef.current)}
+          className="board-scroll flex shrink-0 overflow-x-auto border-b border-border"
+        >
+          {statuses.map((s, i) => {
+            const col = tickets.filter((t) => t.status_id === s.id && onBoard(t, s));
+            const late = s.is_final ? 0 : col.filter((t) => isOverdue(t, s, today)).length;
+            return (
+              <div
+                key={s.id}
+                className="min-w-[17rem] flex-1 basis-0 border-r border-border px-4 py-2.5 last:border-r-0"
+              >
+                <h2 className="flex items-center gap-2 font-semibold">
+                  {/* The title opens the List with only this status (decision
+                      117), including picked-up tickets older than the board's
+                      7 days. */}
+                  <Link
+                    to="/app/tickets"
+                    search={{ f: `status:${s.id}` }}
+                    title={`See all ${s.name} tickets in the list`}
+                    className="-mx-2 flex min-w-0 items-center gap-2 rounded-full px-2 py-0.5 hover:bg-background"
                   >
-                    <Plus aria-hidden className="size-4" />
-                  </button>
-                ) : null}
-              </h2>
-              <ol className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-                {col.map((t) => (
-                  <li
-                    key={t.id}
-                    {...cardProps(t.id)}
-                    className={cn(
-                      "cursor-grab transition-opacity",
-                      drag?.id === t.id && "opacity-30",
-                    )}
-                  >
-                    <BoardCard
-                      ticket={t}
-                      status={s}
-                      today={today}
-                      unclaimedDays={shop.unclaimed_reminder_days}
-                      thumb={thumbs.get(t.id)}
-                      assignee={memberName(t.assigned_to)}
-                      contact={readyContact(t, contacts)}
-                      timeZone={shop.time_zone}
-                      onRemind={() => setNotify({ ticketId: t.id, kind: "reminder" })}
-                      onTell={() => setNotify({ ticketId: t.id, kind: "status", statusId: s.id })}
+                    <span
+                      aria-hidden
+                      className={cn("size-2.5 shrink-0 rounded-full", STATUS_COLOR_CLASS[s.color])}
                     />
-                  </li>
-                ))}
-              </ol>
-            </section>
-          );
-        })}
+                    <span className="truncate">{s.name}</span>
+                  </Link>
+                  <span className="ml-auto font-mono text-sm text-muted-foreground">
+                    {col.length}
+                  </span>
+                  {/* New tickets start in the first column, so it gets the
+                      same + as the top bar (decision 115). */}
+                  {i === 0 ? (
+                    <button
+                      type="button"
+                      onClick={openNewTicket}
+                      aria-label="New ticket"
+                      title="New ticket"
+                      className="-my-1 -mr-2 flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+                    >
+                      <Plus aria-hidden className="size-4" />
+                    </button>
+                  ) : null}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {s.is_final
+                    ? "Last 7 days"
+                    : late
+                      ? `${late} overdue`
+                      : col.length
+                        ? "None overdue"
+                        : "Empty"}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+        <div
+          ref={bodyRef}
+          onScroll={() => follow(bodyRef.current, headRef.current)}
+          className="flex min-h-0 flex-1 overflow-x-auto bg-background [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {statuses.map((s) => {
+            const col = tickets.filter((t) => t.status_id === s.id && onBoard(t, s));
+            return (
+              <section
+                key={s.id}
+                data-drop-id={s.id}
+                aria-label={`${s.name}, ${col.length} tickets`}
+                className={cn(
+                  "flex min-w-[17rem] flex-1 basis-0 flex-col border-r border-border last:border-r-0",
+                  drag?.over === s.id && "bg-accent/60",
+                )}
+              >
+                <ol className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
+                  {col.map((t) => (
+                    <li
+                      key={t.id}
+                      {...cardProps(t.id)}
+                      className={cn(
+                        "cursor-grab transition-opacity",
+                        drag?.id === t.id && "opacity-30",
+                      )}
+                    >
+                      <BoardCard
+                        ticket={t}
+                        status={s}
+                        today={today}
+                        unclaimedDays={shop.unclaimed_reminder_days}
+                        thumb={thumbs.get(t.id)}
+                        assignee={memberName(t.assigned_to)}
+                        contact={readyContact(t, contacts)}
+                        timeZone={shop.time_zone}
+                        onRemind={() => setNotify({ ticketId: t.id, kind: "reminder" })}
+                        onTell={() => setNotify({ ticketId: t.id, kind: "status", statusId: s.id })}
+                      />
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            );
+          })}
+        </div>
       </div>
       {/* The card under the pointer while dragging. */}
       {drag && dragged && dragStatus ? (
         <div
           aria-hidden
-          className="pointer-events-none fixed top-0 left-0 z-50 rotate-2 cursor-grabbing shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-2xl"
+          className="pointer-events-none fixed top-0 left-0 z-50 rotate-2 cursor-grabbing rounded-lg shadow-[0_12px_32px_rgba(0,0,0,0.18)]"
           style={{
             width: drag.width,
             transform: `translate(${drag.x - drag.dx}px, ${drag.y - drag.dy}px) rotate(2deg)`,

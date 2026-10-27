@@ -23,11 +23,14 @@ export function Field({
 }
 
 export function Panel({
+  id,
   title,
   description,
   action,
   children,
 }: {
+  /** For links straight to this panel, e.g. the board's photo count (decision 142). */
+  id?: string;
   title: string;
   description?: ReactNode;
   /** A button on the right of the title, e.g. "Edit". */
@@ -35,7 +38,7 @@ export function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[1.75rem] border border-border bg-card p-6">
+    <section id={id} className="scroll-mt-6 rounded-[1.75rem] border border-border bg-card p-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">{title}</h2>
         {action}

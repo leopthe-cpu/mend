@@ -54,7 +54,7 @@ export function TicketMessages({
   }
 
   return (
-    <Panel title="Messages">
+    <Panel id="messages" title="Messages">
       <div className="flex flex-col gap-3">
         <Button variant="outline" className="self-start" onClick={onCompose}>
           <Send /> Message customer

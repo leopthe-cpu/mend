@@ -6,6 +6,7 @@ import {
   isDueSoon,
   isOverdue,
   memberName,
+  messagePlane,
   readyContact,
   type ContactMessage,
   type Status,
@@ -118,5 +119,68 @@ describe("board flags and the Picked up column (Oz, 27 Oct)", () => {
       st("open"),
     );
     expect(openCol.shown).toHaveLength(BOARD_CLOSED_LIMIT + 3);
+  });
+});
+
+describe("messagePlane: the card's message icon (decision 142)", () => {
+  const t = { id: "t1", status_id: "ready", status_changed_at: "2026-10-27T15:00:00Z" };
+  const auto = { notify_by_default: true };
+  const plain = { notify_by_default: false };
+  const earlier = (n: number, over: Partial<ContactMessage> = {}) =>
+    msg({ created_at: `2026-10-2${n}T10:00:00Z`, kind: "created", ...over });
+  const here = (over: Partial<ContactMessage> = {}) =>
+    msg({ created_at: "2026-10-27T15:05:00Z", kind: "status", status_id: "ready", ...over });
+
+  it("is grey with no number when nobody was contacted", () => {
+    expect(messagePlane(t, auto, [])).toEqual({ state: "grey", count: null });
+    expect(messagePlane(t, plain, [])).toEqual({ state: "grey", count: null });
+  });
+
+  it("goes grey with the earlier count in a column that offers its own message", () => {
+    expect(messagePlane(t, auto, [earlier(4)])).toEqual({ state: "grey", count: 1 });
+    // Skipped (canceled) stays grey (Oz, 27 Oct).
+    expect(messagePlane(t, auto, [earlier(4), here({ status: "canceled" })])).toEqual({
+      state: "grey",
+      count: 1,
+    });
+  });
+
+  it("keeps the previous state in a column without its own message", () => {
+    expect(messagePlane(t, plain, [earlier(4)]).state).toBe("green");
+    expect(messagePlane(t, plain, [earlier(4)]).count).toBeNull();
+  });
+
+  it("is blue while a message waits, with the earlier count", () => {
+    expect(messagePlane(t, auto, [earlier(4), here({ status: "queued" })])).toEqual({
+      state: "blue",
+      count: 1,
+    });
+  });
+
+  it("is green once sent, numbered only from 2", () => {
+    const one = messagePlane(t, auto, [here({ channel: "email" })]);
+    expect(one).toMatchObject({ state: "green", count: null, last: { channel: "email" } });
+    expect(messagePlane(t, auto, [earlier(4), here()])).toMatchObject({
+      state: "green",
+      count: 2,
+    });
+  });
+
+  it("is red when the latest failed", () => {
+    expect(messagePlane(t, auto, [earlier(4), here({ status: "failed" })])).toEqual({
+      state: "red",
+      count: 1,
+    });
+    expect(messagePlane(t, auto, [here({ status: "failed" })])).toEqual({
+      state: "red",
+      count: null,
+    });
+  });
+
+  it("ignores other tickets' messages", () => {
+    expect(messagePlane(t, auto, [here({ ticket_id: "t2" })])).toEqual({
+      state: "grey",
+      count: null,
+    });
   });
 });

@@ -1,6 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Pencil, Printer, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BackButton } from "@/components/app/BackButton";
 import { EditCustomerDialog } from "@/components/customers/EditCustomerDialog";
@@ -70,6 +70,7 @@ function TicketDetail() {
   );
   const [events, setEvents] = useState<Event[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [loadedAll, setLoadedAll] = useState(false);
   const [passcode, setPasscode] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: "error" | "info"; text: string } | null>(
     created
@@ -131,6 +132,7 @@ function TicketDetail() {
           return url ? { ...p, url } : p;
         }),
       );
+      setLoadedAll(true);
     } catch (e) {
       setMessage({ tone: "error", text: friendlyDbError(e) });
     }
@@ -138,6 +140,22 @@ function TicketDetail() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // The board's photo count and message icon link straight to a panel
+  // (#photos, #messages; decision 142). Scroll there once everything above it
+  // has loaded, so it doesn't shift away.
+  const { hash } = useLocation();
+  const scrolledTo = useRef("");
+  useEffect(() => {
+    if (!loadedAll || !hash || scrolledTo.current === hash) return;
+    const frame = requestAnimationFrame(() => {
+      const el = document.getElementById(hash);
+      if (!el) return;
+      scrolledTo.current = hash;
+      el.scrollIntoView({ block: "start" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [loadedAll, hash]);
 
   if (notFound)
     return <FormAlert tone="error">This ticket doesn't exist or was deleted.</FormAlert>;

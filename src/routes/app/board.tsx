@@ -13,7 +13,6 @@ import { openNewTicket } from "@/lib/newTicket";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import {
-  fetchMembers,
   fetchStatuses,
   fetchTicket,
   fetchTickets,
@@ -21,13 +20,10 @@ import {
   boardColumn,
   isDueSoon,
   isOverdue,
-  memberName as nameOf,
-  readyContact,
+  messagePlane,
   shopToday,
-  signedPhotoUrls,
   STATUS_COLOR_CLASS,
   type ContactMessage,
-  type Member,
   type Status,
   type Ticket,
 } from "@/lib/tickets";
@@ -89,56 +85,51 @@ export const Route = createFileRoute("/app/board")({
   component: Board,
 });
 
+/** The tickets the board shows: every open one, the latest picked-up ones. */
+function onBoardIds(tickets: Ticket[], statuses: Status[]): string[] {
+  return statuses.flatMap((s) => boardColumn(tickets, s).shown.map((t) => t.id));
+}
+
 function Board() {
   const { membership } = Route.useRouteContext();
   const { created, ticket: createdId, photoProblems } = Route.useSearch();
   const shop = membership.shop;
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [thumbs, setThumbs] = useState<Map<string, string>>(new Map());
+  const [photoCounts, setPhotoCounts] = useState<Map<string, number>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [notify, setNotify] = useState<NotifyRequest | null>(null);
   const [contacts, setContacts] = useState<ContactMessage[]>([]);
 
-  // Messages for Ready tickets, so each card can say whether the customer was
-  // told it's ready (Oz, 23 Oct). Read-only; RLS limits them to this shop.
-  const loadContacts = useCallback(async (readyIds: string[]) => {
-    if (!readyIds.length) return setContacts([]);
+  // Messages for the tickets on the board, for each card's message icon
+  // (decision 142). Read-only; RLS limits them to this shop.
+  const loadContacts = useCallback(async (ids: string[]) => {
+    if (!ids.length) return setContacts([]);
     const { data, error } = await getSupabase()
       .from("messages")
       .select("ticket_id, channel, status, created_at, kind, status_id")
-      .in("ticket_id", readyIds.slice(0, 300))
+      .in("ticket_id", ids.slice(0, 300))
       .neq("status", "canceled");
     if (!error) setContacts((data ?? []) as ContactMessage[]);
   }, []);
 
   const load = useCallback(async () => {
     try {
-      const [s, t, m] = await Promise.all([
-        fetchStatuses(shop.id),
-        fetchTickets(shop.id),
-        fetchMembers(shop.id),
-      ]);
+      const [s, t] = await Promise.all([fetchStatuses(shop.id), fetchTickets(shop.id)]);
       setStatuses(s);
       setTickets(t);
-      setMembers(m);
-      const ready = new Set(s.filter((x) => x.category === "ready").map((x) => x.id));
-      void loadContacts(t.filter((x) => ready.has(x.status_id)).map((x) => x.id));
-      const ids = t.map((x) => x.id);
+      const ids = onBoardIds(t, s);
+      void loadContacts(ids);
       if (ids.length) {
         const { data } = await getSupabase()
           .from("ticket_photos")
-          .select("ticket_id, storage_path, created_at")
-          .in("ticket_id", ids.slice(0, 300))
-          .order("created_at");
-        const first = new Map<string, string>();
+          .select("ticket_id")
+          .in("ticket_id", ids.slice(0, 300));
+        const counts = new Map<string, number>();
         for (const p of data ?? [])
-          if (!first.has(p.ticket_id as string))
-            first.set(p.ticket_id as string, p.storage_path as string);
-        const urls = await signedPhotoUrls([...first.values()]);
-        setThumbs(new Map([...first].map(([tid, path]) => [tid, urls.get(path) ?? ""])));
+          counts.set(p.ticket_id as string, (counts.get(p.ticket_id as string) ?? 0) + 1);
+        setPhotoCounts(counts);
       }
     } catch (e) {
       setError(friendlyDbError(e));
@@ -175,8 +166,8 @@ function Board() {
       setError(friendlyDbError(error));
       return;
     }
-    // The server's "Ready since" time, not this computer's clock: the card's
-    // told / not told tag compares it with message times.
+    // The server's "moved here" time, not this computer's clock: the card's
+    // message icon compares it with message times.
     const fresh = await fetchTicket(ticketId);
     if (fresh) setTickets((ts) => ts.map((t) => (t.id === ticketId ? fresh : t)));
     const moved = prev.find((t) => t.id === ticketId);
@@ -210,10 +201,6 @@ function Board() {
   });
   const dragged = drag ? tickets.find((t) => t.id === drag.id) : undefined;
   const dragStatus = dragged ? statuses.find((s) => s.id === dragged.status_id) : undefined;
-  const memberName = (id: string | null) => {
-    const m = members.find((x) => x.user_id === id);
-    return m ? nameOf(m) : "";
-  };
 
   return (
     <>
@@ -259,11 +246,8 @@ function Board() {
         membership={membership}
         onClose={(sent) => {
           setNotify(null);
-          if (sent) {
-            // A message was queued: refresh the "told / not told" tags.
-            const ready = new Set(statuses.filter((x) => x.category === "ready").map((x) => x.id));
-            void loadContacts(tickets.filter((x) => ready.has(x.status_id)).map((x) => x.id));
-          }
+          // A message was queued: refresh the message icons.
+          if (sent) void loadContacts(onBoardIds(tickets, statuses));
         }}
       />
       {loaded && !tickets.length ? (
@@ -377,12 +361,17 @@ function Board() {
                         status={s}
                         today={today}
                         unclaimedDays={shop.unclaimed_reminder_days}
-                        thumb={thumbs.get(t.id)}
-                        assignee={memberName(t.assigned_to)}
-                        contact={readyContact(t, contacts)}
+                        photos={photoCounts.get(t.id) ?? 0}
+                        plane={messagePlane(t, s, contacts)}
                         timeZone={shop.time_zone}
                         onRemind={() => setNotify({ ticketId: t.id, kind: "reminder" })}
-                        onTell={() => setNotify({ ticketId: t.id, kind: "status", statusId: s.id })}
+                        onCompose={() =>
+                          setNotify(
+                            s.notify_by_default
+                              ? { ticketId: t.id, kind: "status", statusId: s.id }
+                              : { ticketId: t.id, kind: "manual" },
+                          )
+                        }
                       />
                     </li>
                   ))}
@@ -418,9 +407,8 @@ function Board() {
             status={dragStatus}
             today={today}
             unclaimedDays={shop.unclaimed_reminder_days}
-            thumb={thumbs.get(dragged.id)}
-            assignee={memberName(dragged.assigned_to)}
-            contact={readyContact(dragged, contacts)}
+            photos={photoCounts.get(dragged.id) ?? 0}
+            plane={messagePlane(dragged, dragStatus, contacts)}
             timeZone={shop.time_zone}
           />
         </div>

@@ -45,7 +45,7 @@ export function TicketPhotosPanel({
   }
 
   return (
-    <Panel title="Photos">
+    <Panel id="photos" title="Photos">
       {msg ? <p className="mb-4 text-sm text-danger">{msg}</p> : null}
       {photos.length ? (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">

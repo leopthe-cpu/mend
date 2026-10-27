@@ -251,6 +251,55 @@ export function readyContact(
   return { state: "none" };
 }
 
+/** The board card's message icon (Oz, 27 Oct; decision 142). */
+export type MessagePlane = {
+  /** grey: this column's message not sent yet, or never contacted; blue: waiting to send. */
+  state: "grey" | "blue" | "green" | "red";
+  /** The number beside the icon, or null for none (never 0; green only from 2). */
+  count: number | null;
+  /** For green: the latest message sent. */
+  last?: { channel: "sms" | "email"; at: string };
+};
+
+/**
+ * Which message icon a card shows. Every sent message counts. In a column that
+ * offers its own message (`notify_by_default`), only messages since the ticket
+ * moved there (or about that status) decide the colour: grey until one is sent,
+ * and a skipped one stays grey (Oz, 27 Oct). Other columns keep the ticket's
+ * latest state. Blue while any message waits; red when the latest failed.
+ */
+export function messagePlane(
+  t: Pick<Ticket, "id" | "status_id" | "status_changed_at">,
+  status: Pick<Status, "notify_by_default"> | undefined,
+  messages: ContactMessage[],
+): MessagePlane {
+  const since = new Date(t.status_changed_at).getTime();
+  const mine = messages
+    .filter((m) => m.ticket_id === t.id && m.status !== "canceled")
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const isSent = (m: ContactMessage) => m.status === "sent" || m.status === "delivered";
+  const sent = mine.filter(isSent);
+  const before = sent.length || null;
+  const scope = status?.notify_by_default
+    ? mine.filter(
+        (m) =>
+          new Date(m.created_at).getTime() >= since ||
+          (m.kind === "status" && !!m.status_id && m.status_id === t.status_id),
+      )
+    : mine;
+  if (scope.some((m) => m.status === "queued" || m.status === "sending"))
+    return { state: "blue", count: before };
+  const latestSent = scope.find(isSent);
+  const latest = scope[0];
+  if (latest?.status === "failed") return { state: "red", count: before };
+  if (!latestSent) return { state: "grey", count: before };
+  return {
+    state: "green",
+    count: sent.length >= 2 ? sent.length : null,
+    last: { channel: latestSent.channel, at: latestSent.created_at },
+  };
+}
+
 /** How many picked-up tickets the board shows; the rest are in the List (Oz, 27 Oct). */
 export const BOARD_CLOSED_LIMIT = 10;
 

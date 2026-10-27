@@ -148,9 +148,9 @@ function CustomerList() {
       {/* relative: the hidden column headings (sr-only) are positioned, and
           without a positioned scroller they widen the whole page on small
           screens instead of scrolling with the table (decision 120). */}
-      <div className="relative overflow-x-auto rounded-lg bg-card">
+      <div className="relative overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full text-left [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
-          <thead className="border-b border-border text-sm text-muted-foreground">
+          <thead className="border-b border-border bg-background text-sm text-muted-foreground">
             <tr>
               <th className="px-3 py-3 font-medium">Name</th>
               <th className="px-3 py-3 font-medium">Phone</th>

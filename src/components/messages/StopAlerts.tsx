@@ -66,7 +66,7 @@ export function StopAlerts({ shopId, timeZone }: { shopId: string; timeZone: str
     );
 
   return (
-    <div className="mb-4 rounded-[1.75rem] bg-card p-4" role="status">
+    <div className="mb-4 rounded-[1.75rem] border border-border bg-card p-4" role="status">
       <p className="font-semibold">Texts turned off</p>
       <p className="text-sm text-muted-foreground">
         These customers replied STOP. Texts to them won't be sent; call or email them instead.

@@ -250,7 +250,7 @@ function CalendarPage() {
           // Phones: the days stack. Wider screens: seven columns that share the
           // width but never go below 9.5 rem; when they don't fit, the week
           // scrolls sideways inside its card, like the board (decision 119).
-          className="flex flex-col gap-3 rounded-[1.75rem] bg-card p-3 md:snap-x md:scroll-px-4 md:flex-row md:overflow-x-auto md:p-4"
+          className="flex flex-col gap-3 rounded-[1.75rem] border border-border bg-card p-3 md:snap-x md:scroll-px-4 md:flex-row md:overflow-x-auto md:p-4"
         >
           {weekDays(anchor).map((iso) => {
             const list = perDay.get(iso) ?? [];
@@ -337,7 +337,10 @@ function CalendarPage() {
           })}
         </section>
       ) : (
-        <section aria-label="Month" className="rounded-[1.75rem] bg-card p-3 md:p-4">
+        <section
+          aria-label="Month"
+          className="rounded-[1.75rem] border border-border bg-card p-3 md:p-4"
+        >
           <div className="grid grid-cols-7 gap-1.5 md:gap-2.5">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
               <span key={w} className="px-1 text-sm text-muted-foreground md:px-2">

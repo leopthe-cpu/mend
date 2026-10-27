@@ -82,9 +82,9 @@ function AuditLog() {
       <p className="mb-4 text-muted-foreground">
         Every change to your team, settings, catalog and prices. Entries can't be edited or deleted.
       </p>
-      <div className="relative overflow-x-auto rounded-lg bg-card">
+      <div className="relative overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full text-left">
-          <thead className="border-b border-border text-sm text-muted-foreground">
+          <thead className="border-b border-border bg-background text-sm text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">When</th>
               <th className="px-4 py-3 font-medium">Who</th>

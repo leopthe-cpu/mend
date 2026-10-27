@@ -35,7 +35,7 @@ export function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[1.75rem] bg-card p-6">
+    <section className="rounded-[1.75rem] border border-border bg-card p-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">{title}</h2>
         {action}

@@ -244,7 +244,7 @@ function Tile({
       search={f ? { f } : {}}
       className={cn(
         "flex min-w-[12rem] flex-1 basis-0 snap-start flex-col gap-1 rounded-[1.75rem] p-4 transition-shadow hover:shadow-md",
-        dark ? "surface-dark bg-background text-foreground" : "bg-card",
+        dark ? "surface-dark bg-background text-foreground" : "border border-border bg-card",
       )}
     >
       <span className="flex items-center justify-between gap-2 font-medium">

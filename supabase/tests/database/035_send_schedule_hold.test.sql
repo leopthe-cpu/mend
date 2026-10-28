@@ -18,10 +18,14 @@ grant execute on function pg_temp.at(text) to authenticated;
 select set_config('request.jwt.claims', '{"sub":"ad000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 set local role authenticated;
 insert into t values ('other_shop', public.create_shop('Other Shop', null, 'other', 'CA', null, 'America/Toronto')::text);
+-- Emails need the shop's email address (decision 143).
+update public.shops set email = 'shop@example.com' where id = pg_temp.v('other_shop');
 reset role;
 select set_config('request.jwt.claims', '{"sub":"ad000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 insert into t values ('shop', public.create_shop('Gap Shop', null, 'other', 'CA', null, 'America/Toronto')::text);
+-- Emails need the shop's email address (decision 143).
+update public.shops set email = 'shop@example.com' where id = pg_temp.v('shop');
 insert into t values ('cust', public.save_customer(pg_temp.v('shop'), null, 'Ana Gap', '4165550700', 'ana@example.com')::text);
 insert into t select 'tk', ticket_id::text from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'), 'Coat');
 insert into t select 'tk2', ticket_id::text from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'), 'Hem');

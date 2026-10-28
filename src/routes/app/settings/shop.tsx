@@ -191,7 +191,11 @@ function ShopSettings() {
                   onValueChange={(phone) => setForm({ ...form, phone })}
                 />
               </Field>
-              <Field id="email" label="Email" hint="Customer replies to Mend emails go here.">
+              <Field
+                id="email"
+                label="Email"
+                hint="Needed to email customers; their replies come here."
+              >
                 <Input
                   id="email"
                   type="email"
@@ -320,5 +324,5 @@ const ATTENTION_FIELDS = ["address", "phone", "email"] as const;
 const MISSING_TEXT: Record<AttentionField, { link: string; why: string }> = {
   address: { link: "Add the address", why: "to text customers." },
   phone: { link: "Add the phone", why: "to text customers." },
-  email: { link: "Add the email", why: "so customers can reply to your emails." },
+  email: { link: "Add the email", why: "to email customers." },
 };

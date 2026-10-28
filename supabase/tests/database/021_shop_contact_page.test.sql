@@ -29,10 +29,14 @@ select ok((select public_code ~ '^[0-9a-f]{10}$' from public.shops where id = pg
 select throws_ok($$ update public.shops set public_code = 'aaaaaaaaaa' where id = pg_temp.v('shop') $$,
   '42501', null, 'the code is not client-writable');
 
--- No address or phone yet: texts are refused, emails still work.
+-- No address or phone yet: texts are refused. No shop email: emails are
+-- refused too (decision 143); with one, emails work without address/phone.
 select throws_ok($$ select public.queue_message(pg_temp.v('tk'), 'sms', 'Ready.') $$, '22023',
   'add your shop''s address and phone in Settings → Shop before texting customers', 'no address/phone: texts refused');
-select lives_ok($$ select public.queue_message(pg_temp.v('tk'), 'email', 'Ready.', 'Ready') $$, 'emails still allowed');
+select throws_ok($$ select public.queue_message(pg_temp.v('tk'), 'email', 'Ready.', 'Ready') $$, '22023',
+  'add your shop''s email in Settings → Shop before emailing customers', 'no shop email: emails refused');
+update public.shops set email = 'shop@example.com' where id = pg_temp.v('shop');
+select lives_ok($$ select public.queue_message(pg_temp.v('tk'), 'email', 'Ready.', 'Ready') $$, 'emails allowed once the shop has an email');
 update public.shops set address = '1 Main St, Toronto ON' where id = pg_temp.v('shop');
 select pg_temp.age_messages();
 select throws_ok($$ select public.queue_message(pg_temp.v('tk'), 'sms', 'Ready.') $$, '22023', null, 'address alone is not enough');
@@ -55,6 +59,16 @@ reset role;
 select ok(exists (select 1 from public.tickets where id = pg_temp.v('tk2')), 'the ticket is still created');
 select ok(exists (select 1 from public.audit_log where action = 'message.created_skipped' and entity_id = pg_temp.v('tk2')),
   'the skipped automatic text is audited');
+-- Same for the automatic email when the shop has no email (decision 143).
+update public.shops set email = null where id = pg_temp.v('shop');
+set local role authenticated;
+insert into t values ('bo', public.save_customer(pg_temp.v('shop'), null, 'Bo Email', null, 'bo@example.com')::text);
+insert into t select 'tk3', ticket_id::text from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('bo'),
+  'Coat', null, null, null, '{}', null, false, '[]', null, true);
+reset role;
+select ok(exists (select 1 from public.audit_log where action = 'message.created_skipped' and entity_id = pg_temp.v('tk3')),
+  'the skipped automatic email is audited');
+select ok(not exists (select 1 from public.messages where ticket_id = pg_temp.v('tk3')), 'and nothing was queued');
 update public.shops set phone = '416 555 0000', email = 'hi@contact.test',
   business_hours = '{"text":"Mon-Fri 9-5"}' where id = pg_temp.v('shop');
 

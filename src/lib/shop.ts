@@ -43,12 +43,18 @@ export const TEXTS_NEED_CONTACT =
 export function missingTextContact(shop: Pick<Shop, "address" | "phone">): boolean {
   return !shop.address?.trim() || !shop.phone?.trim();
 }
+// Decision 143: emails need the shop's email address (customers reply to it);
+// the database refuses them until it is set, like texts above.
+export const EMAILS_NEED_CONTACT = "Add your shop's email in Settings → Shop to send emails.";
+export function missingEmailContact(shop: Pick<Shop, "email">): boolean {
+  return !shop.email?.trim();
+}
 /** Shop contact details Settings › Shop still needs (field ids on that page). */
 export type AttentionField = "address" | "phone" | "email";
 /**
  * What customers would notice is missing (Oz, 23 Oct): no address or phone
- * means no texts (decision 131), no email means customers can't reply to
- * emails. Drives the attention dots and the links to the exact field.
+ * means no texts (decision 131), no email means no emails (decision 143).
+ * Drives the attention dots and the links to the exact field.
  */
 export function shopAttention(shop: Pick<Shop, "address" | "phone" | "email">): AttentionField[] {
   const missing: AttentionField[] = [];

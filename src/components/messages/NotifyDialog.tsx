@@ -27,7 +27,10 @@ import { pickupHoursText, promisedDateText } from "@/lib/hours";
 import { messageWhat, sendPlan, type PlanMessage, type SendPlan } from "@/lib/notifications";
 import {
   friendlyDbError,
+  EMAILS_NEED_CONTACT,
+  missingEmailContact,
   missingTextContact,
+  shopAttention,
   TEXTS_NEED_CONTACT,
   type Membership,
 } from "@/lib/shop";
@@ -183,6 +186,8 @@ export function NotifyDialog({
       if (d.customer.sms_opted_out) return "Opted out of texts (replied STOP or asked you).";
       if (!d.phone) return "No mobile number on file.";
     } else {
+      // Decision 143: and emails until it has an email address.
+      if (missingEmailContact(shop)) return EMAILS_NEED_CONTACT;
       if (d.customer.email_opted_out) return "Opted out of email.";
       if (!d.email) return "No email address on file.";
     }
@@ -288,6 +293,12 @@ export function NotifyDialog({
 
   const seg = smsSegments(body);
   const blocked = data ? blockedReason(data, channel) : null;
+  // Both channels blocked, and shop setup is part of why.
+  const setupBlocked =
+    !!data &&
+    !!blockedReason(data, "sms") &&
+    !!blockedReason(data, "email") &&
+    (missingTextContact(shop) || missingEmailContact(shop));
   const first = data ? data.customer.name.split(" ")[0] || data.customer.name : "";
 
   return (
@@ -357,13 +368,25 @@ export function NotifyDialog({
               {(["sms", "email"] as Channel[]).map((ch) => {
                 const reason = blockedReason(data, ch);
                 const Icon = ch === "sms" ? MessageSquare : Mail;
+                // Shop setup is fixable here: link to the exact field (Oz, 28 Oct).
+                const fix =
+                  ch === "sms"
+                    ? missingTextContact(shop)
+                      ? {
+                          hash: shopAttention(shop).find((f) => f !== "email") ?? "address",
+                          label: "Add address and phone",
+                        }
+                      : null
+                    : missingEmailContact(shop)
+                      ? { hash: "email", label: "Add shop email" }
+                      : null;
                 return (
                   <label
                     key={ch}
                     className={cn(
                       "flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 py-2",
                       channel === ch ? "border-primary ring-2 ring-primary/30" : "border-border",
-                      reason && "cursor-not-allowed opacity-60",
+                      reason && "cursor-not-allowed",
                     )}
                   >
                     <input
@@ -378,12 +401,26 @@ export function NotifyDialog({
                         if (!edited) fill(data, ch);
                       }}
                     />
-                    <Icon className="size-5 shrink-0" aria-hidden />
+                    <Icon className={cn("size-5 shrink-0", reason && "opacity-60")} aria-hidden />
                     <span className="flex min-w-0 flex-col">
-                      <span className="font-medium">{ch === "sms" ? "Text" : "Email"}</span>
-                      <span className="text-sm break-words text-muted-foreground [overflow-wrap:anywhere]">
-                        {reason ?? (ch === "sms" ? data.phone : data.email)}
+                      <span className={cn("font-medium", reason && "opacity-60")}>
+                        {ch === "sms" ? "Text" : "Email"}
                       </span>
+                      <span className="text-sm break-words text-muted-foreground [overflow-wrap:anywhere]">
+                        {fix
+                          ? `Your shop needs ${ch === "sms" ? "an address and phone to send texts" : "an email address to send emails"}.`
+                          : (reason ?? (ch === "sms" ? data.phone : data.email))}
+                      </span>
+                      {fix ? (
+                        <Link
+                          to="/app/settings/shop"
+                          hash={fix.hash}
+                          onClick={() => onClose()}
+                          className="text-sm font-medium text-primary underline underline-offset-4"
+                        >
+                          {fix.label}
+                        </Link>
+                      ) : null}
                     </span>
                   </label>
                 );
@@ -424,22 +461,25 @@ export function NotifyDialog({
                 }}
               />
             </Field>
-            {channel === "email" && shop.email ? (
-              <p className="text-sm text-muted-foreground">Replies go to {shop.email}.</p>
-            ) : channel === "email" ? (
-              // Oz, 23 Oct: a boxed note in body colour, linking to the exact
-              // field rather than "Settings" in general.
+            {setupBlocked ? (
+              // Nothing can be sent until the shop is set up (Oz, 28 Oct).
               <div className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground">
-                Customers can't reply to this email until your shop has an email address.{" "}
+                Finish setting up your shop before sending messages: Mend needs its{" "}
+                {shopAttention(shop)
+                  .join(", ")
+                  .replace(/, ([^,]*)$/, " and $1")}
+                .{" "}
                 <Link
                   to="/app/settings/shop"
-                  hash="email"
+                  hash={shopAttention(shop)[0] ?? ""}
                   onClick={() => onClose()}
                   className="font-medium text-primary underline underline-offset-4"
                 >
-                  Add shop email
+                  Open shop settings
                 </Link>
               </div>
+            ) : channel === "email" && shop.email ? (
+              <p className="text-sm text-muted-foreground">Replies go to {shop.email}.</p>
             ) : null}
 
             {error ? <FormAlert tone="error">{error}</FormAlert> : null}

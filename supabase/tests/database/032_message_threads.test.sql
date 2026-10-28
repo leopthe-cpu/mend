@@ -14,6 +14,8 @@ grant execute on function pg_temp.v(text) to authenticated;
 select set_config('request.jwt.claims', '{"sub":"af000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 insert into t values ('shop', public.create_shop('Threads Shop', null, 'other', 'CA', null, 'America/Toronto')::text);
+-- Emails need the shop's email address (decision 143).
+update public.shops set email = 'shop@example.com' where id = pg_temp.v('shop');
 insert into t values ('ann', public.save_customer(pg_temp.v('shop'), null, 'Ann Lee', null, 'ann@example.com', 'email')::text);
 insert into t values ('bob', public.save_customer(pg_temp.v('shop'), null, 'Bob Roy', null, 'bob@example.com', 'email')::text);
 insert into t select 'tk_ann', ticket_id::text from public.create_ticket(pg_temp.v('shop'), pg_temp.v('ann'), 'Coat');

@@ -68,9 +68,9 @@ export function ColumnHeader({
       <span className="sr-only">{label}</span>
     </span>
   );
-  // The count in a chip, right-most, level with the name (Oz, 29 Oct).
+  // The count in a chip, right-most (Oz, 29 Oct).
   const count = (
-    <span className="shrink-0 rounded-full bg-background px-2 py-0.5 font-mono text-sm font-normal text-muted-foreground tabular-nums">
+    <span className="shrink-0 rounded-full bg-background px-2 py-0.5 font-mono group-hover:bg-card text-sm font-normal text-muted-foreground tabular-nums">
       {total}
     </span>
   );
@@ -79,6 +79,23 @@ export function ColumnHeader({
       aria-hidden
       className={cn("size-2.5 shrink-0 rounded-full", STATUS_COLOR_CLASS[s.color])}
     />
+  );
+  // Name and alerts on the left; the count chip with the message icon under
+  // it on the right (Oz, 29 Oct).
+  const body = (
+    <span className="flex w-full items-center gap-3">
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="flex items-center gap-2 font-semibold">
+          {dot}
+          <span className="truncate">{s.name}</span>
+        </span>
+        <Alerts status={s} total={total} late={late} soon={soon} idle={idle} />
+      </span>
+      <span className="flex shrink-0 flex-col items-center gap-0.5">
+        {count}
+        {plane}
+      </span>
+    </span>
   );
   return (
     <div
@@ -91,14 +108,7 @@ export function ColumnHeader({
     >
       {canEdit ? (
         <HeaderButton label={`${s.name}: edit column`} onOpen={onOpen} onDragStart={onDragStart}>
-          <span className="flex items-center gap-2 font-semibold">
-            {dot}
-            <span className="truncate">{s.name}</span>
-            <span className="ml-auto" />
-            {plane}
-            {count}
-          </span>
-          <Alerts status={s} total={total} late={late} soon={soon} idle={idle} />
+          {body}
         </HeaderButton>
       ) : (
         <Link
@@ -107,14 +117,7 @@ export function ColumnHeader({
           title={`See all ${s.name} tickets in the list`}
           className="flex h-full flex-col justify-center gap-1 px-4 pr-3 hover:bg-background"
         >
-          <span className="flex items-center gap-2 font-semibold">
-            {dot}
-            <span className="truncate">{s.name}</span>
-            <span className="ml-auto" />
-            {plane}
-            {count}
-          </span>
-          <Alerts status={s} total={total} late={late} soon={soon} idle={idle} />
+          {body}
         </Link>
       )}
       {canEdit && !dragActive ? (

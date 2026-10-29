@@ -1,14 +1,18 @@
 ---
 project: Mend
-updated: 2026-10-24
-summary: The 24 Oct release (PR #108) puts the notification centre, Ready "told / not told" tags, setup Skip, attention dots and 44 px close buttons on www.mendshops.com, after a browser test of every scenario on staging. Next: Oz tests texts on production, answers the UX-round questions, and adds a Resend key to staging; the legal package and launch steps follow.
+updated: 2026-10-29
+summary: UX round 2 is mostly merged into develop, which deploys to staging (deploy not checked) - borders and the joined board, the new card with message icons, columns edited on the board (add, drag, alerts, finished column), the message editor with blue ticket details, the shop-email rule and a cleaner message window. Next: Oz tests on staging (and the editor on an iPhone), then the develop → main release; Phase 2 toolbar and filters after that.
 ---
 
 ## Doing
-- [ ] UX round 2 (board look, toolbar, card menu, edit board in place, stage messages, ticket page, contact checkboxes, Messages page) @claude #ux
-  Planned in 8 phases, one PR each. Waiting on Oz's answers below; Phases 1–2 first (no data changes).
+- [ ] UX round 2: what's left (toolbar and filters, ticket page, contact checkboxes, Messages page, New ticket panel) @claude #ux
+  Done so far: look and joined board, card, board flags, columns on the board, message editor (see Done). Next: Phase 2 toolbar and filters; a mockup of the New ticket slide-in panel before building it.
 
 ## To do
+- [ ] Release develop → main: #109, #111, #113, #115–#121 @claude #release
+  Includes database changes (send rules, shop email, board columns). Before it: Oz's OK for two read-only production checks (pg_cron version for the 10-second sender; how many shops have no email, since emails now need one).
+- [ ] Test on staging: board columns, the new card, the message editor, the shop-email rule @me #testing
+  Test scenarios are in the PR descriptions (#118–#121). The message editor also needs a try on a real iPhone.
 - [ ] Customer list import: CSV upload, other common formats if needed @claude #customers #later
   Day-1 requirement right after the MVP (Oz, 26 Oct). Open points: formats, column matching, duplicates, preview, who may import, consent stays off.
   Source: docs/decisions.md 139
@@ -66,8 +70,8 @@ summary: The 24 Oct release (PR #108) puts the notification centre, Ready "told 
   Source: docs/launch-plan.md "Later"
 
 ## Waiting
-- [ ] Answer the UX-round questions @me #ux #decision
-  Thin borders instead of decision 95? Keep 14 px minimum text? Stage messages one-click or automatic? Message types and free text? What "type of service" means for the filter? Send the reference recording or screenshots.
+- [ ] OK for two read-only production checks before the release @me #release
+  pg_cron version (the sender now runs every 10 seconds, which needs 1.5+); count of shops with no email (they stop sending emails once #118 ships).
 - [ ] Add a Resend key to staging so email steps can be tested there @me #email #setup
   No Twilio on staging (Oz, 24 Oct). Claude then re-tests the email steps.
 - [ ] Say when to delete the staging test accounts and "Kind Fix Shop" @me #testing
@@ -108,6 +112,25 @@ summary: The 24 Oct release (PR #108) puts the notification centre, Ready "told 
   Source: docs/oz-todo.md "Decide"; docs/decisions.md 44, 48, 84
 
 ## Done
+- [x] Message editor: ticket details inline in blue, a + at the cursor @claude #ux (2026-10-29)
+  Source: PR #121; docs/decisions.md 146
+- [x] Board columns edited on the board: window, add, drag, alerts, finished column @claude #ux (2026-10-29)
+  Settings › Board & fields became Ticket fields. Includes a migration.
+  Source: PR #120; docs/decisions.md 145
+- [x] Message window: readable tiles, one setup link, no Skip, Send text/email @claude #ux (2026-10-29)
+  Source: PR #119; docs/decisions.md 144
+- [x] Emails need the shop's email, with links to the exact setting @claude #email (2026-10-29)
+  Source: PR #118; docs/decisions.md 143
+- [x] Board card redesign with paper-plane message icons @claude #ux (2026-10-27)
+  Source: PR #117; docs/decisions.md 142
+- [x] Board: picked-up tickets stay (latest 10), due-soon flags, no hint @claude #ux (2026-10-27)
+  Source: PR #116; docs/decisions.md 141
+- [x] UX round 2 Phase 1: thin borders, the board as one joined grid @claude #ux (2026-10-27)
+  Source: PR #115; docs/decisions.md 140
+- [x] Message sending rules: 20 s wait, hold on status change, 2 min between messages, repeat check @claude #messages (2026-10-26)
+  Source: PR #113; docs/decisions.md 138
+- [x] Click-away removes an empty service row or discount @claude #ux (2026-10-26)
+  Source: PR #111
 - [x] Release 24 Oct: develop → main @claude #release (2026-10-24)
   PRs #91–#107: notification centre, board tags, setup Skip, attention dots, 44 px close buttons, CI and docs. No database changes.
   Railway production deploy of 8cf3a1e succeeded at 22:24 UTC.

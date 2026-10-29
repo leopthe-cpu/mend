@@ -60,6 +60,27 @@ export const VARIABLES = [
   "{status_name}",
 ] as const;
 
+/** The ticket details the + inserts, in menu order (decision 146). */
+export const MESSAGE_FIELDS: { field: keyof TemplateVars; label: string }[] = [
+  { field: "customer_first_name", label: "Customer first name" },
+  { field: "customer_name", label: "Customer full name" },
+  { field: "item_name", label: "Item" },
+  { field: "ticket_number", label: "Ticket number" },
+  { field: "promised_date", label: "Due date" },
+  { field: "status_name", label: "Column name" },
+  { field: "amount_due", label: "Amount due" },
+  { field: "pickup_hours", label: "Pickup hours" },
+  { field: "shop_hours", label: "Shop hours" },
+  { field: "shop_name", label: "Shop name" },
+];
+
+/** A field's name as a placeholder token in the column window: "{due date}". */
+export function fieldLabel(field: string): string | null {
+  const f = field === "ticket_title" ? "item_name" : field;
+  const known = MESSAGE_FIELDS.find((x) => x.field === f);
+  return known ? `{${known.label.toLowerCase()}}` : null;
+}
+
 export type TemplateVars = {
   customer_first_name: string;
   customer_name: string;

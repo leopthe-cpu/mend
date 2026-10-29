@@ -12,8 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { TokenEditor } from "@/components/messages/TokenEditor";
 import {
   type Channel,
   fetchTemplates,
@@ -43,6 +42,10 @@ import {
   type Ticket,
 } from "@/lib/tickets";
 import { cn } from "@/lib/utils";
+import { balance, fetchMoney } from "@/lib/estimates";
+import { formatMoney } from "@/lib/money";
+import { parseTemplate, toPlain, type Segment } from "@/lib/messageTokens";
+import { MESSAGE_FIELDS } from "@/lib/messages";
 
 import { toastQueued } from "./messageToasts";
 
@@ -60,6 +63,8 @@ type Loaded = {
   email: string | null;
   templates: Template[];
   statusName: string;
+  /** What's left to pay, for {amount_due} (decision 146). */
+  amountDue: string;
 };
 
 /**
@@ -83,6 +88,12 @@ export function NotifyDialog({
   const [body, setBody] = useState("");
   const [subject, setSubject] = useState("");
   const [edited, setEdited] = useState(false);
+  // The editors' starting content and the ticket's values for the + menu.
+  const [bodySegs, setBodySegs] = useState<Segment[]>([]);
+  const [subjectSegs, setSubjectSegs] = useState<Segment[]>([]);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [editorKey, setEditorKey] = useState(0);
+  const fieldOptions = MESSAGE_FIELDS.map((f) => ({ ...f, value: values[f.field] ?? "" }));
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   // Decision 138: every message waits 20 s; the next goes 2 minutes after the
@@ -134,7 +145,7 @@ export function NotifyDialog({
         const ticket = await fetchTicket(request.ticketId);
         if (!ticket) throw new Error("Ticket not found.");
         const db = getSupabase();
-        const [cust, contacts, templates, statuses] = await Promise.all([
+        const [cust, contacts, templates, statuses, money] = await Promise.all([
           db
             .from("customers")
             .select(
@@ -145,6 +156,7 @@ export function NotifyDialog({
           fetchContacts([ticket.customer_id]),
           fetchTemplates(ticket.shop_id),
           fetchStatuses(ticket.shop_id),
+          fetchMoney(ticket.id).catch(() => null),
         ]);
         if (cust.error) throw cust.error;
         const c = contacts.get(ticket.customer_id);
@@ -156,6 +168,7 @@ export function NotifyDialog({
           templates,
           statusName:
             statuses.find((s) => s.id === (request.statusId ?? ticket.status_id))?.name ?? "",
+          amountDue: formatMoney(money ? Math.max(0, balance(money).balance) : 0, shop.currency),
         };
         if (!alive) return;
         setData(loaded);
@@ -217,6 +230,7 @@ export function NotifyDialog({
       ),
       shop_hours: shop.business_hours?.text ?? "",
       status_name: d.statusName,
+      amount_due: d.amountDue,
       promised_date: d.ticket.promised_date
         ? promisedDateText(d.ticket.promised_date, shop.business_hours?.schedule)
         : "a date to be confirmed",
@@ -237,16 +251,22 @@ export function NotifyDialog({
           : (t?.body ??
             "Hi {customer_name}, an update on your {item_name} at {shop_name}: it's now " +
               `"${d.statusName}".`);
+    const subjectText =
+      t?.subject ??
+      (request?.kind === "reminder"
+        ? "Reminder: your {item_name} is ready for pickup"
+        : "Your {item_name} at {shop_name}");
     setBody(renderTemplate(text, vars));
-    setSubject(
-      renderTemplate(
-        t?.subject ??
-          (request?.kind === "reminder"
-            ? "Reminder: your {item_name} is ready for pickup"
-            : "Your {item_name} at {shop_name}"),
-        vars,
-      ),
+    setSubject(renderTemplate(subjectText, vars));
+    // The ticket's details show in blue in the editors (decision 146).
+    const values: Record<string, string> = Object.fromEntries(
+      Object.entries(vars).map(([k, v]) => [k, String(v)]),
     );
+    setValues(values);
+    const show = (f: string) => values[f] ?? null;
+    setBodySegs(parseTemplate(text, show));
+    setSubjectSegs(parseTemplate(subjectText, show));
+    setEditorKey((k) => k + 1);
   }
 
   async function send() {
@@ -444,41 +464,53 @@ export function NotifyDialog({
             </fieldset>
 
             {channel === "email" ? (
-              <Field id="nd-subject" label="Subject">
-                <Input
+              <div className="flex flex-col gap-2">
+                <span id="nd-subject-label" className="text-sm font-medium">
+                  Subject
+                </span>
+                <TokenEditor
                   id="nd-subject"
+                  labelId="nd-subject-label"
+                  singleLine
                   disabled={setupNeeded}
-                  value={subject}
-                  maxLength={200}
-                  onChange={(e) => {
-                    setSubject(e.target.value);
+                  value={subjectSegs}
+                  resetKey={editorKey}
+                  options={fieldOptions}
+                  onChange={(segs) => {
+                    setSubject(toPlain(segs));
                     setEdited(true);
                   }}
                 />
-              </Field>
+              </div>
             ) : null}
-            <Field
-              id="nd-body"
-              label="Message"
-              hint={
-                channel === "sms"
-                  ? `${seg.units} of ${seg.perSegment * seg.segments} characters · ${seg.segments} text${seg.segments > 1 ? "s" : ""}${seg.encoding === "UCS-2" ? " (special characters use more space)" : ""}. A customer's first text adds "Reply STOP to opt out. Shop info:" and a link to your shop's contact page.`
-                  : `${body.length} characters`
-              }
-            >
-              <Textarea
+            <div className="flex flex-col gap-2">
+              <span id="nd-body-label" className="text-sm font-medium">
+                Message
+              </span>
+              <TokenEditor
                 id="nd-body"
-                rows={5}
-                maxLength={1600}
+                labelId="nd-body-label"
                 disabled={setupNeeded}
-                className="bg-surface-2 text-base"
-                value={body}
-                onChange={(e) => {
-                  setBody(e.target.value);
+                rows={5}
+                value={bodySegs}
+                resetKey={editorKey}
+                options={fieldOptions}
+                onChange={(segs) => {
+                  setBody(toPlain(segs));
                   setEdited(true);
                 }}
               />
-            </Field>
+              <p
+                className={cn(
+                  "text-sm",
+                  body.length > 1600 ? "text-danger" : "text-muted-foreground",
+                )}
+              >
+                {channel === "sms"
+                  ? `${seg.units} of ${seg.perSegment * seg.segments} characters · ${seg.segments} text${seg.segments > 1 ? "s" : ""}${seg.encoding === "UCS-2" ? " (special characters use more space)" : ""}. A customer's first text adds "Reply STOP to opt out. Shop info:" and a link to your shop's contact page.`
+                  : `${body.length} of 1600 characters`}
+              </p>
+            </div>
             {setupNeeded && bothNeedSetup ? (
               // One place to finish setup (Oz, 29 Oct).
               <div className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground">
@@ -503,7 +535,13 @@ export function NotifyDialog({
               <div className="flex justify-end gap-3">
                 <Button
                   type="submit"
-                  disabled={sending || !!blocked || !body.trim() || plan.mode === "full"}
+                  disabled={
+                    sending ||
+                    !!blocked ||
+                    !body.trim() ||
+                    body.length > 1600 ||
+                    plan.mode === "full"
+                  }
                 >
                   {plan.mode === "send" ? <Send /> : <CalendarClock />}{" "}
                   {sending

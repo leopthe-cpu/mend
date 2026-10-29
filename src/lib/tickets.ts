@@ -287,51 +287,40 @@ export function readyContact(
 
 /** The board card's message icon (Oz, 27 Oct; decision 142). */
 export type MessagePlane = {
-  /** grey: this column's message not sent yet, or never contacted; blue: waiting to send. */
-  state: "grey" | "blue" | "green" | "red";
-  /** The number beside the icon, or null for none (never 0; green only from 2). */
-  count: number | null;
-  /** For green: the latest message sent. */
+  /** yellow: this column's message not sent yet; blue: waiting to send. */
+  state: "yellow" | "blue" | "green" | "red";
+  /** For green: the message that went out. */
   last?: { channel: "sms" | "email"; at: string };
 };
 
 /**
- * Which message icon a card shows. Every sent message counts. In a column that
- * offers its own message (`notify_by_default`), only messages since the ticket
- * moved there (or about that status) decide the colour: grey until one is sent,
- * and a skipped one stays grey (Oz, 27 Oct). Other columns keep the ticket's
- * latest state. Blue while any message waits; red when the latest failed.
+ * Which message icon a card shows (decision 147, amending 142): only in a
+ * column that messages customers on arrival (`notify_by_default`); none
+ * elsewhere. Only messages since the ticket moved there (or about that
+ * column) count: green once one went out, yellow until then (a skipped one
+ * stays yellow), blue while one waits, red when the latest failed. No counter.
  */
 export function messagePlane(
   t: Pick<Ticket, "id" | "status_id" | "status_changed_at">,
   status: Pick<Status, "notify_by_default"> | undefined,
   messages: ContactMessage[],
-): MessagePlane {
+): MessagePlane | null {
+  if (!status?.notify_by_default) return null;
   const since = new Date(t.status_changed_at).getTime();
-  const mine = messages
-    .filter((m) => m.ticket_id === t.id && m.status !== "canceled")
+  const scope = messages
+    .filter(
+      (m) =>
+        m.ticket_id === t.id &&
+        m.status !== "canceled" &&
+        (new Date(m.created_at).getTime() >= since ||
+          (m.kind === "status" && !!m.status_id && m.status_id === t.status_id)),
+    )
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
-  const isSent = (m: ContactMessage) => m.status === "sent" || m.status === "delivered";
-  const sent = mine.filter(isSent);
-  const before = sent.length || null;
-  const scope = status?.notify_by_default
-    ? mine.filter(
-        (m) =>
-          new Date(m.created_at).getTime() >= since ||
-          (m.kind === "status" && !!m.status_id && m.status_id === t.status_id),
-      )
-    : mine;
-  if (scope.some((m) => m.status === "queued" || m.status === "sending"))
-    return { state: "blue", count: before };
-  const latestSent = scope.find(isSent);
-  const latest = scope[0];
-  if (latest?.status === "failed") return { state: "red", count: before };
-  if (!latestSent) return { state: "grey", count: before };
-  return {
-    state: "green",
-    count: sent.length >= 2 ? sent.length : null,
-    last: { channel: latestSent.channel, at: latestSent.created_at },
-  };
+  if (scope.some((m) => m.status === "queued" || m.status === "sending")) return { state: "blue" };
+  if (scope[0]?.status === "failed") return { state: "red" };
+  const sent = scope.find((m) => m.status === "sent" || m.status === "delivered");
+  if (!sent) return { state: "yellow" };
+  return { state: "green", last: { channel: sent.channel, at: sent.created_at } };
 }
 
 /** How many picked-up tickets the board shows; the rest are in the List (Oz, 27 Oct). */

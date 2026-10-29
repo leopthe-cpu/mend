@@ -54,6 +54,7 @@ export function ColumnDialog({
   onClose,
   onSaved,
   onMove,
+  onDelete,
 }: {
   request: ColumnRequest | null;
   shopId: string;
@@ -64,6 +65,8 @@ export function ColumnDialog({
   onSaved: () => void;
   /** Move the column one place (the keyboard way to reorder; dragging is the other). */
   onMove: (statusId: string, dir: -1 | 1) => void;
+  /** Close this window and open the delete confirmation for this column. */
+  onDelete: (status: Status) => void;
 }) {
   const editing = request?.kind === "edit" ? request.status : null;
   const finishedNow = statuses.find((s) => s.is_final);
@@ -81,8 +84,6 @@ export function ColumnDialog({
   const [dueDays, setDueDays] = useState(2);
   const [finished, setFinished] = useState(false);
   const [more, setMore] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [moveTo, setMoveTo] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,8 +101,6 @@ export function ColumnDialog({
     // More options open by themselves on the finished column, and when a
     // column is added after it (it may want to take over).
     setMore(!!s?.is_final || (request.kind === "new" && request.after.is_final));
-    setDeleting(false);
-    setMoveTo("");
     setError(null);
     setSubject(DEFAULT_SUBJECT);
     setBody(DEFAULT_BODY);
@@ -197,25 +196,9 @@ export function ColumnDialog({
     }
   }
 
-  async function remove() {
-    if (!editing) return;
-    setSaving(true);
-    setError(null);
-    const { error } = await getSupabase().rpc("delete_status", {
-      p_status_id: editing.id,
-      p_move_to: here ? moveTo || null : null,
-    });
-    setSaving(false);
-    if (error) return setError(friendlyDbError(error));
-    onSaved();
-    onClose();
-  }
-
-  const others = statuses.filter((s) => s.id !== editing?.id);
-
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-xl">
+      <DialogContent className="max-h-[92svh] overflow-x-hidden overflow-y-auto bg-background text-foreground sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">
             {editing
@@ -400,52 +383,13 @@ export function ColumnDialog({
             ) : null}
           </div>
 
-          {deleting && editing ? (
-            <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-              <p className="font-medium">
-                {here
-                  ? `Move ${editing.name}'s ${here} ticket${here === 1 ? "" : "s"} first`
-                  : `Delete ${editing.name}?`}
-              </p>
-              {here ? (
-                <Field id="col-move" label="Move them to">
-                  <select
-                    id="col-move"
-                    className={selectClass}
-                    value={moveTo}
-                    onChange={(e) => setMoveTo(e.target.value)}
-                  >
-                    <option value="">Choose a column</option>
-                    {others.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              ) : null}
-              <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => setDeleting(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={saving || (!!here && !moveTo)}
-                  onClick={() => void remove()}
-                >
-                  {here ? "Move and delete" : "Delete"}
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
           <div className="flex flex-wrap items-center gap-3">
-            {editing && !editing.is_final && !deleting ? (
+            {editing && !editing.is_final ? (
               <button
                 type="button"
-                onClick={() => setDeleting(true)}
+                // Its own confirmation window (Oz, 29 Oct).
+                onClick={() => onDelete(editing)}
                 className="mr-auto inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full px-2 font-medium text-danger hover:bg-card"
               >
                 <Trash2 aria-hidden className="size-4" /> Delete column
@@ -537,5 +481,142 @@ function DaysRow({
       </span>
       <Switch id={id} aria-label={label} checked={on} onCheckedChange={onToggle} />
     </div>
+  );
+}
+
+/**
+ * Deleting a column (decision 147): its own window. An empty column just
+ * asks; one with tickets asks whether to move them to another column or
+ * delete them too (Owner and Admin can delete tickets).
+ */
+export function DeleteColumnDialog({
+  status,
+  statuses,
+  count,
+  onClose,
+  onDeleted,
+}: {
+  status: Status | null;
+  statuses: Status[];
+  count: number;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [mode, setMode] = useState<"move" | "delete">("move");
+  const [moveTo, setMoveTo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setMode("move");
+    setMoveTo("");
+    setError(null);
+  }, [status]);
+  if (!status) return null;
+  const others = statuses.filter((s) => s.id !== status.id);
+  const plural = count === 1 ? "ticket" : "tickets";
+
+  async function confirm() {
+    if (!status) return;
+    setBusy(true);
+    setError(null);
+    const { error } = await getSupabase().rpc("delete_status", {
+      p_status_id: status.id,
+      p_move_to: count && mode === "move" ? moveTo || null : null,
+      p_delete_tickets: count > 0 && mode === "delete",
+    });
+    setBusy(false);
+    if (error) return setError(friendlyDbError(error));
+    onDeleted();
+    onClose();
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="bg-background text-foreground sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">Delete {status.name}?</DialogTitle>
+          <DialogDescription>
+            {count
+              ? `It has ${count} ${plural}. Choose what happens to ${count === 1 ? "it" : "them"}.`
+              : "It's empty. This can't be undone."}
+          </DialogDescription>
+        </DialogHeader>
+        {count ? (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="sr-only">What happens to its tickets</legend>
+            <label
+              className={cn(
+                "flex cursor-pointer flex-col gap-2 rounded-lg border bg-card px-4 py-3",
+                mode === "move" ? "border-primary ring-2 ring-primary/30" : "border-border",
+              )}
+            >
+              <span className="flex items-center gap-3">
+                <input
+                  type="radio"
+                  name="del-mode"
+                  checked={mode === "move"}
+                  onChange={() => setMode("move")}
+                  className="size-4 accent-primary"
+                />
+                <span className="font-medium">Move the {plural} to another column</span>
+              </span>
+              {mode === "move" ? (
+                <select
+                  aria-label="Move them to"
+                  className={selectClass}
+                  value={moveTo}
+                  onChange={(e) => setMoveTo(e.target.value)}
+                >
+                  <option value="">Choose a column</option>
+                  {others.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </label>
+            <label
+              className={cn(
+                "flex cursor-pointer flex-col gap-1 rounded-lg border bg-card px-4 py-3",
+                mode === "delete" ? "border-primary ring-2 ring-primary/30" : "border-border",
+              )}
+            >
+              <span className="flex items-center gap-3">
+                <input
+                  type="radio"
+                  name="del-mode"
+                  checked={mode === "delete"}
+                  onChange={() => setMode("delete")}
+                  className="size-4 accent-primary"
+                />
+                <span className="font-medium">
+                  Delete the {count} {plural} too
+                </span>
+              </span>
+              <span className="pl-7 text-sm text-muted-foreground">
+                {count === 1
+                  ? "It disappears from the board and lists, and its passcode is deleted."
+                  : "They disappear from the board and lists, and their passcodes are deleted."}
+              </span>
+            </label>
+          </fieldset>
+        ) : null}
+        {error ? <FormAlert tone="error">{error}</FormAlert> : null}
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={busy || (!!count && mode === "move" && !moveTo)}
+            onClick={() => void confirm()}
+          >
+            {busy ? "Deleting…" : "Delete column"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

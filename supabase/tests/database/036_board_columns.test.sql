@@ -64,6 +64,20 @@ set local role authenticated;
 select throws_ok($$ select public.delete_status(pg_temp.v('final'), pg_temp.v('ready')) $$, '22023', null,
   'the finished column can''t be deleted');
 
+-- ===== Delete a column together with its tickets (decision 147) ==========
+reset role;
+set local role authenticated;
+insert into t values ('tmp', public.add_status(pg_temp.v('shop'), pg_temp.v('first'), 'Temp', 'pink')::text);
+insert into t select 'tk3', ticket_id::text from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'), 'Scarf');
+reset role;
+update public.tickets set status_id = pg_temp.v('tmp') where id = pg_temp.v('tk3');
+set local role authenticated;
+select lives_ok($$ select public.delete_status(pg_temp.v('tmp'), null, true) $$, 'delete a column and its tickets');
+reset role;
+select ok((select deleted_at is not null from public.tickets where id = pg_temp.v('tk3')), 'its ticket is deleted (soft)');
+select ok(exists (select 1 from public.audit_log where action = 'ticket.deleted' and entity_id = pg_temp.v('tk3')), 'and audited');
+select ok(not exists (select 1 from public.statuses where id = pg_temp.v('tmp')), 'the column is gone');
+
 -- ===== Moving the finished role ==========================================
 reset role;
 update public.tickets set status_id = pg_temp.v('final'), picked_up_at = now(), passcode_encrypted = null where id = pg_temp.v('tk');

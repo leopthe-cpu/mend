@@ -26,7 +26,7 @@ function Icon({ children, ...props }: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** Grey: this column's message hasn't gone out (or nobody was contacted). */
+/** Yellow: this column's message hasn't gone out yet. */
 export function PlaneDown(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

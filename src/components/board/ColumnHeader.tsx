@@ -1,13 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, Clock, Hourglass, Plus, Send } from "lucide-react";
+import { AlertTriangle, Check, Clock, Hourglass, Plus, Send } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { BOARD_CLOSED_LIMIT, STATUS_COLOR_CLASS, type Status } from "@/lib/tickets";
 import { cn } from "@/lib/utils";
 
 /**
- * One column's header on the board (decision 145): name, count and the
- * message icon (blue when the column messages customers), with its alerts
+ * One column's header on the board (decisions 145, 147): name, the message
+ * icon and the count chip, with its alerts
  * underneath. For Owner and Admin, clicking it opens the column window,
  * the + adds a column to its right, and dragging it reorders the columns.
  * Staff open the List filtered to the column, as before (decision 117).
@@ -45,18 +45,33 @@ export function ColumnHeader({
   onAdd: () => void;
   onDragStart: (e: React.PointerEvent<HTMLElement>) => void;
 }) {
+  // The message icon (decision 147): with a check when the column messages
+  // customers on arrival, greyed out when it doesn't.
+  const label = s.notify_by_default ? "Messages customers on arrival" : "No message on arrival";
   const plane = (
     <span
       className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-full",
-        s.notify_by_default ? "bg-accent text-primary" : "text-status-closed",
+        "relative flex size-8 shrink-0 items-center justify-center rounded-full",
+        s.notify_by_default ? "text-primary" : "text-muted-foreground/50",
       )}
-      title={s.notify_by_default ? "Messages customers on arrival" : "No message on arrival"}
+      title={label}
     >
       <Send aria-hidden className="size-4" />
-      <span className="sr-only">
-        {s.notify_by_default ? "Messages customers on arrival" : "No message on arrival"}
-      </span>
+      {s.notify_by_default ? (
+        <span
+          aria-hidden
+          className="absolute right-0.5 bottom-0.5 flex size-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-card"
+        >
+          <Check className="size-2.5" strokeWidth={3} />
+        </span>
+      ) : null}
+      <span className="sr-only">{label}</span>
+    </span>
+  );
+  // The count in a chip, right-most, level with the name (Oz, 29 Oct).
+  const count = (
+    <span className="shrink-0 rounded-full bg-background px-2 py-0.5 font-mono text-sm font-normal text-muted-foreground tabular-nums">
+      {total}
     </span>
   );
   const dot = (
@@ -79,10 +94,9 @@ export function ColumnHeader({
           <span className="flex items-center gap-2 font-semibold">
             {dot}
             <span className="truncate">{s.name}</span>
-            <span className="ml-auto font-mono text-sm font-normal text-muted-foreground">
-              {total}
-            </span>
+            <span className="ml-auto" />
             {plane}
+            {count}
           </span>
           <Alerts status={s} total={total} late={late} soon={soon} idle={idle} />
         </HeaderButton>
@@ -96,10 +110,9 @@ export function ColumnHeader({
           <span className="flex items-center gap-2 font-semibold">
             {dot}
             <span className="truncate">{s.name}</span>
-            <span className="ml-auto font-mono text-sm font-normal text-muted-foreground">
-              {total}
-            </span>
+            <span className="ml-auto" />
             {plane}
+            {count}
           </span>
           <Alerts status={s} total={total} late={late} soon={soon} idle={idle} />
         </Link>

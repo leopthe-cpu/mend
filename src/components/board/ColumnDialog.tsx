@@ -14,7 +14,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { TokenEditor } from "@/components/messages/TokenEditor";
+import { parseTemplate, toTemplate } from "@/lib/messageTokens";
+import { fieldLabel, MESSAGE_FIELDS } from "@/lib/messages";
 import { friendlyDbError } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import { STATUS_COLOR_CLASS, STATUS_COLORS, type Status, type StatusColor } from "@/lib/tickets";
@@ -70,6 +72,8 @@ export function ColumnDialog({
   const [notify, setNotify] = useState(false);
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [body, setBody] = useState(DEFAULT_BODY);
+  // Bumped when saved templates arrive, so the editors show them.
+  const [loaded, setLoaded] = useState(0);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [idleOn, setIdleOn] = useState(true);
   const [idleDays, setIdleDays] = useState(2);
@@ -117,6 +121,7 @@ export function ColumnDialog({
         const sms = rows.find((r) => r.channel === "sms");
         if (email?.subject) setSubject(email.subject);
         if (email?.body || sms?.body) setBody(email?.body ?? sms?.body ?? DEFAULT_BODY);
+        setLoaded((n) => n + 1);
       });
     return () => {
       alive = false;
@@ -284,28 +289,37 @@ export function ColumnDialog({
             />
             {notify ? (
               <div className="flex flex-col gap-4 border-t border-border px-4 py-4">
-                <Field id="col-subject" label="Subject (emails only)">
-                  <Input
+                <div className="flex flex-col gap-2">
+                  <span id="col-subject-label" className="text-sm font-medium">
+                    Subject (emails only)
+                  </span>
+                  <TokenEditor
                     id="col-subject"
-                    value={subject}
-                    maxLength={200}
-                    onChange={(e) => setSubject(e.target.value)}
+                    labelId="col-subject-label"
+                    singleLine
+                    value={parseTemplate(subject, fieldLabel)}
+                    resetKey={`${request.kind}-${editing?.id ?? ""}-${loaded}`}
+                    options={MESSAGE_FIELDS}
+                    onChange={(segs) => setSubject(toTemplate(segs))}
                   />
-                </Field>
-                <Field
-                  id="col-body"
-                  label="Message"
-                  hint="Mend opens this ready to send when a ticket arrives here; staff can change it first."
-                >
-                  <Textarea
+                </div>
+                <div className="flex flex-col gap-2">
+                  <span id="col-body-label" className="text-sm font-medium">
+                    Message
+                  </span>
+                  <TokenEditor
                     id="col-body"
-                    rows={4}
-                    maxLength={1600}
-                    className="bg-surface-2 text-base"
-                    value={body}
-                    onChange={(e) => setBody(e.target.value)}
+                    labelId="col-body-label"
+                    value={parseTemplate(body, fieldLabel)}
+                    resetKey={`${request.kind}-${editing?.id ?? ""}-${loaded}`}
+                    options={MESSAGE_FIELDS}
+                    onChange={(segs) => setBody(toTemplate(segs))}
                   />
-                </Field>
+                  <p className="text-sm text-muted-foreground">
+                    The + by your cursor adds a detail from the ticket. Mend opens this ready to
+                    send when a ticket arrives here; staff can change it first.
+                  </p>
+                </div>
               </div>
             ) : null}
           </div>

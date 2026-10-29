@@ -27,11 +27,10 @@ import { pickupHoursText, promisedDateText } from "@/lib/hours";
 import { messageWhat, sendPlan, type PlanMessage, type SendPlan } from "@/lib/notifications";
 import {
   friendlyDbError,
-  EMAILS_NEED_CONTACT,
   missingEmailContact,
   missingTextContact,
   shopAttention,
-  TEXTS_NEED_CONTACT,
+  type AttentionField,
   type Membership,
 } from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
@@ -160,12 +159,9 @@ export function NotifyDialog({
         };
         if (!alive) return;
         setData(loaded);
-        const usable = (ch: Channel) => !blockedReason(loaded, ch);
-        const first: Channel = usable(loaded.customer.preferred_channel)
-          ? loaded.customer.preferred_channel
-          : usable("sms")
-            ? "sms"
-            : "email";
+        // Text unless the customer can't get texts (Oz, 29 Oct).
+        const first: Channel =
+          customerBlocked(loaded, "sms") && !customerBlocked(loaded, "email") ? "email" : "sms";
         setChannel(first);
         fill(loaded, first);
       } catch (e) {
@@ -179,19 +175,30 @@ export function NotifyDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request]);
 
-  function blockedReason(d: Loaded, ch: Channel): string | null {
+  /** The shop isn't set up for this channel yet (decisions 131, 143). */
+  function shopBlocked(ch: Channel): boolean {
+    return ch === "sms" ? missingTextContact(shop) : missingEmailContact(shop);
+  }
+
+  /** The shop details this channel still needs, for the link to the exact field. */
+  function missingFor(ch: Channel): AttentionField[] {
+    return shopAttention(shop).filter((f) => (ch === "sms" ? f !== "email" : f === "email"));
+  }
+
+  /** Why this customer can't get this channel: the tile is darkened and can't be picked. */
+  function customerBlocked(d: Loaded, ch: Channel): string | null {
     if (ch === "sms") {
-      // Decision 131: the database refuses texts until the shop has both.
-      if (missingTextContact(shop)) return TEXTS_NEED_CONTACT;
       if (d.customer.sms_opted_out) return "Opted out of texts (replied STOP or asked you).";
       if (!d.phone) return "No mobile number on file.";
     } else {
-      // Decision 143: and emails until it has an email address.
-      if (missingEmailContact(shop)) return EMAILS_NEED_CONTACT;
       if (d.customer.email_opted_out) return "Opted out of email.";
       if (!d.email) return "No email address on file.";
     }
     return null;
+  }
+
+  function blockedReason(d: Loaded, ch: Channel): string | null {
+    return shopBlocked(ch) ? "shop" : customerBlocked(d, ch);
   }
 
   function fill(d: Loaded, ch: Channel) {
@@ -294,18 +301,18 @@ export function NotifyDialog({
 
   const seg = smsSegments(body);
   const blocked = data ? blockedReason(data, channel) : null;
-  // Both channels blocked, and shop setup is part of why.
-  const setupBlocked =
-    !!data &&
-    !!blockedReason(data, "sms") &&
-    !!blockedReason(data, "email") &&
-    (missingTextContact(shop) || missingEmailContact(shop));
+  // The chosen channel needs shop setup first: the message is greyed out and
+  // there's no Send button (Oz, 29 Oct).
+  const setupNeeded = shopBlocked(channel);
+  // Both need it: one link, at the bottom, so it reads as one thing to do.
+  const bothNeedSetup = shopBlocked("sms") && shopBlocked("email");
+  const word = channel === "sms" ? "text" : "email";
   const first = data ? data.customer.name.split(" ")[0] || data.customer.name : "";
 
   return (
     <Dialog open={!!request} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        className="max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-lg"
+        className="max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-xl"
         // A held-message toast may be open below: answering it must not close
         // this dialog (decision 138).
         onInteractOutside={(e) => {
@@ -367,27 +374,21 @@ export function NotifyDialog({
             <fieldset className="grid grid-cols-2 gap-2">
               <legend className="sr-only">Channel</legend>
               {(["sms", "email"] as Channel[]).map((ch) => {
-                const reason = blockedReason(data, ch);
+                // Opted out or no number/address: darkened, can't be picked.
+                const off = customerBlocked(data, ch);
                 const Icon = ch === "sms" ? MessageSquare : Mail;
-                // Shop setup is fixable here: link to the exact field (Oz, 28 Oct).
-                const fix =
-                  ch === "sms"
-                    ? missingTextContact(shop)
-                      ? {
-                          hash: shopAttention(shop).find((f) => f !== "email") ?? "address",
-                          label: "Add address and phone",
-                        }
-                      : null
-                    : missingEmailContact(shop)
-                      ? { hash: "email", label: "Add shop email" }
-                      : null;
+                const verb = ch === "sms" ? "text" : "email";
                 return (
                   <label
                     key={ch}
                     className={cn(
-                      "flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 py-2",
-                      channel === ch ? "border-primary ring-2 ring-primary/30" : "border-border",
-                      reason && "cursor-not-allowed",
+                      "flex min-h-11 items-center gap-2 rounded-md border px-3 py-2",
+                      off
+                        ? "cursor-not-allowed border-border bg-border/60"
+                        : "cursor-pointer bg-card",
+                      channel === ch && !off
+                        ? "border-primary ring-2 ring-primary/30"
+                        : "border-border",
                     )}
                   >
                     <input
@@ -396,32 +397,46 @@ export function NotifyDialog({
                       className="sr-only"
                       value={ch}
                       checked={channel === ch}
-                      disabled={!!reason}
+                      disabled={!!off}
                       onChange={() => {
                         setChannel(ch);
                         if (!edited) fill(data, ch);
                       }}
                     />
-                    <Icon className={cn("size-5 shrink-0", reason && "opacity-60")} aria-hidden />
+                    <Icon className="size-5 shrink-0" aria-hidden />
                     <span className="flex min-w-0 flex-col">
-                      <span className={cn("font-medium", reason && "opacity-60")}>
-                        {ch === "sms" ? "Text" : "Email"}
+                      <span className="font-medium">{ch === "sms" ? "Text" : "Email"}</span>
+                      <span
+                        className={cn(
+                          "text-sm break-words [overflow-wrap:anywhere]",
+                          off ? "text-foreground" : "text-muted-foreground",
+                        )}
+                      >
+                        {off ? (
+                          off
+                        ) : shopBlocked(ch) ? (
+                          bothNeedSetup ? (
+                            `Finish setting up your shop to ${verb} customers.`
+                          ) : (
+                            <>
+                              Finish setting up your shop in{" "}
+                              <Link
+                                to="/app/settings/shop"
+                                hash={missingFor(ch)[0] ?? ""}
+                                onClick={() => onClose()}
+                                className="font-medium text-primary underline underline-offset-4"
+                              >
+                                settings
+                              </Link>{" "}
+                              to {verb} customers.
+                            </>
+                          )
+                        ) : ch === "sms" ? (
+                          data.phone
+                        ) : (
+                          data.email
+                        )}
                       </span>
-                      <span className="text-sm break-words text-muted-foreground [overflow-wrap:anywhere]">
-                        {fix
-                          ? `Your shop needs ${ch === "sms" ? "an address and phone to send texts" : "an email address to send emails"}.`
-                          : (reason ?? (ch === "sms" ? data.phone : data.email))}
-                      </span>
-                      {fix ? (
-                        <Link
-                          to="/app/settings/shop"
-                          hash={fix.hash}
-                          onClick={() => onClose()}
-                          className="text-sm font-medium text-primary underline underline-offset-4"
-                        >
-                          {fix.label}
-                        </Link>
-                      ) : null}
                     </span>
                   </label>
                 );
@@ -432,6 +447,7 @@ export function NotifyDialog({
               <Field id="nd-subject" label="Subject">
                 <Input
                   id="nd-subject"
+                  disabled={setupNeeded}
                   value={subject}
                   maxLength={200}
                   onChange={(e) => {
@@ -454,6 +470,7 @@ export function NotifyDialog({
                 id="nd-body"
                 rows={5}
                 maxLength={1600}
+                disabled={setupNeeded}
                 className="bg-surface-2 text-base"
                 value={body}
                 onChange={(e) => {
@@ -462,44 +479,41 @@ export function NotifyDialog({
                 }}
               />
             </Field>
-            {setupBlocked ? (
-              // Nothing can be sent until the shop is set up (Oz, 28 Oct).
+            {setupNeeded && bothNeedSetup ? (
+              // One place to finish setup (Oz, 29 Oct).
               <div className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground">
-                Finish setting up your shop before sending messages: Mend needs its{" "}
-                {shopAttention(shop)
-                  .join(", ")
-                  .replace(/, ([^,]*)$/, " and $1")}
-                .{" "}
+                We need a few more details about your shop before you can contact customers: your{" "}
+                {listWords(shopAttention(shop).map((f) => FIELD_WORDS[f]))}.{" "}
                 <Link
                   to="/app/settings/shop"
                   hash={shopAttention(shop)[0] ?? ""}
                   onClick={() => onClose()}
                   className="font-medium text-primary underline underline-offset-4"
                 >
-                  Open shop settings
+                  Finish setting up
                 </Link>
               </div>
-            ) : channel === "email" && shop.email ? (
+            ) : !setupNeeded && channel === "email" && shop.email ? (
               <p className="text-sm text-muted-foreground">Replies go to {shop.email}.</p>
             ) : null}
 
             {error ? <FormAlert tone="error">{error}</FormAlert> : null}
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => onClose()}>
-                Skip
-              </Button>
-              <Button
-                type="submit"
-                disabled={sending || !!blocked || !body.trim() || plan.mode === "full"}
-              >
-                {plan.mode === "send" ? <Send /> : <CalendarClock />}{" "}
-                {sending
-                  ? "Sending…"
-                  : plan.mode === "full"
-                    ? "1 scheduled"
-                    : `${plan.mode === "schedule" ? "Schedule" : "Send"}${repeat ? " again" : ""}`}
-              </Button>
-            </div>
+            {/* No Skip: the ✕ closes it (Oz, 29 Oct). No Send until the shop is set up. */}
+            {setupNeeded ? null : (
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="submit"
+                  disabled={sending || !!blocked || !body.trim() || plan.mode === "full"}
+                >
+                  {plan.mode === "send" ? <Send /> : <CalendarClock />}{" "}
+                  {sending
+                    ? "Sending…"
+                    : plan.mode === "full"
+                      ? "1 scheduled"
+                      : `${plan.mode === "schedule" ? "Schedule" : "Send"} ${word}${repeat ? " again" : ""}`}
+                </Button>
+              </div>
+            )}
           </form>
         ) : error ? (
           <FormAlert tone="error">{error}</FormAlert>
@@ -509,4 +523,18 @@ export function NotifyDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+// How the missing shop details read to a person (Oz, 29 Oct).
+const FIELD_WORDS: Record<AttentionField, string> = {
+  address: "address",
+  phone: "phone number",
+  email: "email",
+};
+
+/** "a", "a and b", "a, b and c". */
+function listWords(words: string[]): string {
+  return words.length < 2
+    ? (words[0] ?? "")
+    : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
 }

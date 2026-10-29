@@ -70,6 +70,9 @@ summary: UX round 2 is mostly merged into develop, which deploys to staging (dep
   Source: docs/launch-plan.md "Later"
 
 ## Waiting
+- [ ] Decide how texts are sent before launch: one shared Twilio number or a number per shop @me #sms #decision
+  One shared number means: customer replies can't reach the shop; STOP stops texts from every Mend shop; one shop's spam complaints can block all shops; customers see Mend's number, not the shop's. First ask Twilio whether one verified toll-free number may send for many independent shops. Claude's recommendation: if yes, pilot on the shared number (shop name in every text, auto-reply "please call the shop") and move to a number per shop with paid replies; if no, a number per shop is required at launch.
+  Source: docs/decisions.md 46, 84, 107
 - [ ] OK for two read-only production checks before the release @me #release
   pg_cron version (the sender now runs every 10 seconds, which needs 1.5+); count of shops with no email (they stop sending emails once #118 ships).
 - [ ] Add a Resend key to staging so email steps can be tested there @me #email #setup

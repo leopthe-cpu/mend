@@ -1,7 +1,7 @@
 ---
 project: Mend
 updated: 2026-10-29
-summary: UX round 2 is mostly in develop and on staging - borders and the joined board, the new card with message icons, columns edited on the board (add, drag, alerts, finished column), the message editor with blue ticket details, the shop-email rule and a cleaner message window. Next: Oz tests on staging (and the editor on an iPhone), then the develop → main release; Phase 2 toolbar and filters after that.
+summary: UX round 2 is mostly merged into develop, which deploys to staging (deploy not checked) - borders and the joined board, the new card with message icons, columns edited on the board (add, drag, alerts, finished column), the message editor with blue ticket details, the shop-email rule and a cleaner message window. Next: Oz tests on staging (and the editor on an iPhone), then the develop → main release; Phase 2 toolbar and filters after that.
 ---
 
 ## Doing

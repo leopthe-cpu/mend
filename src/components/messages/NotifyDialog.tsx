@@ -216,6 +216,7 @@ export function NotifyDialog({
         shop.time_zone,
       ),
       shop_hours: shop.business_hours?.text ?? "",
+      status_name: d.statusName,
       promised_date: d.ticket.promised_date
         ? promisedDateText(d.ticket.promised_date, shop.business_hours?.schedule)
         : "a date to be confirmed",

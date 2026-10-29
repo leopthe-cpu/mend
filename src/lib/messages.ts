@@ -57,6 +57,7 @@ export const VARIABLES = [
   "{pickup_hours}",
   "{amount_due}",
   "{payment_line}",
+  "{status_name}",
 ] as const;
 
 export type TemplateVars = {
@@ -71,6 +72,8 @@ export type TemplateVars = {
   promised_date: string;
   amount_due: string;
   payment_line: string;
+  /** The column the ticket is in (column messages, decision 145). */
+  status_name: string;
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

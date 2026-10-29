@@ -10,6 +10,8 @@ const st = (id: string, position: number, extra: Partial<Status>): Status => ({
   position,
   category: "open",
   color: "received",
+  idle_alert_days: null,
+  due_alert_days: null,
   notify_by_default: false,
   is_final: false,
   ...extra,

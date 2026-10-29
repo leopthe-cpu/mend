@@ -13,6 +13,8 @@ grant execute on function pg_temp.v(text) to authenticated, anon;
 select set_config('request.jwt.claims', '{"sub":"ae000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 insert into t values ('shop', public.create_shop('Unsub Shop', null, 'other', 'CA', null, 'America/Toronto')::text);
+-- Emails need the shop's email address (decision 143).
+update public.shops set email = 'shop@example.com' where id = pg_temp.v('shop');
 insert into t values ('cust', public.save_customer(pg_temp.v('shop'), null, 'Eve', null, 'eve@example.com', 'email')::text);
 insert into t select 'tk', ticket_id::text from public.create_ticket(pg_temp.v('shop'), pg_temp.v('cust'), 'Coat');
 select throws_ok($$ select unsubscribe_token from public.customers $$, '42501', null, 'members cannot read tokens');

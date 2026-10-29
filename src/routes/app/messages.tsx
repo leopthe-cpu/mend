@@ -17,7 +17,13 @@ import {
   smsSegments,
   STATUS_TEXT,
 } from "@/lib/messages";
-import { friendlyDbError, missingTextContact, TEXTS_NEED_CONTACT } from "@/lib/shop";
+import {
+  EMAILS_NEED_CONTACT,
+  friendlyDbError,
+  missingEmailContact,
+  missingTextContact,
+  TEXTS_NEED_CONTACT,
+} from "@/lib/shop";
 import { getSupabase } from "@/lib/supabase";
 import { fetchContacts } from "@/lib/tickets";
 import { cn } from "@/lib/utils";
@@ -272,6 +278,7 @@ function MessagesPage() {
                 shopId={shop.id}
                 timeZone={shop.time_zone}
                 textsOff={missingTextContact(shop)}
+                emailsOff={missingEmailContact(shop)}
                 onBack={() => open(undefined)}
                 onSent={loadThreads}
               />
@@ -292,6 +299,7 @@ function Conversation({
   shopId,
   timeZone,
   textsOff,
+  emailsOff,
   onBack,
   onSent,
 }: {
@@ -300,6 +308,8 @@ function Conversation({
   timeZone: string;
   /** The shop has no address or phone yet, so texts can't go out (decision 131). */
   textsOff: boolean;
+  /** The shop has no email yet, so emails can't go out (decision 143). */
+  emailsOff: boolean;
   onBack: () => void;
   onSent: () => void | Promise<void>;
 }) {
@@ -358,13 +368,16 @@ function Conversation({
         picked.current = true;
         const pref = p.preferred_channel;
         setChannel(
-          blocked(p, pref, textsOff) && !blocked(p, other(pref), textsOff) ? other(pref) : pref,
+          blocked(p, pref, { sms: textsOff, email: emailsOff }) &&
+            !blocked(p, other(pref), { sms: textsOff, email: emailsOff })
+            ? other(pref)
+            : pref,
         );
       }
     } catch (e) {
       setNotice({ tone: "error", text: friendlyDbError(e) });
     }
-  }, [customerId, shopId, textsOff]);
+  }, [customerId, shopId, textsOff, emailsOff]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -403,7 +416,7 @@ function Conversation({
     await onSent();
   }
 
-  const reason = person ? blocked(person, channel, textsOff) : null;
+  const reason = person ? blocked(person, channel, { sms: textsOff, email: emailsOff }) : null;
   const seg = smsSegments(body);
 
   return (
@@ -515,7 +528,9 @@ function Conversation({
               className="flex rounded-full bg-background p-1"
             >
               {(["sms", "email"] as const).map((ch) => {
-                const why = person ? blocked(person, ch, textsOff) : null;
+                const why = person
+                  ? blocked(person, ch, { sms: textsOff, email: emailsOff })
+                  : null;
                 return (
                   <button
                     key={ch}
@@ -597,12 +612,13 @@ function other(ch: Channel): Channel {
 }
 
 /** Why this customer can't get a message on this channel, or null. */
-function blocked(p: Person, ch: Channel, textsOff: boolean): string | null {
+function blocked(p: Person, ch: Channel, shopOff: { sms: boolean; email: boolean }): string | null {
   if (ch === "sms") {
-    if (textsOff) return TEXTS_NEED_CONTACT;
+    if (shopOff.sms) return TEXTS_NEED_CONTACT;
     if (p.sms_opted_out) return "Texts are off for this customer (replied STOP or asked you).";
     if (!p.phone) return "No mobile number on file.";
   } else {
+    if (shopOff.email) return EMAILS_NEED_CONTACT;
     if (p.email_opted_out) return "Emails are off for this customer.";
     if (!p.email) return "No email address on file.";
   }

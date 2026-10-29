@@ -20,6 +20,8 @@ grant execute on function pg_temp.age_messages() to authenticated;
 select set_config('request.jwt.claims', '{"sub":"ac000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 insert into t values ('shop', public.create_shop('Plain Shop', null, 'other', 'CA', null, 'America/Toronto')::text);
+-- Emails need the shop's email address (decision 143).
+update public.shops set email = 'shop@example.com' where id = pg_temp.v('shop');
 insert into t values ('cust', public.save_customer(pg_temp.v('shop'), null, 'Zoë Tran', '4165550600', 'zoe@example.com')::text);
 insert into t select 'tk', ticket_id::text from public.create_ticket_full(pg_temp.v('shop'), pg_temp.v('cust'), 'Coat');
 reset role;

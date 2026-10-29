@@ -25,6 +25,8 @@ grant execute on function pg_temp.age_messages() to authenticated, service_role;
 select set_config('request.jwt.claims', '{"sub":"f1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 insert into t values ('shop', public.create_shop('F Repairs', null, 'other', 'CA', null, 'America/Toronto')::text);
+-- Emails need the shop's email address (decision 143).
+update public.shops set email = 'shop@example.com' where id = pg_temp.v('shop');
 insert into t values ('maria', public.save_customer(pg_temp.v('shop'), null, 'Maria', '416 555 0100', 'maria@example.com')::text);
 insert into t values ('noemail', public.save_customer(pg_temp.v('shop'), null, 'Pat', '416 555 0199')::text);
 insert into t select 'tk', ticket_id::text from public.create_ticket(pg_temp.v('shop'), pg_temp.v('maria'), 'Coat');
@@ -38,6 +40,8 @@ update public.shops set quiet_hours_start = '00:00', quiet_hours_end = '00:00' w
 select set_config('request.jwt.claims', '{"sub":"f2000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 set local role authenticated;
 insert into t values ('shop_g', public.create_shop('G Repairs', null, 'other', 'CA', null, 'America/Toronto')::text);
+-- Emails need the shop's email address (decision 143).
+update public.shops set email = 'shop@example.com' where id = pg_temp.v('shop_g');
 insert into t values ('maria_g', public.save_customer(pg_temp.v('shop_g'), null, 'Maria G', '+1 416-555-0100')::text);
 reset role;
 -- Texts need the shop's address and phone (decision 76).
@@ -153,7 +157,7 @@ reset role;
 select ok((select count(*) >= 4 from claimed), 'due messages are claimed');
 select ok(not exists (select 1 from claimed where message_id = pg_temp.v('mq')), 'the quiet-hours message is not due yet');
 select is((select recipient from claimed where message_id = pg_temp.v('m_pat')), '+14165550199', 'the SMS recipient is decrypted for sending');
-select is((select reply_to is null and shop_name = 'F Repairs' from claimed where message_id = pg_temp.v('m_pat')), true, 'shop name and reply-to come along');
+select is((select reply_to = 'shop@example.com' and shop_name = 'F Repairs' from claimed where message_id = pg_temp.v('m_pat')), true, 'shop name and reply-to come along');
 select is((select count(*)::int from claimed_again), 0, 'claimed messages are not handed out twice');
 insert into t select 'm_email', message_id::text from claimed where channel = 'email' limit 1;
 

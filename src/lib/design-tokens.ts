@@ -60,6 +60,10 @@ export const contrastPairs: ContrastPair[] = [
   ...uiOn("--status-ready", "Status icon: Ready"),
   ...uiOn("--status-overdue", "Overdue badge"),
   ...uiOn("--status-closed", "Status icon: Picked up / closed"),
+  ...uiOn("--status-teal", "Column colour: teal"),
+  ...uiOn("--status-orange", "Column colour: orange"),
+  ...uiOn("--status-red", "Column colour: red"),
+  ...uiOn("--status-pink", "Column colour: pink"),
 
   // Near-black cards and dark sections
   ...textOnDark("--dark-text", "Primary text"),

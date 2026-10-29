@@ -31,6 +31,7 @@ export function BoardCard({
   timeZone,
   onRemind,
   onCompose,
+  finished,
   className,
 }: {
   ticket: Ticket;
@@ -45,6 +46,8 @@ export function BoardCard({
   onRemind?: () => void;
   /** Opens the message dialog (grey icon). */
   onCompose?: () => void;
+  /** In the finished column: drawn grey, the job is done (decision 145). */
+  finished?: boolean;
   className?: string;
 }) {
   const overdue = isOverdue(t, status, today);
@@ -55,7 +58,8 @@ export function BoardCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-card p-3",
+        "rounded-lg border p-3",
+        finished ? "bg-background" : "bg-card",
         overdue ? "border-status-overdue" : dueSoon ? "border-status-waiting" : "border-border",
         className,
       )}

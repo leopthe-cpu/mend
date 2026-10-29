@@ -9,10 +9,27 @@ export type Status = {
   name: string;
   position: number;
   category: StatusCategory;
-  color: "received" | "in-progress" | "waiting" | "ready" | "closed";
+  color: StatusColor;
   notify_by_default: boolean;
   is_final: boolean;
+  /** Alert when tickets sit here this many days; null = off (decision 145). */
+  idle_alert_days: number | null;
+  /** Alert when tickets here are due within this many days; null = off. */
+  due_alert_days: number | null;
 };
+/** The column colours, in picker order (decision 145). */
+export const STATUS_COLORS = [
+  "received",
+  "in-progress",
+  "teal",
+  "ready",
+  "waiting",
+  "orange",
+  "red",
+  "pink",
+  "closed",
+] as const;
+export type StatusColor = (typeof STATUS_COLORS)[number];
 export type CustomField = {
   id: string;
   label: string;
@@ -84,7 +101,9 @@ const TICKET_COLUMNS =
 export async function fetchStatuses(shopId: string): Promise<Status[]> {
   const { data, error } = await getSupabase()
     .from("statuses")
-    .select("id, name, position, category, color, notify_by_default, is_final")
+    .select(
+      "id, name, position, category, color, notify_by_default, is_final, idle_alert_days, due_alert_days",
+    )
     .eq("shop_id", shopId)
     .order("position");
   if (error) throw error;
@@ -178,19 +197,34 @@ export function isOverdue(
 }
 
 /**
- * Due today or tomorrow and not Ready yet (Oz, 27 Oct): the card turns yellow.
- * Once the date has passed it is overdue (red) instead.
+ * Due within the column's alert window and not overdue yet (decision 145;
+ * was "today or tomorrow", decision 141): the card turns amber. Columns with
+ * the due alert off never flag it. Once the date has passed it's overdue.
  */
 export function isDueSoon(
   t: Pick<Ticket, "promised_date">,
-  status: Status | undefined,
+  status: Pick<Status, "category" | "due_alert_days"> | undefined,
   today: string,
 ): boolean {
-  if (!t.promised_date || !status) return false;
+  if (!t.promised_date || !status?.due_alert_days) return false;
   if (status.category === "ready" || status.category === "closed") return false;
   const [y, m, d] = today.split("-").map(Number);
-  const tomorrow = new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10);
-  return t.promised_date >= today && t.promised_date <= tomorrow;
+  const last = new Date(Date.UTC(y!, m! - 1, d! + status.due_alert_days))
+    .toISOString()
+    .slice(0, 10);
+  return t.promised_date >= today && t.promised_date <= last;
+}
+
+/** Sitting in this column longer than its idle alert (decision 145). */
+export function isIdle(
+  t: Pick<Ticket, "status_changed_at">,
+  status: Pick<Status, "is_final" | "idle_alert_days"> | undefined,
+  now = new Date(),
+): boolean {
+  if (!status?.idle_alert_days || status.is_final) return false;
+  return (
+    now.getTime() - new Date(t.status_changed_at).getTime() > status.idle_alert_days * 86_400_000
+  );
 }
 
 export function isUnclaimed(
@@ -329,6 +363,10 @@ export const STATUS_COLOR_CLASS: Record<Status["color"], string> = {
   waiting: "bg-status-waiting",
   ready: "bg-status-ready",
   closed: "bg-status-closed",
+  teal: "bg-status-teal",
+  orange: "bg-status-orange",
+  red: "bg-status-red",
+  pink: "bg-status-pink",
 };
 
 /** Soft status tints for value chips in tables (decision 103); text stays near-black. */
@@ -338,6 +376,10 @@ export const STATUS_TINT_CLASS: Record<Status["color"], string> = {
   waiting: "bg-status-waiting/15",
   ready: "bg-status-ready/15",
   closed: "bg-status-closed/15",
+  teal: "bg-status-teal/15",
+  orange: "bg-status-orange/15",
+  red: "bg-status-red/15",
+  pink: "bg-status-pink/15",
 };
 
 export async function signedPhotoUrls(paths: string[]): Promise<Map<string, string>> {

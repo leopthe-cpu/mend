@@ -4,6 +4,7 @@ import {
   BOARD_CLOSED_LIMIT,
   boardColumn,
   isDueSoon,
+  isIdle,
   isOverdue,
   memberName,
   messagePlane,
@@ -85,23 +86,48 @@ describe("readyContact follows the log (decision 138)", () => {
 });
 
 describe("board flags and the Picked up column (Oz, 27 Oct)", () => {
-  const st = (category: Status["category"], id = category): Status =>
-    ({ id, category, is_final: category === "closed" }) as Status;
+  const st = (
+    category: Status["category"],
+    id: string = category,
+    due: number | null = 2,
+  ): Status =>
+    ({
+      id,
+      category,
+      is_final: category === "closed",
+      due_alert_days: due,
+      idle_alert_days: 2,
+    }) as Status;
   const today = "2026-10-27";
 
-  it("is due soon today or tomorrow, until Ready; overdue only after the date", () => {
+  it("is due soon within the column's window, until Ready; overdue only after the date", () => {
     const open = st("open");
     expect(isDueSoon({ promised_date: "2026-10-27" }, open, today)).toBe(true);
-    expect(isDueSoon({ promised_date: "2026-10-28" }, open, today)).toBe(true);
-    expect(isDueSoon({ promised_date: "2026-10-29" }, open, today)).toBe(false);
+    expect(isDueSoon({ promised_date: "2026-10-29" }, open, today)).toBe(true);
+    expect(isDueSoon({ promised_date: "2026-10-30" }, open, today)).toBe(false);
     expect(isDueSoon({ promised_date: "2026-10-26" }, open, today)).toBe(false);
+    expect(isDueSoon({ promised_date: "2026-10-28" }, st("open", "o", 1), today)).toBe(true);
+    expect(isDueSoon({ promised_date: "2026-10-29" }, st("open", "o", 1), today)).toBe(false);
+    // The column's due alert switched off.
+    expect(isDueSoon({ promised_date: "2026-10-27" }, st("open", "o", null), today)).toBe(false);
     expect(isOverdue({ promised_date: "2026-10-27" }, open, today)).toBe(false);
     expect(isOverdue({ promised_date: "2026-10-26" }, open, today)).toBe(true);
     expect(isDueSoon({ promised_date: "2026-10-27" }, st("ready"), today)).toBe(false);
     expect(isDueSoon({ promised_date: "2026-10-27" }, st("closed"), today)).toBe(false);
     expect(isDueSoon({ promised_date: null }, open, today)).toBe(false);
     // Across a month end.
-    expect(isDueSoon({ promised_date: "2026-11-01" }, open, "2026-10-31")).toBe(true);
+    expect(isDueSoon({ promised_date: "2026-11-02" }, open, "2026-10-31")).toBe(true);
+  });
+
+  it("is idle after the column's days, never in the finished column", () => {
+    const now = new Date("2026-10-27T12:00:00Z");
+    const moved = (h: number) => ({
+      status_changed_at: new Date(now.getTime() - h * 3600e3).toISOString(),
+    });
+    expect(isIdle(moved(47), st("open"), now)).toBe(false);
+    expect(isIdle(moved(49), st("open"), now)).toBe(true);
+    expect(isIdle(moved(200), st("closed"), now)).toBe(false);
+    expect(isIdle(moved(200), { is_final: false, idle_alert_days: null }, now)).toBe(false);
   });
 
   it("shows every open ticket but only the latest picked-up ones", () => {

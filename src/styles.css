@@ -38,6 +38,10 @@
   --color-status-ready: var(--status-ready);
   --color-status-overdue: var(--status-overdue);
   --color-status-closed: var(--status-closed);
+  --color-status-teal: var(--status-teal);
+  --color-status-orange: var(--status-orange);
+  --color-status-red: var(--status-red);
+  --color-status-pink: var(--status-pink);
   --color-count-badge: var(--count-badge);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -121,6 +125,11 @@
   --status-ready: oklch(0.4751 0.1198 149.2); /* #1A6E34 — green: ready for pickup */
   --status-overdue: oklch(0.5003 0.1821 29.51); /* #B42318 */
   --status-closed: oklch(0.5406 0.0119 261.77); /* #6B6F76 */
+  /* More column colours (decision 145); each 3:1 on the light surfaces. */
+  --status-teal: oklch(0.5109 0.0861 186.39); /* #0F766E */
+  --status-orange: oklch(0.5394 0.1562 42.99); /* #B54708 */
+  --status-red: oklch(0.5003 0.1821 29.51); /* #B42318 */
+  --status-pink: oklch(0.5133 0.1835 2.38); /* #B4235E */
 
   /* Pick-up calendar: white day count on a grey circle (decision 69) */
   --count-badge: oklch(0.551 0.0234 264.36); /* #6B7280 */

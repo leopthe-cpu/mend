@@ -46,6 +46,7 @@ select is_empty(
           'public.save_catalog_item', 'public.finish_shop_setup', 'public.onboarding_state', 'public.export_shop', 'public.set_shop_logo', 'public.delete_shop',
           'public.queue_message', 'public.cancel_message', 'public.set_customer_opt_out',
           'public.release_held_message', 'public.find_repeat_message',
+          'public.add_status', 'public.reorder_statuses', 'public.delete_status', 'public.set_finished_status',
           'public.accept_terms', 'public.shop_contact', 'public.set_estimate_discount',
           'public.retention_notice', 'public.export_customer',
           'public.unsubscribe_preview', 'public.email_unsubscribe'

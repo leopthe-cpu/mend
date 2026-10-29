@@ -49,10 +49,6 @@ function MessageSettings() {
     void load();
   }, [load]);
 
-  // "Ticket ready" is the first Ready-group status by position (the one
-  // insert_trade_seed gives a template); other statuses keep theirs below.
-  const readyStatus = statuses?.find((s) => s.category === "ready");
-  const otherStatuses = (statuses ?? []).filter((s) => s.id !== readyStatus?.id);
   const hours = shop.business_hours?.text?.trim() || "Mon-Fri 9-5";
   const sample: TemplateVars = useMemo(
     () => ({
@@ -62,6 +58,7 @@ function MessageSettings() {
       ticket_title: "winter coat",
       shop_name: shop.name,
       ticket_number: 1042,
+      status_name: "Ready",
       pickup_hours: pickupHoursText(shop.business_hours?.schedule, hours, shop.time_zone),
       shop_hours: hours,
       promised_date: promisedDateText(
@@ -125,36 +122,16 @@ function MessageSettings() {
             onError={onError}
           />
 
-          {readyStatus ? (
-            <TemplateEditor
-              shopId={shop.id}
-              title="Ticket ready"
-              description="Used when a ticket moves into a status that notifies by default."
-              kind="status"
-              statusId={readyStatus.id}
-              sms={templates.find(
-                (t) => t.kind === "status" && t.status_id === readyStatus.id && t.channel === "sms",
-              )}
-              email={templates.find(
-                (t) =>
-                  t.kind === "status" && t.status_id === readyStatus.id && t.channel === "email",
-              )}
-              sample={sample}
-              canEdit={canEdit}
-              onSaved={onSaved}
-              onError={onError}
-            />
-          ) : (
-            <Panel title="Ticket ready">
-              <p className="text-sm text-muted-foreground">
-                Your shop has no status in the Ready group yet. Add one in{" "}
-                <Link to="/app/settings/board" className="underline">
-                  Board & fields
-                </Link>
-                .
-              </p>
-            </Panel>
-          )}
+          {/* Column messages moved to the board (decision 145). */}
+          <Panel title="Column messages">
+            <p className="text-sm text-muted-foreground">
+              The message a column sends when a ticket arrives is set on the board: click the
+              column's header.{" "}
+              <Link to="/app/board" className="underline">
+                Open the board
+              </Link>
+            </p>
+          </Panel>
 
           <TemplateEditor
             shopId={shop.id}
@@ -169,40 +146,6 @@ function MessageSettings() {
             onSaved={onSaved}
             onError={onError}
           />
-
-          {otherStatuses.length ? (
-            <details className="rounded-md border border-border p-4">
-              <summary className="min-h-11 cursor-pointer content-center font-medium">
-                Other status messages ({otherStatuses.length})
-              </summary>
-              <div className="mt-4 flex flex-col gap-6">
-                {otherStatuses.map((s) => (
-                  <TemplateEditor
-                    key={s.id}
-                    shopId={shop.id}
-                    title={s.name}
-                    description={
-                      s.notify_by_default
-                        ? "Mend offers to send this when a ticket moves here."
-                        : "Not offered automatically; staff can still pick it from a ticket."
-                    }
-                    kind="status"
-                    statusId={s.id}
-                    sms={templates.find(
-                      (t) => t.kind === "status" && t.status_id === s.id && t.channel === "sms",
-                    )}
-                    email={templates.find(
-                      (t) => t.kind === "status" && t.status_id === s.id && t.channel === "email",
-                    )}
-                    sample={sample}
-                    canEdit={canEdit}
-                    onSaved={onSaved}
-                    onError={onError}
-                  />
-                ))}
-              </div>
-            </details>
-          ) : null}
         </>
       )}
     </div>

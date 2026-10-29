@@ -332,7 +332,7 @@ export function NotifyDialog({
   return (
     <Dialog open={!!request} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        className="max-h-[92svh] overflow-y-auto bg-background text-foreground sm:max-w-xl"
+        className="max-h-[92svh] overflow-x-hidden overflow-y-auto bg-background text-foreground sm:max-w-xl"
         // A held-message toast may be open below: answering it must not close
         // this dialog (decision 138).
         onInteractOutside={(e) => {

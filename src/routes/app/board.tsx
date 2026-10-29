@@ -6,7 +6,11 @@ import { FormAlert } from "@/components/auth/AuthLayout";
 import { promptHeldMessages } from "@/components/messages/messageToasts";
 import { NotifyDialog, type NotifyRequest } from "@/components/messages/NotifyDialog";
 import { BoardCard } from "@/components/board/BoardCard";
-import { ColumnDialog, type ColumnRequest } from "@/components/board/ColumnDialog";
+import {
+  ColumnDialog,
+  DeleteColumnDialog,
+  type ColumnRequest,
+} from "@/components/board/ColumnDialog";
 import { ColumnHeader } from "@/components/board/ColumnHeader";
 import { usePointerDrag } from "@/components/board/usePointerDrag";
 import { TicketsTop } from "@/components/tickets/TicketsTop";
@@ -198,6 +202,7 @@ function Board() {
   // Columns are edited on the board by Owner and Admin (decision 145).
   const canEditColumns = roleAtLeast(membership.role, "admin");
   const [column, setColumn] = useState<ColumnRequest | null>(null);
+  const [deleteColumn, setDeleteColumn] = useState<Status | null>(null);
   const counts = new Map(statuses.map((s) => [s.id, boardColumn(tickets, s).total]));
   // A column header being dragged: where the pointer is and where it would land
   // (an index between columns, 0 = before the first).
@@ -433,6 +438,10 @@ function Board() {
         counts={counts}
         onClose={() => setColumn(null)}
         onSaved={() => void load()}
+        onDelete={(s) => {
+          setColumn(null);
+          setDeleteColumn(s);
+        }}
         onMove={(id, dir) => {
           const ids = statuses.map((x) => x.id);
           const i = ids.indexOf(id);
@@ -441,6 +450,13 @@ function Board() {
           [ids[i], ids[j]] = [ids[j]!, ids[i]!];
           void reorder(ids);
         }}
+      />
+      <DeleteColumnDialog
+        status={deleteColumn}
+        statuses={statuses}
+        count={deleteColumn ? tickets.filter((t) => t.status_id === deleteColumn.id).length : 0}
+        onClose={() => setDeleteColumn(null)}
+        onDeleted={() => void load()}
       />
       {/* The column header under the pointer while it's dragged (only the
           header moves; its tickets follow when it lands). */}

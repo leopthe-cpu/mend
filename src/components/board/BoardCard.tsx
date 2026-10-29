@@ -40,7 +40,8 @@ export function BoardCard({
   unclaimedDays: number;
   /** How many photos the ticket has. */
   photos: number;
-  plane: MessagePlane;
+  /** Null in columns that don't message customers: no icon (decision 147). */
+  plane: MessagePlane | null;
   /** Shop time zone, for the day a message went out. */
   timeZone?: string;
   onRemind?: () => void;
@@ -115,14 +116,16 @@ export function BoardCard({
             <ImageIcon className="size-4" aria-hidden /> {photos}
           </Link>
         ) : null}
-        <PlaneButton
-          plane={plane}
-          status={status}
-          ticket={t}
-          today={today}
-          timeZone={timeZone}
-          onCompose={onCompose}
-        />
+        {plane ? (
+          <PlaneButton
+            plane={plane}
+            status={status}
+            ticket={t}
+            today={today}
+            timeZone={timeZone}
+            onCompose={onCompose}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -169,15 +172,15 @@ function FadeClamp({ children }: { children: React.ReactNode }) {
 }
 
 const PLANE_TONE: Record<MessagePlane["state"], string> = {
-  grey: "text-status-closed",
+  yellow: "text-warning",
   blue: "text-primary",
   green: "text-success",
   red: "text-danger",
 };
 
 /**
- * The message icon, bottom right (decision 142). Grey opens the message
- * dialog; the others open the ticket's Messages. What it means is in its
+ * The message icon, bottom right (decisions 142, 147). Yellow opens the
+ * message dialog; the others open the ticket's Messages. What it means is in its
  * label (hover and screen readers), so colour is never the only signal.
  */
 function PlaneButton({
@@ -195,41 +198,33 @@ function PlaneButton({
   timeZone: string | undefined;
   onCompose: (() => void) | undefined;
 }) {
-  const before = plane.count ? ` · ${plane.count} sent before` : "";
   const label =
-    plane.state === "grey"
-      ? status.notify_by_default
-        ? `${status.name} message not sent yet${before}`
-        : `Customer not contacted yet${before}`
+    plane.state === "yellow"
+      ? `${status.name} message not sent yet`
       : plane.state === "blue"
-        ? `Message waiting to send${before}`
+        ? "Message waiting to send"
         : plane.state === "red"
-          ? `Last message failed${before}`
+          ? "Last message failed"
           : `${plane.last?.channel === "email" ? "Emailed" : "Texted"} ${
               plane.last && timeZone
                 ? shortDate(shopToday(timeZone, new Date(plane.last.at)), today)
                 : ""
-            }${plane.count ? ` · ${plane.count} messages sent` : ""}`.trim();
+            }`.trim();
   const Icon =
-    plane.state === "grey"
+    plane.state === "yellow"
       ? PlaneDown
       : plane.state === "blue"
         ? Hourglass
         : plane.state === "red"
           ? PlaneCrashed
           : PlaneFlying;
-  const inner = (
-    <>
-      <Icon className="size-5" />
-      {plane.count ? <span className="font-semibold tabular-nums">{plane.count}</span> : null}
-    </>
-  );
+  const inner = <Icon className="size-5" />;
   const cls = cn(
     "-my-2 -mr-2 ml-auto inline-flex min-h-11 min-w-11 items-center justify-center gap-0.5 rounded-full px-1.5 hover:bg-background",
     PLANE_TONE[plane.state],
   );
   const aria = `#${t.ticket_number}: ${label}`;
-  return plane.state === "grey" && onCompose ? (
+  return plane.state === "yellow" && onCompose ? (
     <button type="button" onClick={onCompose} title={label} aria-label={aria} className={cls}>
       {inner}
     </button>

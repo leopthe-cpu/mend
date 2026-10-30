@@ -1,6 +1,6 @@
 ---
 project: Mend
-updated: 2026-10-29
+updated: 2026-10-30
 summary: UX round 2 is mostly merged into develop, which deploys to staging (deploy not checked) - borders and the joined board, the new card with message icons, columns edited on the board (add, drag, alerts, finished column), the message editor with blue ticket details, the shop-email rule and a cleaner message window. Next: Oz tests on staging (and the editor on an iPhone), then the develop → main release; Phase 2 toolbar and filters after that.
 ---
 
@@ -226,3 +226,11 @@ summary: UX round 2 is mostly merged into develop, which deploys to staging (dep
 - [ ] Decide public pricing: Starter $19 and Workshop $39, or free in early access @me #pricing
   The site shows these prices with "Free while Mend is in early access". Pricing is still open in legal-compliance §8.
   Source: docs/decisions.md 51; docs/legal-compliance.md §8
+- [x] First-customer outreach kit for Toronto repair shops @claude #sales
+  Lead list (117 shops in 3 segments), emails, phone and walk-in scripts, A/B plan and tracking sheet; CASL, DNCL and Mailchimp rules checked from official pages. Kept outside this public repo (no lead data here).
+  Source: outreach session of 30 Oct 2026
+- [ ] Outreach setup before the first send: sending domain with SPF/DKIM/DMARC, mailbox, booking link, CASL footer details, DNCL operator registration @me #sales
+  Offer: demo held by 31 Dec 2026 gets the first year at $88.99 CAD (first year only, Oz 30 Oct).
+  Source: outreach session of 30 Oct 2026
+- [ ] Lawyer check of the outreach rules (implied consent, footer, oral consent for "send me something", Instagram DMs, DNCL registration) @me #legal #sales
+  Source: outreach session of 30 Oct 2026
